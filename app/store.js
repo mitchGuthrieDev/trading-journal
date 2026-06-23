@@ -135,6 +135,60 @@
       return new Set(keys);
     },
 
+    async deleteTrade(id) {
+      const store = await tx(TRADES, 'readwrite');
+      store.delete(id);
+      return done(store);
+    },
+
+    async getAllJournal() {
+      const store = await tx(JOURNAL, 'readonly');
+      const all = await reqP(store.getAll());
+      all.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // newest first
+      return all;
+    },
+
+    async deleteJournal(date) {
+      const store = await tx(JOURNAL, 'readwrite');
+      store.delete(date);
+      return done(store);
+    },
+
+    async getAllMeta() {
+      const store = await tx(META, 'readonly');
+      return reqP(store.getAll());
+    },
+
+    /* Full local snapshot — for the data manager's backup/export. */
+    async exportAll() {
+      const [trades, journal, meta] = await Promise.all([
+        this.getAllTrades(), this.getAllJournal(), this.getAllMeta()
+      ]);
+      return { app: 'blotterbook', version: 1, exportedAt: new Date().toISOString(), trades, journal, meta };
+    },
+
+    /* Merge a backup back in: trades de-dupe, notes & meta upsert. */
+    async importAll(data) {
+      let added = 0, dup = 0;
+      if (Array.isArray(data.trades) && data.trades.length) {
+        const r = await this.addTrades(data.trades);
+        added = r.added; dup = r.duplicate;
+      }
+      if (Array.isArray(data.journal) && data.journal.length) {
+        const store = await tx(JOURNAL, 'readwrite');
+        for (const j of data.journal) {
+          if (j && j.date && j.text) store.put({ date: j.date, text: j.text, updated: j.updated || Date.now() });
+        }
+        await done(store);
+      }
+      if (Array.isArray(data.meta) && data.meta.length) {
+        const store = await tx(META, 'readwrite');
+        for (const mm of data.meta) { if (mm && mm.key != null) store.put({ key: mm.key, value: mm.value }); }
+        await done(store);
+      }
+      return { added, dup };
+    },
+
     async setMeta(key, value) {
       const store = await tx(META, 'readwrite');
       store.put({ key, value });

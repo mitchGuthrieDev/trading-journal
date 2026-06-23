@@ -33,6 +33,7 @@ calls are loading the app's own reference-data JSON and an optional PayPal donat
 - [Cost model](#cost-model) — commissions, subscriptions, tax
 - [Reference data (JSON)](#reference-data-json) — brokers, fees, feeds, states + cache-busting
 - [Local persistence](#local-persistence) — IndexedDB, delta merge, purge
+- [Managing local data](#managing-local-data) — edit, back up, and restore
 - [Filters & journal](#filters--journal)
 - [Architecture](#architecture)
 - [Storage tiers & payments (scaffold)](#storage-tiers--payments-scaffold)
@@ -48,7 +49,10 @@ calls are loading the app's own reference-data JSON and an optional PayPal donat
   index.html            hero + features + use cases + pricing + FAQ (single scroll, anchor nav)
   changelog.html        "Blotterlog" — change history styled to match the homepage
 /app/                   the journal app
-  index.html            markup, styles, and the main script
+  index.html            app markup (links app.css + app.js)
+  demo.html             the demo on its own page (shares app.css/app.js; opens in a new tab)
+  app.css               all app styles (shared by index.html and demo.html)
+  app.js                the main app script (shared; mode-aware via body[data-mode])
   store.js              IndexedDB persistence (swappable storage interface)
   entitlements.js       storage-tier resolver (scaffold; always "local" today)
 /data/                  reference data, fetched at runtime
@@ -120,16 +124,30 @@ window each time without creating duplicates. The data summary shows `+N new · 
 
 | Section | What it shows |
 | --- | --- |
-| **Top bar** | Title (click to return to start), data summary, and actions: Load CSV, Demo, Export, **Clear data**, Contact. |
-| **Setup** | Broker / data feed / platform fee / state. Collapsible once loaded; selections persist. |
+| **Top bar** | The **Blotterbook** wordmark (links to the homepage) and the loaded-source text (click it to load a CSV, like the Load CSV button — it's truncated so long filenames don't bloat the bar). Actions: Load CSV, Demo (opens the demo in a new tab), **Export report**, **Manage data**, Clear data, Contact. |
+| **Landing (no data)** | The intro text sits at the top; the **Broker & Costs** module is centered in the page (like the homepage hero) until data loads. |
+| **Broker & Costs** | Broker / data feed / platform fee / state. Collapsible once loaded; selections persist. |
 | **Scope toggle** | Switches most views between *All time* and the *Selected month*. |
 | **Filters** | Date range, symbol, side, session (RTH/ETH), and day-of-week. Applies before everything. |
 | **Stat cards** | Net PnL (+ take-home), win rate, profit factor, avg win/loss, max drawdown. |
-| **Performance** | Cumulative PnL vs. date, with Gross/Net/Take-home overlays, hover, and click-to-mark. |
+| **Performance** | Cumulative PnL vs. date. Click the **Gross / Net / Take-home** buttons to toggle overlays (highlighted when active); hover for values; click a calendar day to mark it. |
 | **Trading Calendar** | Sunday-first month grid of daily PnL with weekly summaries; **day-notes** below. |
-| **Break-even & Cost Budget** | Per-symbol commission table, subscription/tax waterfall, take-home, break-even/trade. |
+| **Break-even & Cost Budget** | Per-symbol commission table and a full-width itemized waterfall — gross, commissions, subscriptions, net pre-tax, the folded-in **Section 1256** tax detail, take-home, and break-even/trade. |
 | **Advanced Statistics** | Daily averages, expectancy, long/short split, best/worst day & weekday, Sharpe, streaks. |
 | **Definitions & Caveats** | How each number is computed and where the data falls short. |
+
+**Demo (its own page).** The **Demo** button opens `app/demo.html` in a new tab with a generated,
+profitable month of sample data. It's the full app minus the Load CSV, Manage data, and Clear data
+controls; an **End demo** button returns you to the app (and closes the tab when the browser allows).
+Demo data is in-memory only and never persists.
+
+**Export report.** **Export report** opens a condensed, print-ready **performance report** in a new
+tab — period summary tiles, a cost &amp; tax breakdown, key statistics, and per-symbol commissions,
+in the Blotterbook palette — then prompts to print or save as PDF. It reads like a report rather than
+a screenshot of the dashboard. (Allow pop-ups for the report tab.)
+
+**Manage data.** **Manage data** opens a local-data manager (see
+[Managing local data](#managing-local-data)).
 
 ## Cost model
 
@@ -206,10 +224,29 @@ automatically on return visits. Nothing is uploaded.
 - **Demo data is never persisted** — it lives in memory only.
 - **Clear data** (top bar) calls `Store.purge()` to wipe all three stores after a confirm.
 
-The app never touches `indexedDB` directly — it goes through the `Store` interface, which is
-deliberately small (`addTrades`, `getAllTrades`, `saveJournal`, `journalDates`, `setMeta`,
-`getMeta`, `purge`). A future cloud backend implements the same interface, so adding cloud sync
-won't touch the rest of the app. See [storage tiers](#storage-tiers--payments-scaffold).
+The app never touches `indexedDB` directly — it goes through the `Store` interface. A future cloud
+backend implements the same interface, so adding cloud sync won't touch the rest of the app. See
+[storage tiers](#storage-tiers--payments-scaffold).
+
+## Managing local data
+
+**Manage data** (top bar) opens a modal for editing and managing everything saved in this browser —
+the recommended home for local-data control because it reuses the existing `Store` interface and
+keeps all destructive actions behind one clearly-labeled surface. It has four parts:
+
+- **Overview** — trade count, date range, day-note count, and the approximate on-disk size.
+- **Backup &amp; restore** — *Download backup (.json)* writes a single file with your trades, day-notes,
+  and setup (`Store.exportAll()`); *Restore from backup* merges one back in (`Store.importAll()`).
+  Restores de-duplicate by the same stable trade id, so re-importing is always safe. This is the
+  answer to "local storage is per-browser" — a portable snapshot you control.
+- **Day notes** — every dated note, each with a delete button.
+- **Trades** — a searchable (symbol / date / side), scrollable table with per-row delete. Deletions
+  apply immediately across every view and recompute metrics live.
+- **Danger zone** — *Erase all local data* (`Store.purge()`), behind a confirm.
+
+The `Store` interface stays the single source of truth — the manager added `deleteTrade`,
+`getAllJournal`, `deleteJournal`, `getAllMeta`, `exportAll`, and `importAll` to it, so a future cloud
+backend gets the same management UI for free.
 
 ## Filters & journal
 
@@ -239,9 +276,12 @@ CSV text
   → render*()       → cards / curve / calendar / advanced / break-even
 ```
 
-Key globals: `TRADES` (full merged set), `METRICS_ALL` (metrics for the *filtered* set),
-`FILTERS`, `SCOPE`, `calYear`/`calMonth`, `selectedDate`, `JOURNAL_DATES`, `DEMO_MODE`. The
-boot sequence is async: `loadRefData()` → `Store.init()` → `restoreSession()`.
+The styles and script live in `app/app.css` and `app/app.js`, shared by both `index.html` and
+`demo.html`; `app.js` adapts to the page via `document.body.dataset.mode` (the demo sets
+`data-mode="demo"`, auto-loads sample data, and skips persistence). Key globals: `TRADES` (full
+merged set), `METRICS_ALL` (metrics for the *filtered* set), `FILTERS`, `SCOPE`,
+`calYear`/`calMonth`, `selectedDate`, `JOURNAL_DATES`, `DEMO_MODE`, `DEMO_PAGE`. The boot sequence
+is async: `loadRefData()` → `Store.init()` → `restoreSession()` (or `runDemo()` on the demo page).
 
 ## Storage tiers & payments (scaffold)
 
@@ -267,7 +307,8 @@ client resolver that will pick the matching `Store` implementation; today it alw
   RTH/ETH assumes the timestamp's clock time.
 - **Sharpe is illustrative** — daily PnL, population std, not annualized.
 - **Local storage is per-browser** — data is not synced across devices and is cleared if you clear
-  site data. (Cloud sync is the planned subscription tier.)
+  site data. Use **Manage data → Download backup** for a portable JSON snapshot in the meantime.
+  (Cloud sync is the planned subscription tier.)
 
 ## Privacy
 

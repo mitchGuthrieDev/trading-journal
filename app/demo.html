@@ -3,28 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Blotterbook</title>
+<title>Blotterbook — Demo</title>
 <link rel="stylesheet" href="app.css">
 </head>
-<body>
+<body data-mode="demo">
 <div class="wrap">
 
-  <!-- ============ top bar ============ -->
+  <!-- ============ top bar (demo: no Load CSV / Manage / Clear) ============ -->
   <div class="top">
     <div class="brand">
       <a class="bwordmark" href="../index.html" title="Back to the Blotterbook homepage">Blotterbook</a>
-      <small id="srcname" title="Click to load a balance-history CSV">no data loaded</small>
+      <small id="srcname">demo dataset</small>
     </div>
     <div class="topright">
       <div class="src" id="srcmeta"></div>
       <div class="topbtns">
-        <label class="loader disabled" id="loadlbl" title="Select broker, data feed, and state first">Load CSV
-          <input type="file" id="file" accept=".csv,text/csv" disabled>
-        </label>
-        <button class="btn" id="demoBtn" title="Open the demo dataset in a new tab">Demo</button>
+        <span class="demotag">Demo</span>
         <button class="btn" id="exportBtn" title="Generate a condensed performance report (print or save as PDF)">Export report</button>
-        <button class="btn" id="manageBtn" title="Edit, back up, and manage the data saved in this browser">Manage data</button>
-        <button class="btn" id="purgeBtn" title="Erase all trades and day-notes saved in this browser">Clear data</button>
+        <button class="btn" id="endDemoBtn" title="Close the demo and return to the app">End demo</button>
         <a class="btn" id="contactBtn"
            href="mailto:contact@scalineaudio.net?subject=Blotterbook%20%E2%80%94%20support%20%2F%20feedback&body=Tell%20us%20what%20you%20need%20help%20with%20or%20what%20you%27d%20like%20to%20see%3A%0A%0A"
            title="Questions, support requests, or feedback — opens a draft in your email app">Contact</a>
@@ -32,17 +28,8 @@
     </div>
   </div>
 
-  <!-- ============ landing intro + setup (setup is reused, collapsible, once loaded) ============ -->
+  <!-- ============ setup (Broker & Costs — editable in the demo too) ============ -->
   <div id="landing">
-    <div class="lhead">
-      <p class="leyebrow">Blotterbook</p>
-      <h1 class="ltitle">Load a balance&#8209;history CSV to begin</h1>
-      <p class="llead">Export your account balance history from TradingView as a CSV, choose your broker,
-        data feed, and state below, then load the file. Re&#8209;uploads merge — only new trades are added,
-        and nothing ever leaves your browser. New here? Click <b>Demo</b> to explore with sample data.</p>
-      <p class="lmeta">Expected columns: Time · Realized PnL (value) · Action</p>
-    </div>
-
     <div class="setup" id="setup">
       <div class="setuphead" id="setuphead">
         <h2>Broker &amp; Costs</h2>
@@ -59,8 +46,7 @@
           <div class="fld state"><label for="c_state_sel">State (tax)</label>
             <select id="c_state_sel"></select></div>
         </div>
-        <div class="hintline">Choose a broker, data feed, and state to enable <b>Load CSV</b>, then load your file below. Commission and feed rates follow the broker. Or click <b>Demo</b> to explore with sample data.</div>
-        <button class="btn loadbtn disabled" id="setupLoad" title="Select broker, data feed, and state first" disabled>Load CSV</button>
+        <div class="hintline">This is sample data — change the broker, data feed, or state to see how costs move your net and take-home.</div>
       </div>
     </div>
   </div>
@@ -130,7 +116,7 @@
         <div class="journal" id="journal">
           <div class="jhead"><span class="jdate" id="j_date">Day notes</span>
             <span class="jstat" id="j_stat"></span></div>
-          <p class="jhint" id="j_hint">Click a day on the calendar to add or read notes for that date. Notes are saved in this browser.</p>
+          <p class="jhint" id="j_hint">Day-notes are disabled for the demo dataset.</p>
           <textarea id="j_text" placeholder="Select a day to write notes…" disabled></textarea>
         </div>
       </div>
@@ -203,8 +189,8 @@
   <!-- ============ footer + donate ============ -->
   <div class="foot">
     <div class="fnote">
-      Parsing happens entirely in your browser — no data ever leaves this page. The only external
-      resource is the optional PayPal donate button on the right.
+      This is a generated sample dataset — it is never saved. Click <b>End demo</b> to return to the app and
+      load your own balance-history CSV.
     </div>
     <div id="donate-button-container">
       <div id="donate-button"></div>
@@ -220,51 +206,6 @@
         }
       }).render('#donate-button');
       </script>
-    </div>
-  </div>
-</div>
-
-<!-- ============ data manager modal ============ -->
-<div class="modal" id="dataModal" aria-hidden="true">
-  <div class="sheet" role="dialog" aria-modal="true" aria-label="Manage local data">
-    <div class="dmhead">
-      <div><h2>Manage local data</h2><div class="dmsub">Everything here lives only in this browser.</div></div>
-      <button class="dmx" id="dm_close" title="Close">&times;</button>
-    </div>
-    <div class="dmbody">
-      <div class="dmsec"><h3>Overview</h3><div class="dmgrid" id="dm_summary"></div></div>
-
-      <div class="dmsec"><h3>Backup &amp; restore</h3>
-        <div class="dmactions">
-          <button class="dmbtn" id="dm_export">Download backup (.json)</button>
-          <button class="dmbtn" id="dm_importBtn">Restore from backup…</button>
-          <input type="file" id="dm_importFile" accept="application/json,.json" hidden>
-        </div>
-        <p class="dmhint">A backup is a single JSON file holding your trades, day-notes, and setup. Restoring merges it back in — existing trades are de-duplicated, so re-importing is always safe. Keep a backup before clearing data or switching browsers.</p>
-      </div>
-
-      <div class="dmsec"><h3>Day notes</h3>
-        <div class="dmnotescroll" id="dm_notes"></div>
-      </div>
-
-      <div class="dmsec"><h3>Trades</h3>
-        <div class="dmsearchrow">
-          <input type="text" id="dm_search" placeholder="Filter by symbol, date, or side…">
-          <span class="dmcount" id="dm_tcount"></span>
-        </div>
-        <div class="dmscroll">
-          <table class="dmtab">
-            <thead><tr><th>Date</th><th>Symbol</th><th>Side</th><th class="num">PnL</th><th></th></tr></thead>
-            <tbody id="dm_trades"></tbody>
-          </table>
-        </div>
-        <p class="dmhint">Deleting a trade updates every view immediately and cannot be undone — re-load the CSV (or a backup) to restore it.</p>
-      </div>
-
-      <div class="dmsec"><h3>Danger zone</h3>
-        <div class="dmactions"><button class="dmbtn danger" id="dm_clear">Erase all local data</button></div>
-        <p class="dmhint">Wipes every trade, day-note, and saved setup from this browser. Export a backup first if you might want it back.</p>
-      </div>
     </div>
   </div>
 </div>
