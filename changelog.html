@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blotterlog — Blotterbook changelog</title>
+<meta name="description" content="The Blotterlog — a running history of changes to Blotterbook, drawn from the project's commit history.">
+<style>
+  :root{
+    --bg:#0d1014; --panel:#151a21; --panel2:#1b212a; --line:#262d38;
+    --txt:#d6dde6; --dim:#8a94a3; --faint:#5b6470;
+    --green:#3fb950; --accent:#6aa0ff; --take:#c98bff;
+    --mono:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  html,body{margin:0;min-height:100%}
+  body{background:var(--bg);color:var(--txt);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;line-height:1.5}
+  a{color:var(--accent);text-decoration:none}
+  body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(620px 420px at 18% -8%, rgba(106,160,255,.10), transparent 70%),
+      radial-gradient(560px 420px at 96% 4%, rgba(201,139,255,.08), transparent 70%);}
+
+  header{position:sticky;top:0;z-index:50;backdrop-filter:saturate(150%) blur(10px);
+    background:rgba(13,16,20,.86);border-bottom:1px solid var(--line)}
+  .nav{max-width:880px;margin:0 auto;padding:13px 22px;display:flex;align-items:center;gap:14px}
+  .wordmark{font-weight:700;font-size:16px;color:var(--txt);display:inline-flex;align-items:center;gap:9px}
+  .wordmark .dot{width:9px;height:9px;border-radius:2px;background:linear-gradient(135deg,var(--accent),var(--take))}
+  .nav .back{margin-left:auto;color:var(--dim);font-size:13.5px;padding:7px 11px;border-radius:7px}
+  .nav .back:hover{color:var(--txt);background:var(--panel)}
+
+  .wrap{max-width:880px;margin:0 auto;padding:56px 22px 80px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 14px}
+  h1{font-size:clamp(30px,5vw,44px);font-weight:700;letter-spacing:-.02em;margin:0 0 12px;line-height:1.1}
+  .blurb{color:var(--dim);font-size:16px;max-width:640px;line-height:1.65;margin:0 0 8px}
+  .blurb b{color:var(--txt)}
+
+  .log{margin-top:42px;position:relative;padding-left:26px}
+  .log::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:2px;
+    background:linear-gradient(180deg,var(--accent),rgba(201,139,255,.4),transparent)}
+  .entry{position:relative;padding:0 0 30px}
+  .entry::before{content:"";position:absolute;left:-26px;top:4px;width:12px;height:12px;border-radius:50%;
+    background:var(--panel2);border:2px solid var(--accent)}
+  .entry.first::before{background:var(--accent);box-shadow:0 0 0 4px rgba(106,160,255,.15)}
+  .entry .meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:7px}
+  .entry .date{font-family:var(--mono);font-size:12.5px;color:var(--dim)}
+  .entry .hash{font-family:var(--mono);font-size:11.5px;color:var(--faint);
+    background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:2px 7px}
+  .entry .latest{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--green);background:rgba(63,185,80,.12);border-radius:5px;padding:2px 8px}
+  .entry h3{font-size:16.5px;margin:0;font-weight:600;letter-spacing:-.01em;line-height:1.4}
+
+  footer{border-top:1px solid var(--line);padding:30px 22px;text-align:center;color:var(--faint);font-size:12.5px}
+  footer a{color:var(--dim)}
+</style>
+</head>
+<body>
+
+<header>
+  <nav class="nav">
+    <a class="wordmark" href="index.html"><span class="dot"></span>Blotterbook</a>
+    <a class="back" href="index.html">&larr; Home</a>
+  </nav>
+</header>
+
+<div class="wrap">
+  <p class="eyebrow">The Blotterlog</p>
+  <h1>Changelog</h1>
+  <p class="blurb">A running history of how <b>Blotterbook</b> took shape — drawn straight from the project's
+    commit history. Newest changes first.</p>
+
+  <div class="log">
+    <div class="entry first">
+      <div class="meta">
+        <span class="date">2026-06-23</span>
+        <span class="hash">a48ab35</span>
+        <span class="latest">Latest</span>
+      </div>
+      <h3>Restructure into a multi-file app: JSON reference data, IndexedDB persistence, filters, and journal</h3>
+    </div>
+    <div class="entry">
+      <div class="meta">
+        <span class="date">2026-06-23</span>
+        <span class="hash">2e3db36</span>
+      </div>
+      <h3>Relocate load controls by state, add a collapsible setup bar, and a rich README</h3>
+    </div>
+    <div class="entry">
+      <div class="meta">
+        <span class="date">2026-06-23</span>
+        <span class="hash">3a7ce83</span>
+      </div>
+      <h3>Add broker selection, a date-based performance graph, the setup bar, and UX features</h3>
+    </div>
+    <div class="entry">
+      <div class="meta">
+        <span class="date">2026-06-23</span>
+        <span class="hash">7e0e9a6</span>
+      </div>
+      <h3>Calculation adjustments, code cleanup, and UI tweaks</h3>
+    </div>
+    <div class="entry">
+      <div class="meta">
+        <span class="date">2026-06-22</span>
+        <span class="hash">46a3e1b</span>
+      </div>
+      <h3>Add cost calculations to the dashboard</h3>
+    </div>
+    <div class="entry">
+      <div class="meta">
+        <span class="date">2026-06-22</span>
+        <span class="hash">93fc980</span>
+      </div>
+      <h3>Initial project commit</h3>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Blotterbook &middot; <a href="index.html">Home</a> &middot; <a href="/app/">Open App</a> &middot;
+  <a href="mailto:contact@scalineaudio.net?subject=Blotterbook">Contact</a>
+</footer>
+
+</body>
+</html>

@@ -3,50 +3,459 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trading Journal</title>
-<meta name="description" content="A fast, private futures trading journal and cost dashboard. Your data never leaves your browser.">
+<title>Blotterbook — private futures journal & cost dashboard</title>
+<meta name="description" content="Blotterbook is a private futures trading journal and true-cost dashboard. Import your broker CSV and see real, after-cost, after-tax performance — everything runs in your browser.">
 <style>
   :root{
-    --bg:#0d1014; --panel:#151a21; --line:#262d38;
-    --txt:#d6dde6; --dim:#8a94a3; --faint:#5b6470; --accent:#6aa0ff;
+    --bg:#0d1014; --panel:#151a21; --panel2:#1b212a; --line:#262d38;
+    --txt:#d6dde6; --dim:#8a94a3; --faint:#5b6470;
+    --green:#3fb950; --green-bg:rgba(63,185,80,.14);
+    --red:#f04a4a;   --red-bg:rgba(240,74,74,.14);
+    --accent:#6aa0ff; --take:#c98bff; --warn:#e3b341;
+    --mono:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,"Liberation Mono",monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   }
   *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
   html,body{margin:0;min-height:100%}
   body{background:var(--bg);color:var(--txt);font-family:var(--sans);
-    -webkit-font-smoothing:antialiased;line-height:1.5;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    min-height:100vh;padding:32px 20px;text-align:center}
-  .banner{width:100%;max-width:880px;margin-bottom:10px}
+    -webkit-font-smoothing:antialiased;line-height:1.5;overflow-x:hidden}
+  a{color:var(--accent);text-decoration:none}
+
+  /* subtle ambient glow behind the page */
+  body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(620px 420px at 18% -8%, rgba(106,160,255,.10), transparent 70%),
+      radial-gradient(560px 420px at 96% 4%, rgba(201,139,255,.08), transparent 70%);}
+
+  /* ============ sticky header ============ */
+  header{position:sticky;top:0;z-index:50;
+    backdrop-filter:saturate(150%) blur(10px);background:rgba(13,16,20,.72);
+    border-bottom:1px solid transparent;transition:border-color .25s,background .25s}
+  header.scrolled{border-bottom-color:var(--line);background:rgba(13,16,20,.86)}
+  .nav{max-width:1180px;margin:0 auto;padding:13px 22px;
+    display:flex;align-items:center;gap:18px}
+  .wordmark{font-weight:700;letter-spacing:.01em;font-size:16px;color:var(--txt);
+    display:inline-flex;align-items:center;gap:9px}
+  .wordmark .dot{width:9px;height:9px;border-radius:2px;
+    background:linear-gradient(135deg,var(--accent),var(--take))}
+  .navlinks{display:flex;gap:4px;margin-left:8px;flex-wrap:wrap}
+  .navlinks a{color:var(--dim);font-size:13.5px;padding:7px 11px;border-radius:7px;
+    transition:color .15s,background .15s}
+  .navlinks a:hover{color:var(--txt);background:var(--panel)}
+  .navcta{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .ghost{color:var(--dim);font-size:13.5px;padding:7px 11px;border-radius:7px;transition:color .15s,background .15s}
+  .ghost:hover{color:var(--txt);background:var(--panel)}
+  .btn-primary{display:inline-flex;align-items:center;gap:7px;
+    background:var(--accent);color:#0d1014;font-weight:600;font-size:13.5px;
+    padding:9px 16px;border-radius:9px;transition:filter .15s,transform .15s}
+  .btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px)}
+  @media(max-width:760px){
+    .navlinks{display:none}
+    .nav{gap:10px}
+  }
+
+  /* ============ generic section frame ============ */
+  section{min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+    padding:96px 22px 72px;scroll-margin-top:0}
+  .inner{max-width:1180px;margin:0 auto;width:100%}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 14px}
+  .h2{font-size:clamp(26px,4vw,40px);font-weight:700;letter-spacing:-.02em;margin:0 0 14px;line-height:1.12}
+  .lead{color:var(--dim);font-size:clamp(15px,1.6vw,17px);max-width:680px;margin:0 0 8px;line-height:1.6}
+
+  /* reveal-on-scroll */
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  /* ============ hero ============ */
+  #home{align-items:center;text-align:center;padding-top:88px}
+  #home .inner{display:flex;flex-direction:column;align-items:center}
+  .livepill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);
+    font-size:12px;letter-spacing:.04em;color:var(--dim);
+    background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 13px;margin-bottom:22px}
+  .livedot{width:8px;height:8px;border-radius:50%;background:var(--faint);position:relative;flex:none}
+  .livepill.live .livedot{background:var(--green);box-shadow:0 0 0 0 rgba(63,185,80,.5);animation:pulse 2s infinite}
+  .livepill.down .livedot{background:var(--red)}
+  .livepill.live{color:var(--txt)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(63,185,80,.5)}70%{box-shadow:0 0 0 7px rgba(63,185,80,0)}100%{box-shadow:0 0 0 0 rgba(63,185,80,0)}}
+  .banner{width:100%;max-width:880px}
   .banner img{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:14px}
-  .tag{color:var(--dim);font-size:15px;max-width:600px;margin:18px auto 0}
-  .cta{display:inline-flex;align-items:center;gap:8px;margin-top:28px;text-decoration:none;
+  .tag{color:var(--dim);font-size:clamp(15px,1.7vw,17px);max-width:620px;margin:24px auto 0;line-height:1.6}
+  .hero-ctas{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:30px}
+  .cta-lg{display:inline-flex;align-items:center;gap:9px;
     background:var(--accent);color:#0d1014;font-weight:600;font-size:15px;
-    padding:13px 26px;border-radius:10px;transition:filter .15s,transform .15s}
-  .cta:hover{filter:brightness(1.08);transform:translateY(-1px)}
-  .feat{display:flex;gap:26px;flex-wrap:wrap;justify-content:center;margin-top:40px;max-width:760px}
-  .feat div{flex:1;min-width:180px;color:var(--dim);font-size:13px}
-  .feat b{display:block;color:var(--txt);font-size:14px;margin-bottom:4px}
-  footer{margin-top:48px;color:var(--faint);font-size:12px}
-  footer a{color:var(--dim)}
+    padding:14px 28px;border-radius:11px;transition:filter .15s,transform .15s}
+  .cta-lg:hover{filter:brightness(1.08);transform:translateY(-1px)}
+  .cta-ghost{display:inline-flex;align-items:center;gap:8px;
+    border:1px solid var(--line);background:var(--panel);color:var(--txt);font-weight:500;font-size:15px;
+    padding:13px 24px;border-radius:11px;transition:border-color .15s,background .15s}
+  .cta-ghost:hover{border-color:var(--accent);background:var(--panel2)}
+  .hero-strip{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;margin-top:40px;max-width:780px}
+  .hero-strip div{flex:1;min-width:180px;color:var(--dim);font-size:13px;line-height:1.55}
+  .hero-strip b{display:block;color:var(--txt);font-size:14px;margin-bottom:5px}
+  .scrollhint{margin-top:46px;color:var(--faint);font-size:12px;font-family:var(--mono);letter-spacing:.1em;
+    animation:bob 2.4s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
+
+  /* ============ features grid ============ */
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px}
+  @media(max-width:880px){.grid3{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.grid3{grid-template-columns:1fr}}
+  .fcard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:22px;
+    transition:border-color .2s,transform .2s,background .2s}
+  .fcard:hover{border-color:#33405a;transform:translateY(-3px);background:var(--panel2)}
+  .ficon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    background:rgba(106,160,255,.12);margin-bottom:14px}
+  .ficon svg{width:18px;height:18px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .fcard h3{font-size:16px;margin:0 0 7px;font-weight:600;letter-spacing:-.01em}
+  .fcard p{margin:0;color:var(--dim);font-size:13.5px;line-height:1.6}
+
+  /* ============ use cases ============ */
+  #usecases{background:linear-gradient(180deg,transparent,rgba(21,26,33,.5),transparent)}
+  .uc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:34px}
+  @media(max-width:760px){.uc-grid{grid-template-columns:1fr}}
+  .uc{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:24px;
+    position:relative;overflow:hidden}
+  .uc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+    background:linear-gradient(180deg,var(--accent),var(--take))}
+  .uc .tagline{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--take);margin:0 0 9px}
+  .uc h3{font-size:18px;margin:0 0 9px;font-weight:600;letter-spacing:-.01em}
+  .uc p{margin:0;color:var(--dim);font-size:14px;line-height:1.65}
+  .uc p em{color:var(--txt);font-style:normal}
+  .dual-pitch{margin-top:30px;display:inline-flex;align-items:center;gap:14px;flex-wrap:wrap;
+    font-size:14px;color:var(--dim);background:var(--panel);border:1px solid var(--line);
+    border-radius:11px;padding:14px 18px}
+  .dual-pitch b{color:var(--txt)}
+  .dual-pitch .amp{color:var(--faint);font-family:var(--mono)}
+
+  /* ============ pricing ============ */
+  .price-grid{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:16px;margin-top:34px;align-items:stretch}
+  @media(max-width:880px){.price-grid{grid-template-columns:1fr}}
+  .plan{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px;
+    display:flex;flex-direction:column}
+  .plan.featured{border-color:rgba(106,160,255,.5);
+    box-shadow:0 0 0 1px rgba(106,160,255,.15),0 14px 40px -22px rgba(106,160,255,.5)}
+  .plan .ribbon{align-self:flex-start;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--accent);background:rgba(106,160,255,.12);
+    padding:4px 10px;border-radius:6px;margin-bottom:14px}
+  .plan h3{font-size:18px;margin:0 0 4px;font-weight:600}
+  .plan .sub{color:var(--dim);font-size:13px;margin:0 0 18px;line-height:1.5}
+  .plan .amt{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px;font-family:var(--mono)}
+  .plan .amt small{font-size:14px;color:var(--dim);font-weight:400}
+  .plan ul{list-style:none;margin:16px 0 22px;padding:0;display:flex;flex-direction:column;gap:10px}
+  .plan li{font-size:13.5px;color:var(--dim);display:flex;gap:9px;line-height:1.45}
+  .plan li svg{width:15px;height:15px;flex:none;margin-top:2px;stroke:var(--green);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .plan .foot-note{margin-top:auto;font-size:12px;color:var(--faint);line-height:1.5}
+  .plan.soon{opacity:.62}
+  .plan.soon .amt{color:var(--dim)}
+  .plan.soon li svg{stroke:var(--faint)}
+  .soon-badge{align-self:flex-start;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--faint);border:1px solid var(--line);
+    padding:4px 10px;border-radius:6px;margin-bottom:14px}
+  .donate-row{margin:6px 0 16px}
+  #donate-button-container{min-height:42px}
+  .founders{margin-top:26px;background:var(--panel);border:1px solid rgba(201,139,255,.32);
+    border-radius:12px;padding:18px 20px;display:flex;gap:14px;align-items:flex-start;max-width:760px}
+  .founders .star{flex:none;width:22px;height:22px;stroke:var(--take);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;margin-top:1px}
+  .founders p{margin:0;font-size:13.5px;color:var(--dim);line-height:1.6}
+  .founders b{color:var(--txt)}
+
+  /* ============ FAQ ============ */
+  .faq-list{margin-top:30px;max-width:840px;border-top:1px solid var(--line)}
+  details{border-bottom:1px solid var(--line)}
+  details summary{cursor:pointer;list-style:none;padding:20px 4px;display:flex;align-items:center;gap:14px;
+    font-size:15.5px;font-weight:500;color:var(--txt);transition:color .15s}
+  details summary::-webkit-details-marker{display:none}
+  details summary:hover{color:#fff}
+  details summary .q-ico{flex:none;width:18px;height:18px;stroke:var(--accent);fill:none;stroke-width:2;
+    stroke-linecap:round;transition:transform .25s}
+  details[open] summary .q-ico{transform:rotate(45deg)}
+  details .ans{padding:0 4px 22px 36px;color:var(--dim);font-size:14px;line-height:1.7;margin:0}
+  details .ans code{font-family:var(--mono);font-size:12.5px;color:var(--txt);
+    background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+
+  /* ============ footer ============ */
+  footer.site{border-top:1px solid var(--line);padding:40px 22px;text-align:center;color:var(--faint)}
+  footer.site .frow{max-width:1180px;margin:0 auto;display:flex;align-items:center;
+    justify-content:space-between;gap:18px;flex-wrap:wrap}
+  footer.site .fbrand{font-weight:700;color:var(--txt);display:inline-flex;align-items:center;gap:8px}
+  footer.site .fbrand .dot{width:8px;height:8px;border-radius:2px;background:linear-gradient(135deg,var(--accent),var(--take))}
+  footer.site .flinks{display:flex;gap:18px;flex-wrap:wrap}
+  footer.site .flinks a{color:var(--dim);font-size:13px}
+  footer.site .flinks a:hover{color:var(--txt)}
+  footer.site .legal{font-size:12px;color:var(--faint);width:100%;margin-top:8px}
 </style>
 </head>
 <body>
-  <div class="banner"><img src="assets/banner.svg" alt="Trading Journal — futures journal and cost dashboard"></div>
 
-  <p class="tag">A fast, private futures trading journal and cost dashboard.
-    Import your broker CSV and see real, after-cost performance — everything runs in your browser.</p>
+<header id="hdr">
+  <nav class="nav">
+    <a class="wordmark" href="#home"><span class="dot"></span>Blotterbook</a>
+    <div class="navlinks">
+      <a href="#features">Features</a>
+      <a href="#usecases">Use Cases</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+      <a href="changelog.html">Changelog</a>
+    </div>
+    <div class="navcta">
+      <a class="btn-primary" href="/app/">Open App &rarr;</a>
+    </div>
+  </nav>
+</header>
 
-  <a class="cta" href="/app/">Open the App &rarr;</a>
-
-  <div class="feat">
-    <div><b>Private by design</b>Your trades are parsed and stored locally. Nothing is uploaded.</div>
-    <div><b>True cost &amp; tax model</b>Per-symbol commissions, data fees, and a Section 1256 tax estimate.</div>
-    <div><b>Journal &amp; analyze</b>Calendar, equity curve, filters, day-notes, and deep statistics.</div>
+<!-- ============ HERO / MAIN LANDING ============ -->
+<section id="home">
+  <div class="inner">
+    <div class="livepill" id="livepill" title="Checks whether the live Blotterbook app is responding">
+      <span class="livedot"></span><span id="livetext">Checking status…</span>
+    </div>
+    <div class="banner"><img src="assets/banner.svg" alt="Blotterbook — futures journal and cost dashboard"></div>
+    <p class="tag">A fast, private futures trading journal and true-cost dashboard.
+      Import your broker CSV and see real, after-cost, after-tax performance — everything runs in your browser.</p>
+    <div class="hero-ctas">
+      <a class="cta-lg" href="/app/">Open the App &rarr;</a>
+      <a class="cta-ghost" href="#features">See what it does</a>
+    </div>
+    <div class="hero-strip">
+      <div><b>Private by design</b>Your trades are parsed and stored locally. Nothing is uploaded.</div>
+      <div><b>True cost &amp; tax model</b>Per-symbol commissions, data fees, and a Section 1256 tax estimate.</div>
+      <div><b>Journal &amp; analyze</b>Calendar, equity curve, filters, day-notes, and deep statistics.</div>
+    </div>
+    <div class="scrollhint">SCROLL ↓</div>
   </div>
+</section>
 
-  <footer>
-    Questions or feedback? <a href="mailto:contact@scalineaudio.net?subject=Trading%20Journal">Get in touch</a>.
-  </footer>
+<!-- ============ FEATURES ============ -->
+<section id="features">
+  <div class="inner reveal">
+    <p class="eyebrow">Features</p>
+    <h2 class="h2">Everything in one private dashboard</h2>
+    <p class="lead">Blotterbook turns a raw broker export into an honest picture of your trading — gross, net of every fee, and after an estimated tax bill. No accounts, no uploads, no dependencies.</p>
+    <div class="grid3">
+      <div class="fcard">
+        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/></svg></div>
+        <h3>Private by design</h3>
+        <p>Your CSV is parsed and stored entirely in your browser via IndexedDB. Trade data never leaves the page — the only network calls are the app's own reference data and an optional donate button.</p>
+      </div>
+      <div class="fcard">
+        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 3 7-8"/><path d="M16 6h4v4"/></svg></div>
+        <h3>True after-cost performance</h3>
+        <p>Per-symbol, broker-aware commissions plus CME exchange, clearing, and NFA fees are modeled on every round turn — so Net and Take-home reflect what you actually keep, not gross PnL.</p>
+      </div>
+      <div class="fcard">
+        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg></div>
+        <h3>Location-based tax model</h3>
+        <p>A Section 1256 estimate blends 60/40 long/short-term federal rates with your state's top marginal rate, applied only to positive net profit. Pick your state and see take-home update instantly.</p>
+      </div>
+      <div class="fcard">
+        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+        <h3>Broker &amp; data-feed comparison</h3>
+        <p>Model AMP, EdgeClear, Tradovate / NinjaTrader, Optimus, thinkorswim, Interactive Brokers, and TradeStation. Switch broker or data feed and watch the cost — and your net — change.</p>
+      </div>
+      <div class="fcard">
+        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M3 12l4-4 4 4 4-6 4 8"/><path d="M3 20h18"/></svg></div>
+        <h3>Equity curve &amp; calendar</h3>
+        <p>A cumulative performance graph with Gross / Net / Take-home overlays and hover detail, plus a Sunday-first monthly calendar of daily PnL with weekly summaries and day-notes.</p>
+      </div>
+      <div class="fcard">
+        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8v5l-4 2v-7z"/></svg></div>
+        <h3>Filters, journal &amp; statistics</h3>
+        <p>Filter by date, symbol, side, session (RTH/ETH), and weekday. Keep day-notes per session. Read expectancy, profit factor, drawdown, streaks, and an illustrative Sharpe — all after costs.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ USE CASES ============ -->
+<section id="usecases">
+  <div class="inner reveal">
+    <p class="eyebrow">Use Cases</p>
+    <h2 class="h2">A budgeting tool and a trade journal in one</h2>
+    <p class="lead">Most journals tell you what you made. Blotterbook tells you what you <em>keep</em> — and helps you plan the business of trading around it.</p>
+    <div class="uc-grid">
+      <div class="uc">
+        <p class="tagline">Cost intelligence</p>
+        <h3>Compare brokers and data feeds against your real PnL</h3>
+        <p>Before you switch brokers, <em>see it</em>. Flip between commission tiers and data-feed plans and watch exactly how each one moves your net and take-home across your actual trade history — not a marketing calculator.</p>
+      </div>
+      <div class="uc">
+        <p class="tagline">Tax planning</p>
+        <h3>Location-based, real-time tax estimates</h3>
+        <p>Pick your state and Blotterbook applies a Section 1256 blended rate to your positive net profit on the fly. Know roughly what you'll owe — and what's truly yours — long before April.</p>
+      </div>
+      <div class="uc">
+        <p class="tagline">Business budgeting</p>
+        <h3>Know your break-even before you place a trade</h3>
+        <p>Monthly platform and data-feed subscriptions plus per-trade commissions roll into a break-even-per-trade figure and a clear cost waterfall, so you can budget your trading like the business it is.</p>
+      </div>
+      <div class="uc">
+        <p class="tagline">Discipline &amp; review</p>
+        <h3>Journal every session and find your edge</h3>
+        <p>Mark up the equity curve, leave day-notes on the calendar, and slice performance by session and weekday. The advanced stats surface your best and worst days, streaks, and long/short split.</p>
+      </div>
+    </div>
+    <div class="dual-pitch reveal">
+      <span><b>The pitch:</b> profit calculator <span class="amp">&amp;</span> budgeting tool <span class="amp">+</span> a private trade journal — without a single byte leaving your browser.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRICING ============ -->
+<section id="pricing">
+  <div class="inner reveal">
+    <p class="eyebrow">Pricing</p>
+    <h2 class="h2">Donation-based today. Founder pricing forever.</h2>
+    <p class="lead">Blotterbook is free to use right now and supported by donations. If it saves you money, consider chipping in — early supporters lock in lifetime access to everything that comes next.</p>
+    <div class="price-grid">
+
+      <div class="plan featured">
+        <span class="ribbon">Available now</span>
+        <h3>Support Blotterbook</h3>
+        <p class="sub">Use the full app for free. Donate any amount to fund development.</p>
+        <div class="amt">Pay what you want</div>
+        <div class="donate-row">
+          <div id="donate-button-container"><div id="donate-button"></div></div>
+        </div>
+        <ul>
+          <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Full journal, cost model, and tax estimate</li>
+          <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Live broker, fee, and feed reference data</li>
+          <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Everything runs locally in your browser</li>
+        </ul>
+        <p class="foot-note">Secure donation via PayPal. No account required to use the app.</p>
+      </div>
+
+      <div class="plan soon">
+        <span class="soon-badge">Planned</span>
+        <h3>Local app</h3>
+        <p class="sub">A self-contained offline build — your data stored and processed entirely on your machine.</p>
+        <div class="amt">$20 <small>one-time · lifetime</small></div>
+        <ul>
+          <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Lifetime access, single download</li>
+          <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Fully offline — no network needed</li>
+          <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Manual rate updates (no live fetch)</li>
+        </ul>
+        <p class="foot-note">Coming later as a standalone app.</p>
+      </div>
+
+      <div class="plan soon">
+        <span class="soon-badge">Planned</span>
+        <h3>Online app</h3>
+        <p class="sub">The hosted app you're using now, with commissions, fees, and rates fetched live.</p>
+        <div class="amt">$5 <small>/ month</small></div>
+        <ul>
+          <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Always-current broker &amp; fee data</li>
+          <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Live data-feed and rate updates</li>
+          <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>CSV data still lives locally for now</li>
+        </ul>
+        <p class="foot-note">Coming later as a subscription.</p>
+      </div>
+    </div>
+
+    <div class="founders reveal">
+      <svg class="star" viewBox="0 0 24 24"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z"/></svg>
+      <p><b>Founders get it all, free.</b> Anyone who donates while Blotterbook is in its donation phase is locked in as a founder — <b>lifetime access to both the online and local apps</b> when paid tiers launch. No subscription, no second purchase, ever.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section id="faq">
+  <div class="inner reveal">
+    <p class="eyebrow">FAQ</p>
+    <h2 class="h2">Questions, limitations, and the fine print</h2>
+    <p class="lead">Blotterbook is deliberately honest about what it does and doesn't measure. Here's the straight version.</p>
+    <div class="faq-list">
+      <details>
+        <summary><svg class="q-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>What data does Blotterbook need, and where does it go?</summary>
+        <p class="ans">It reads a balance-history CSV exported from TradingView. Required columns are <code>Time</code>, <code>Realized PnL (value)</code>, and <code>Action</code>; each row is treated as one position-close event. Everything is parsed and stored locally in your browser via IndexedDB — your trade data never leaves the page.</p>
+      </details>
+      <details>
+        <summary><svg class="q-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Do I need an account, and is anything uploaded?</summary>
+        <p class="ans">No account, no sign-up, nothing uploaded. The only outbound network calls are loading the app's own reference-data JSON (brokers, fees, feeds, state tax) and the optional PayPal donate button. Use <code>Clear data</code> any time to wipe everything stored in your browser.</p>
+      </details>
+      <details>
+        <summary><svg class="q-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>How are commissions and fees calculated?</summary>
+        <p class="ans">For each symbol, the all-in per-side cost is the broker's commission (micro or standard tier) plus the CME exchange, clearing, and NFA fee. A round turn is two sides. Broker rates come from editable reference data, so they can be kept current and may drift from your real fills — they're a close model, not your statement.</p>
+      </details>
+      <details>
+        <summary><svg class="q-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>How does the tax estimate work?</summary>
+        <p class="ans">It uses a Section 1256 model: a blended rate of 60% long-term and 40% short-term federal rates plus your selected state's top marginal rate, applied to net pre-tax profit only when positive. It's a rough planning estimate to gauge take-home — not tax advice, and not a substitute for a professional.</p>
+      </details>
+      <details>
+        <summary><svg class="q-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Which brokers and instruments are supported?</summary>
+        <p class="ans">Modeled brokers include AMP, EdgeClear, Tradovate / NinjaTrader, Optimus, Charles Schwab (thinkorswim), Interactive Brokers, and TradeStation. Instruments are CME futures, reduced to a root ticker (for example <code>MESM2025</code> becomes <code>MES</code>). Unknown symbols fall back to a default fee and are flagged.</p>
+      </details>
+      <details>
+        <summary><svg class="q-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>What are the known limitations?</summary>
+        <p class="ans">Drawdown is realized-only from the closed-trade curve, with no open-position heat. The export carries close timestamps only, so holding time isn't derivable. Calendar-day and RTH/ETH session grouping use the literal timestamp, not the CME session day. Sharpe is illustrative — daily PnL, population standard deviation, not annualized.</p>
+      </details>
+      <details>
+        <summary><svg class="q-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Will my data sync across devices?</summary>
+        <p class="ans">Not today. Local storage is per-browser, so data isn't synced across devices and is cleared if you clear site data — keep your original CSV. Re-uploading is safe: trades are de-duplicated by a stable id, so overlapping exports only add genuinely new rows. Cross-device cloud sync is the planned online tier.</p>
+      </details>
+      <details>
+        <summary><svg class="q-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>What does it cost?</summary>
+        <p class="ans">It's free and donation-supported right now. Planned paid tiers are a $20 one-time lifetime local app and a $5/month online app — but anyone who donates during the donation phase becomes a founder with lifetime access to both, at no further cost.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<footer class="site">
+  <div class="frow">
+    <span class="fbrand"><span class="dot"></span>Blotterbook</span>
+    <div class="flinks">
+      <a href="#features">Features</a>
+      <a href="#usecases">Use Cases</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+      <a href="changelog.html">Changelog</a>
+      <a href="/app/">Open App</a>
+      <a href="mailto:contact@scalineaudio.net?subject=Blotterbook">Contact</a>
+    </div>
+    <p class="legal">Blotterbook runs entirely in your browser — your trade data never leaves the page. Cost and tax figures are estimates, not financial or tax advice.</p>
+  </div>
+</footer>
+
+<!-- PayPal donate button -->
+<script src="https://www.paypalobjects.com/donate/sdk/donate-sdk.js" charset="UTF-8"></script>
+<script>
+  // Header border on scroll
+  var hdr=document.getElementById('hdr');
+  window.addEventListener('scroll',function(){
+    hdr.classList.toggle('scrolled',window.scrollY>8);
+  },{passive:true});
+
+  // Reveal-on-scroll
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+  },{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+
+  // Live status — check whether the app is responding
+  (function(){
+    var pill=document.getElementById('livepill'), txt=document.getElementById('livetext');
+    function set(state,label){ pill.classList.remove('live','down'); pill.classList.add(state); txt.textContent=label; }
+    fetch('app/',{method:'GET',cache:'no-store'})
+      .then(function(r){ if(r.ok){ set('live','Live'); } else { set('down','Offline'); } })
+      .catch(function(){ set('down','Offline'); });
+  })();
+
+  // PayPal donate button
+  if(window.PayPal&&PayPal.Donation){
+    PayPal.Donation.Button({
+      env:'production',
+      hosted_button_id:'283D6N3NJJ7T2',
+      image:{
+        src:'https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif',
+        alt:'Donate with PayPal button',
+        title:'PayPal - The safer, easier way to pay online!'
+      }
+    }).render('#donate-button');
+  }
+</script>
 </body>
 </html>

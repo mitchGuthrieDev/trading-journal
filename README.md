@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="Trading Journal — private futures journal and cost dashboard" width="100%">
+  <img src="assets/banner.svg" alt="Blotterbook — private futures journal and cost dashboard" width="100%">
 </p>
 
 <p align="center">
@@ -12,9 +12,9 @@
 
 ---
 
-A **dependency-free** trading journal and cost dashboard for futures traders. It reads a
-balance-history CSV exported from **TradingView**, parses it entirely in the browser, stores it
-**locally** (IndexedDB), and renders performance, calendar, cost, filter, and statistics views.
+**Blotterbook** is a **dependency-free** trading journal and cost dashboard for futures traders. It
+reads a balance-history CSV exported from **TradingView**, parses it entirely in the browser, stores
+it **locally** (IndexedDB), and renders performance, calendar, cost, filter, and statistics views.
 All computation is client-side and **no trade data ever leaves the browser**. The only network
 calls are loading the app's own reference-data JSON and an optional PayPal donate button.
 
@@ -26,6 +26,7 @@ calls are loading the app's own reference-data JSON and an optional PayPal donat
 ## Table of contents
 
 - [Project layout](#project-layout)
+- [Marketing homepage](#marketing-homepage) — the one-page site at `/`
 - [Quick start](#quick-start)
 - [Input: the CSV](#input-the-csv) — and how re-uploads merge
 - [UI walkthrough](#ui-walkthrough)
@@ -43,7 +44,9 @@ calls are loading the app's own reference-data JSON and an optional PayPal donat
 ## Project layout
 
 ```
-/                       marketing homepage (index.html) → links to /app
+/                       one-page marketing homepage (index.html) → links to /app
+  index.html            hero + features + use cases + pricing + FAQ (single scroll, anchor nav)
+  changelog.html        "Blotterlog" — change history styled to match the homepage
 /app/                   the journal app
   index.html            markup, styles, and the main script
   store.js              IndexedDB persistence (swappable storage interface)
@@ -61,6 +64,24 @@ calls are loading the app's own reference-data JSON and an optional PayPal donat
   build-manifest.mjs    regenerates data/manifest.json (Node built-ins only)
 /assets/banner.svg
 ```
+
+## Marketing homepage
+
+The site root (`index.html`) is a **single-page, scrollable marketing site** for Blotterbook,
+styled with the same dark palette and tokens as the app. A minimalist sticky header carries
+anchor links that smooth-scroll to each full-height section:
+
+| Section | Purpose |
+| --- | --- |
+| **Home** | The hero (banner, tagline, CTAs) plus a **Live** status pill that pings `/app/` and reports whether the app is responding. |
+| **Features** | A three-column grid of the app's capabilities (privacy, cost model, tax, broker comparison, curve/calendar, stats). |
+| **Use Cases** | The pitch — Blotterbook as both a profit/budgeting calculator and a private journal (broker comparison, tax planning, break-even, review). |
+| **Pricing** | Donation-based today (stylized PayPal donate button), with the planned **$20 one-time local** and **$5/mo online** tiers shown greyed-out and a founders blurb: donate now → lifetime access to both. |
+| **FAQ** | Expandable (collapsed-by-default) questions covering supported data, cost/tax modeling, and limitations — a friendlier take on this README. |
+
+`changelog.html` ("**Blotterlog**") is a standalone, matching-styled page linked from the header
+and footer; it presents the project's commit history as a timeline. Both pages are static and have
+no build step or runtime dependencies (the donate button is the only external resource).
 
 ## Quick start
 
