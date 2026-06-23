@@ -1,0 +1,9 @@
+# Claude Code local tooling (preview server config, etc.)
+.claude/
+
+# OS junk
+.DS_Store
+
+# Temp image conversions
+_shot*.png
+_a.heic
