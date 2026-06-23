@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-23T20:51:16.015Z",
+  "files": {
+    "brokers.json": "1fef282aa9e0",
+    "exchange-fees.json": "d28c67ba0b81",
+    "feeds.json": "2ceeb6181b95",
+    "state-tax.json": "4c751f7c290a"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "_comment": "Market-data feed options per broker, grouped, as [label, $/mo]. A broker whose feeds equal a shared set may reference it by name (e.g. \"CQG\"). Snapshot estimate (mid-2026). Edit values here, then run scripts/build-manifest.mjs to refresh the cache-busting hash.",
+  "shared": {
+    "CQG": {
+      "CME — Top-of-Book (L1)": [
+        ["Bundle — All CME markets", 15], ["CME — Equity Indices, Currencies, Meats, Softs", 5],
+        ["CBOT — Financials, Grains", 5], ["NYMEX — Energies", 5], ["COMEX — Metals", 5]
+      ],
+      "CME — Market-Depth (L2)": [
+        ["Bundle — All CME markets", 45], ["CME — Equity Indices, Currencies, Meats, Softs", 17],
+        ["CBOT — Financials, Grains", 17], ["NYMEX — Energies", 17], ["COMEX — Metals", 17]
+      ],
+      "ICE": [["ICE-US — TF, DX", 148], ["ICE-LIFFE — FTSE, Gilt", 139], ["ICE-UK — Energies", 161]],
+      "Other": [["None", 0]]
+    }
+  },
+  "brokerFeeds": {
+    "AMP": "CQG",
+    "EDGECLEAR": {
+      "CME — CQG / Rithmic": [["Bundle — All CME (L1, non-pro)", 15], ["CME Globex — L1 (non-pro)", 5],
+        ["CME Globex — L2 depth (non-pro)", 17]],
+      "Other": [["None", 0]]
+    },
+    "TRADOVATE": {
+      "CME (non-pro)": [["CME — L1 (non-pro)", 12], ["CME — L2 depth (non-pro)", 14],
+        ["CBOT — L1", 12], ["NYMEX — L1", 12], ["COMEX — L1", 12]],
+      "Other": [["None / delayed", 0]]
+    },
+    "OPTIMUS": {
+      "CME — CQG / Rithmic": [["Bundle — All CME (L1, non-pro)", 15], ["CME Globex — L1 (non-pro)", 5],
+        ["CME Globex — L2 depth (non-pro)", 17]],
+      "Other": [["None", 0]]
+    },
+    "SCHWAB": {
+      "thinkorswim": [["Real-time futures — included", 0], ["CME L2 depth (add-on)", 10]],
+      "Other": [["None", 0]]
+    },
+    "IBKR": {
+      "IBKR market data (non-pro)": [["US Futures Value Bundle", 10], ["CME Real-Time", 11],
+        ["CBOT Real-Time", 11], ["NYMEX Real-Time", 11], ["COMEX Real-Time", 11]],
+      "Other": [["None", 0]]
+    },
+    "TRADESTATION": {
+      "CME (non-pro)": [["CME Real-Time", 10], ["CBOT Real-Time", 10], ["NYMEX Real-Time", 10], ["COMEX Real-Time", 10]],
+      "Other": [["None", 0]]
+    }
+  }
+}

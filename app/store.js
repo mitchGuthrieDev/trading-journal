@@ -1,0 +1,162 @@
+"use strict";
+/* ============================================================
+   Local persistence — IndexedDB
+
+   This module exposes a single global `Store` object. Everything
+   the app needs to read/write lives behind this interface:
+
+       await Store.init()
+       await Store.addTrades(trades)   -> { added, duplicate, total }
+       await Store.getAllTrades()      -> trade[]   (sorted by time)
+       await Store.tradeCount()        -> number
+       await Store.saveJournal(date, text)
+       await Store.getJournal(date)    -> string
+       await Store.journalDates()      -> Set<'YYYY-MM-DD'>
+       await Store.setMeta(key, value)
+       await Store.getMeta(key)        -> value | undefined
+       await Store.purge()             -> wipes all local data
+       Store.tradeId(trade)            -> stable dedupe key
+
+   --- Why an interface, not direct IndexedDB calls in the app? ---
+   The app never touches `indexedDB` directly. A future cloud tier
+   (Stripe subscription -> server-hosted storage) only has to ship a
+   drop-in object with these same async methods; the app code does
+   not change. Local (one-time payment) keeps this IndexedDB backend;
+   subscription swaps in a CloudStore that talks to a Pages Function.
+   See functions/README.md for the storage-tier plan.
+   ============================================================ */
+(function () {
+  const DB_NAME = 'tradingJournal';
+  const DB_VERSION = 1;
+  const TRADES = 'trades';
+  const JOURNAL = 'journal';
+  const META = 'meta';
+
+  let dbp = null; // cached open-promise
+
+  function open() {
+    if (dbp) return dbp;
+    dbp = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(TRADES)) db.createObjectStore(TRADES, { keyPath: 'id' });
+        if (!db.objectStoreNames.contains(JOURNAL)) db.createObjectStore(JOURNAL, { keyPath: 'date' });
+        if (!db.objectStoreNames.contains(META)) db.createObjectStore(META, { keyPath: 'key' });
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbp;
+  }
+
+  function tx(store, mode) {
+    return open().then(db => db.transaction(store, mode).objectStore(store));
+  }
+  function done(t) {
+    return new Promise((resolve, reject) => {
+      t.transaction.oncomplete = () => resolve();
+      t.transaction.onerror = () => reject(t.transaction.error);
+      t.transaction.onabort = () => reject(t.transaction.error);
+    });
+  }
+  function reqP(r) {
+    return new Promise((resolve, reject) => {
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    });
+  }
+
+  /* Stable, order-independent dedupe key for a trade. Two CSV exports
+     that overlap will produce identical ids for the shared rows, so a
+     re-upload only inserts the genuinely new trades. */
+  function tradeId(t) {
+    const raw = `${t.time}|${t.symbol}|${t.side}|${t.pnl}`;
+    // FNV-1a 32-bit — small, dependency-free, good enough for dedupe.
+    let h = 0x811c9dc5;
+    for (let i = 0; i < raw.length; i++) {
+      h ^= raw.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return h.toString(16).padStart(8, '0');
+  }
+
+  const Store = {
+    available() { return typeof indexedDB !== 'undefined'; },
+
+    async init() { await open(); return true; },
+
+    tradeId,
+
+    async addTrades(trades) {
+      const store = await tx(TRADES, 'readwrite');
+      let added = 0, duplicate = 0;
+      await Promise.all(trades.map(async t => {
+        const id = tradeId(t);
+        const existing = await reqP(store.get(id));
+        if (existing) { duplicate++; return; }
+        store.put({ id, ...t });
+        added++;
+      }));
+      await done(store);
+      const total = await this.tradeCount();
+      return { added, duplicate, total };
+    },
+
+    async getAllTrades() {
+      const store = await tx(TRADES, 'readonly');
+      const all = await reqP(store.getAll());
+      all.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+      return all;
+    },
+
+    async tradeCount() {
+      const store = await tx(TRADES, 'readonly');
+      return reqP(store.count());
+    },
+
+    async saveJournal(date, text) {
+      const store = await tx(JOURNAL, 'readwrite');
+      const clean = (text || '').trim();
+      if (clean) store.put({ date, text: clean, updated: Date.now() });
+      else store.delete(date);
+      return done(store);
+    },
+
+    async getJournal(date) {
+      const store = await tx(JOURNAL, 'readonly');
+      const rec = await reqP(store.get(date));
+      return rec ? rec.text : '';
+    },
+
+    async journalDates() {
+      const store = await tx(JOURNAL, 'readonly');
+      const keys = await reqP(store.getAllKeys());
+      return new Set(keys);
+    },
+
+    async setMeta(key, value) {
+      const store = await tx(META, 'readwrite');
+      store.put({ key, value });
+      return done(store);
+    },
+
+    async getMeta(key) {
+      const store = await tx(META, 'readonly');
+      const rec = await reqP(store.get(key));
+      return rec ? rec.value : undefined;
+    },
+
+    async purge() {
+      const db = await open();
+      await Promise.all([TRADES, JOURNAL, META].map(name => {
+        const store = db.transaction(name, 'readwrite').objectStore(name);
+        store.clear();
+        return done(store);
+      }));
+      return true;
+    }
+  };
+
+  window.Store = Store;
+})();

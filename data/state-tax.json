@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "_comment": "Section 1256 tax model + per-state top marginal rates (%). Snapshot estimate (mid-2026). Blended rate = ltcgWeight*ltcg + ordinaryWeight*fedOrdinary + state rate. Edit values here, then run scripts/build-manifest.mjs to refresh the cache-busting hash.",
+  "model": {
+    "fedOrdinary": 24,
+    "ltcg": 15,
+    "ltcgWeight": 0.6,
+    "ordinaryWeight": 0.4
+  },
+  "states": [
+    ["AL", 5.0, "Alabama"], ["AK", 0, "Alaska — no income tax"], ["AZ", 2.5, "Arizona"],
+    ["AR", 3.9, "Arkansas"], ["CA", 13.3, "California"], ["CO", 4.4, "Colorado"], ["CT", 6.99, "Connecticut"],
+    ["DE", 6.6, "Delaware"], ["DC", 10.75, "District of Columbia"], ["FL", 0, "Florida — no income tax"],
+    ["GA", 5.19, "Georgia"], ["HI", 11.0, "Hawaii"], ["ID", 5.695, "Idaho"], ["IL", 4.95, "Illinois"],
+    ["IN", 3.0, "Indiana"], ["IA", 3.8, "Iowa"], ["KS", 5.58, "Kansas"], ["KY", 3.5, "Kentucky"],
+    ["LA", 3.0, "Louisiana"], ["ME", 7.15, "Maine"], ["MD", 5.75, "Maryland"], ["MA", 5.0, "Massachusetts"],
+    ["MI", 4.25, "Michigan"], ["MN", 9.85, "Minnesota"], ["MS", 4.0, "Mississippi"], ["MO", 4.7, "Missouri"],
+    ["MT", 5.65, "Montana"], ["NE", 4.55, "Nebraska"], ["NV", 0, "Nevada — no income tax"],
+    ["NH", 0, "New Hampshire — no wage tax"], ["NJ", 10.75, "New Jersey"], ["NM", 5.9, "New Mexico"],
+    ["NY", 10.9, "New York"], ["NC", 3.99, "North Carolina"], ["ND", 2.5, "North Dakota"], ["OH", 3.5, "Ohio"],
+    ["OK", 4.75, "Oklahoma"], ["OR", 9.9, "Oregon"], ["PA", 3.07, "Pennsylvania"], ["RI", 5.99, "Rhode Island"],
+    ["SC", 6.2, "South Carolina"], ["SD", 0, "South Dakota — no income tax"], ["TN", 0, "Tennessee — no income tax"],
+    ["TX", 0, "Texas — no income tax"], ["UT", 4.5, "Utah"], ["VT", 8.75, "Vermont"], ["VA", 5.75, "Virginia"],
+    ["WA", 0, "Washington — no tax on futures"], ["WV", 4.82, "West Virginia"], ["WI", 7.65, "Wisconsin"],
+    ["WY", 0, "Wyoming — no income tax"]
+  ]
+}

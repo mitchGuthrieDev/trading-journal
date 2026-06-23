@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "_comment": "CME exchange + clearing + NFA fee per side, by futures root. Snapshot estimate (mid-2026). Edit values here, then run scripts/build-manifest.mjs to refresh the cache-busting hash.",
+  "exchange": {
+    "MES": 0.35, "MNQ": 0.35, "M2K": 0.35, "MYM": 0.35,
+    "MCL": 0.50, "MGC": 0.50,
+    "M6E": 0.24, "M6A": 0.24, "M6B": 0.24,
+    "ES": 1.45, "NQ": 1.45, "RTY": 1.45, "YM": 1.45,
+    "CL": 1.62, "GC": 1.67, "6E": 1.72
+  },
+  "micro": ["MES", "MNQ", "M2K", "MYM", "MCL", "MGC", "M6E", "M6A", "M6B"],
+  "fallback": { "micro": 0.37, "std": 1.50 }
+}

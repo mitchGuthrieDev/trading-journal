@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "_comment": "Broker commission per side, by micro/standard tier. Snapshot estimate (mid-2026). Edit values here, then run scripts/build-manifest.mjs to refresh the cache-busting hash.",
+  "order": ["AMP", "EDGECLEAR", "TRADOVATE", "OPTIMUS", "SCHWAB", "IBKR", "TRADESTATION"],
+  "brokers": {
+    "AMP":          { "name": "AMP Futures",                "comm": { "micro": 0.25, "std": 0.50 } },
+    "EDGECLEAR":    { "name": "EdgeClear",                  "comm": { "micro": 0.22, "std": 0.45 } },
+    "TRADOVATE":    { "name": "Tradovate / NinjaTrader",    "comm": { "micro": 0.35, "std": 0.35 } },
+    "OPTIMUS":      { "name": "Optimus Futures",            "comm": { "micro": 0.25, "std": 0.75 } },
+    "SCHWAB":       { "name": "Charles Schwab (thinkorswim)", "comm": { "micro": 2.25, "std": 2.25 } },
+    "IBKR":         { "name": "Interactive Brokers",        "comm": { "micro": 0.25, "std": 0.85 } },
+    "TRADESTATION": { "name": "TradeStation",               "comm": { "micro": 0.50, "std": 1.50 } }
+  }
+}
