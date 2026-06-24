@@ -29,6 +29,7 @@ calls are loading the app's own reference-data JSON and an optional PayPal donat
 - [Marketing homepage](#marketing-homepage) — the one-page site at `/`
 - [Quick start](#quick-start)
 - [Input: the CSV](#input-the-csv) — and how re-uploads merge
+- [Platform adapters & auto-detection](#platform-adapters--auto-detection) — multi-platform CSV import
 - [UI walkthrough](#ui-walkthrough)
 - [Cost model](#cost-model) — commissions, subscriptions, tax
 - [Reference data (JSON)](#reference-data-json) — brokers, fees, feeds, states + cache-busting
@@ -54,6 +55,7 @@ calls are loading the app's own reference-data JSON and an optional PayPal donat
   demo.html             the demo on its own page (shares app.css/app.js; opens in a new tab)
   app.css               all app styles (shared by index.html and demo.html)
   app.js                the main app script (shared; mode-aware via body[data-mode])
+  adapters.js           platform CSV adapters + format auto-detection + fills matcher
   store.js              IndexedDB persistence (swappable storage interface)
   entitlements.js       storage-tier resolver (scaffold; always "local" today)
 /data/                  reference data, fetched at runtime
@@ -67,6 +69,7 @@ calls are loading the app's own reference-data JSON and an optional PayPal donat
   README.md             accounts/payments/storage-tier plan
 /scripts/
   build-manifest.mjs    regenerates data/manifest.json (Node built-ins only)
+  test-adapters.cjs     synthetic tests for the platform adapters (node scripts/test-adapters.cjs)
 /assets/banner.svg
 ```
 
@@ -105,14 +108,22 @@ month (not saved). To erase your data, use **Manage data → Erase all local dat
 
 ## Input: the CSV
 
-The parser expects a TradingView balance-history export. Required columns (matched
-case-insensitively by substring): **`Time`**, **`Realized PnL (value)`** (falls back to
-`Realized PnL`), and **`Action`**. The parser is quote-aware because `Action` contains commas
-inside quotes.
+Blotterbook reads CSV exports from a trading **platform** and **auto-detects** the format — see
+[Platform adapters](#platform-adapters--auto-detection). The flow is two-step so a bad file never
+silently corrupts your data:
 
-Each CSV **row is one trade** — a position-*close* event with its own realized PnL. The
-instrument is parsed from the `Action` text (`... for symbol MESM2025 at price ...`) and reduced
-to a **root ticker** (`MESM2025` → `MES`, `MES1!` → `MES`, `M2KZ2025` → `M2K`).
+1. **Load CSV** → the file is parsed and the platform is detected (you can override it from the
+   **Platform** dropdown). A status line confirms what was found (e.g. *Detected TradingView · 63
+   trades ready*) or explains the problem.
+2. **Start Blotterbook** (landing) or **Import** (Manage data) commits the parsed trades.
+
+Only `.csv` files are accepted, and nothing loads until a parse succeeds.
+
+The reference format is the **TradingView** "List of trades" export — required columns (matched
+case-insensitively by substring): **`Time`**, **`Realized PnL (value)`** (falls back to
+`Realized PnL`), and **`Action`**. Each row is one trade — a position-*close* event with its own
+realized PnL; the instrument comes from the `Action` text and reduces to a **root ticker**
+(`MESM2025` → `MES`, `MES1!` → `MES`, `M2KZ2025` → `M2K`).
 
 ```
 Time,Action,Realized PnL (value)
@@ -123,20 +134,51 @@ Time,Action,Realized PnL (value)
 a CSV that overlaps a previous one only inserts the genuinely new rows, so you can export a wider
 window each time without creating duplicates. The data summary shows `+N new · M dup`.
 
+## Platform adapters & auto-detection
+
+Parsing is keyed to the trading **platform** the CSV came from (TradingView, Tradovate, …) — **not**
+the broker. The two are independent: you might clear through **AMP** but export from **TradingView**.
+The Broker dropdown only drives the cost model; the Platform dropdown (and the detector) drives
+parsing. `app/adapters.js` is a small registry — `window.Adapters` — with:
+
+- **`detect(text)`** — sniffs the header row against each adapter's signature columns and returns the
+  best match (e.g. Tradovate has `B/S` + `Contract`; Rithmic has `Buy/Sell` + `Qty Filled`; IBKR has
+  `DateTime` + `Buy/Sell` + `Proceeds`). No match → the user picks the platform manually.
+- **`parse(text, platformId?)`** — runs the chosen (or detected) adapter and returns
+  `{ ok, trades, platform, label, beta, … }` or `{ ok:false, error }`.
+
+Every adapter **normalizes to the same internal trade shape** — `{ time, date, pnl, symbol, root,
+side[, qty, entryTime, exitTime, holdMs] }` — so `compute()` / `costModel()` never change. Two export
+styles are handled:
+
+- **Closed positions** — each row is a finished trade with realized PnL (**TradingView**,
+  **MotiveWave**).
+- **Fills** — individual buy/sell executions. A FIFO **round-trip matcher** (`pairFills()`) pairs
+  entries→exits per symbol to build closed trades — and that finally unlocks **hold time** (shown as
+  *Avg Hold Time* in Advanced Statistics when available). When a fills export carries realized PnL per
+  closing row (IBKR), it's used directly; otherwise PnL is computed from price × a built-in futures
+  **point-value** map (unknown roots default to ×1, correct for equities).
+
+Supported platforms: **TradingView** (verified), plus **Tradovate, Rithmic R\|Trader, Sierra Chart,
+TradeStation, MotiveWave, Webull, Interactive Brokers, Schwab/thinkorswim** — these are `beta`,
+built from documented formats and exercised by `scripts/test-adapters.cjs` with synthetic samples.
+They're flagged *(beta — verify the numbers)* in the UI until validated against a real export.
+**Adding a platform** = one object in `adapters.js` (`sniff` + `toTrades`) and a fixture in the test.
+
 ## UI walkthrough
 
 | Section | What it shows |
 | --- | --- |
 | **Top bar** | The **Blotterbook** wordmark (links to the homepage) and the loaded-source text — once data is loaded, clicking it opens **Manage data** (it does nothing before load); it's truncated so long filenames don't bloat the bar. Actions: **Changelog**, **Export report**, **Manage data**, Contact. |
-| **Landing (no data)** | The intro text and the **Broker & Costs** module sit together, centered as a group in the viewport (like the homepage hero), until data loads. |
-| **Broker & Costs** | Broker / data feed / platform fee / state. Collapsible once loaded; selections persist. |
+| **Landing (no data)** | The intro and the **Broker & Costs** module sit centered as a group (like the homepage hero). After **Load CSV**, a **Platform** dropdown (auto-filled by the detector) and a parse-status line appear, then **Start Blotterbook** commits and enters the app. |
+| **Broker & Costs** | Broker (incl. **TradingView PaperTrade**) / data feed / platform fee / state. Drives the cost model only — independent of the CSV's platform. Collapsible once loaded; selections persist. |
 | **Scope toggle** | Switches most views between *All time* and the *Selected month*. |
 | **Filters** | Date range, symbol, side, session (RTH/ETH), and day-of-week. Applies before everything. |
 | **Stat cards** | Net PnL (+ take-home), win rate, profit factor, avg win/loss, max drawdown. |
 | **Performance** | Cumulative PnL vs. date, with stepped y-axis gridlines and a gradient area fill. Click the **Gross / Net / Take-home** buttons to toggle overlays (highlighted when active; at least one always stays on); hover for values; click a calendar day to mark it. |
 | **Trading Calendar** | Sunday-first month grid of daily PnL with weekly summaries; **day-notes** below. |
 | **Break-even & Cost Budget** | Per-symbol commission table and a full-width itemized waterfall — gross, commissions, subscriptions, net pre-tax, the folded-in **Section 1256** tax detail, take-home, and break-even/trade. |
-| **Advanced Statistics** | Daily averages, expectancy, long/short split, best/worst day & weekday, Sharpe, streaks. |
+| **Advanced Statistics** | Daily averages, expectancy, long/short split, best/worst day & weekday, Sharpe, streaks, and **Avg Hold Time** (when the import was a fills export). |
 | **Definitions & Caveats** | How each number is computed and where the data falls short. |
 
 **Demo (its own page).** The demo lives at `app/demo.html` and is reached from the homepage
@@ -189,7 +231,9 @@ Applied to net pre-tax profit **only when positive**. A rough planning estimate,
 The broker/fee/feed/state tables used to be inline constants; they now live in `/data/*.json` and
 are fetched at runtime by `loadRefData()` before anything renders. Edit a JSON file to change
 rates — no app code changes. Brokers modeled: **AMP, EdgeClear, Tradovate / NinjaTrader, Optimus,
-Charles Schwab (thinkorswim), Interactive Brokers, TradeStation.**
+Charles Schwab (thinkorswim), Interactive Brokers, TradeStation, TradingView PaperTrade** (zero
+commission; its feed list mirrors TradingView's real-time data add-ons, with a single catch-all
+*Free realtime feed* for the no-cost exchanges).
 
 | File | Contents |
 | --- | --- |
@@ -241,8 +285,12 @@ local-data control. It reuses the existing `Store` interface and keeps loading, 
 destructive actions behind one clearly-labeled surface. It has six parts:
 
 - **Overview** — trade count, date range, day-note count, and the approximate on-disk size.
-- **Load data** — *Load CSV* lives here now (moved out of the top bar). Imports merge — only new
-  trades are added. The first load is still done from the centered Broker & Costs panel on the landing.
+- **Load data** — *Load CSV* lives here (moved out of the top bar). Picking a file parses and
+  auto-detects the platform into the **Platform** dropdown; you then confirm with **Import**, which
+  merges only the new trades. The platform choice applies to that one upload — the dropdown resets to
+  *Auto-detect* each time the panel reopens (the data is already normalized, so platform stops
+  mattering once imported). The very first load is done from the centered Broker & Costs panel on the
+  landing.
 - **Backup &amp; restore** — *Download backup (.json)* writes a single file with your trades, day-notes,
   and setup (`Store.exportAll()`); *Restore from backup* merges one back in (`Store.importAll()`).
   Restores de-duplicate by the same stable trade id, so re-importing is always safe. This is the
@@ -278,8 +326,9 @@ The data flow is linear and entirely client-side:
 ```
 loadRefData()   manifest.json → brokers/exchange-fees/feeds/state-tax (cache-busted by hash)
 CSV text
-  → parseCSV()      quote-aware splitter → rows
-  → toTrades()      rows → [{time,date,pnl,symbol,root,side}] (chronological)
+  → Adapters.detect()  sniff header → platform
+  → Adapters.parse()   platform adapter → normalized trades (fills go through pairFills())
+                       → [{time,date,pnl,symbol,root,side[,qty,entry/exit,holdMs]}]
   → Store.addTrades / getAllTrades   delta-merge + persist (IndexedDB)
   → applyFilters()  active filter set → working trade list
   → compute()       trades → metrics (PnL, win rate, drawdown, curve, days, expectancy, …)
@@ -317,8 +366,11 @@ resolver that will pick the matching `Store` implementation; today it always ret
 
 Discussed / planned, roughly in order:
 
-- **Platform-agnostic CSV parsing** — support broker exports beyond TradingView (normalize varied
-  column names, symbol formats, and row semantics into the same trade shape).
+- **Platform-agnostic CSV parsing** — *Phase 1 shipped:* the adapter registry, header
+  auto-detection, normalization, and the fills round-trip matcher (see
+  [Platform adapters](#platform-adapters--auto-detection)). *Next:* validate the eight `beta`
+  adapters against real exports, widen the futures point-value map, and add a manual column-mapping
+  fallback for unrecognized formats.
 - **Stripe integration** — finish the checkout / webhook / entitlements flow scaffolded in
   `/functions` so the online tier can be sold.
 - **Accounts + cloud sync** — a `CloudStore` implementing the same `Store` interface for
@@ -327,13 +379,21 @@ Discussed / planned, roughly in order:
   the planned online tier), removing the CSV step.
 - **Reference-data upkeep** — keep `data/*.json` (broker/fee/feed/state) current; consider sourcing
   some rates dynamically.
-- **Deeper analytics** — open-position drawdown (needs entry/exit pairing), holding-time stats,
+- **Deeper analytics** — open-position drawdown (needs entry/exit pairing), more hold-time stats,
   per-strategy tagging, and richer report exports.
 
 ## Known limitations
 
 - **Drawdown is realized only** — from the closed-trade curve; no open-position heat.
-- **No trade length** — the export has close timestamps only, so holding time isn't derivable.
+- **Hold time depends on the export** — fills-based imports (Tradovate, Rithmic, …) get hold time
+  from the round-trip matcher; closed-position exports like TradingView carry only the close
+  timestamp, so no hold time is shown for them.
+- **Beta adapters need real-export validation** — the eight non-TradingView adapters are built from
+  documented formats and synthetic tests; they're flagged *(beta — verify the numbers)* until checked
+  against a real file. Header changes on a platform's side can break detection.
+- **Fills PnL can approximate** — when a fills export has no realized PnL, it's computed from price ×
+  a built-in futures point-value map; unrecognized futures roots fall back to ×1 (correct for
+  equities, wrong for an unlisted contract until added to the map).
 - **Commissions are modeled** — raw PnL is gross; rates come from the editable JSON and may drift.
 - **Calendar-day & session grouping** — both use the literal `Time` value, not the CME session day;
   RTH/ETH assumes the timestamp's clock time.

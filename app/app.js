@@ -6,50 +6,8 @@ const $ = id => document.getElementById(id);
 /* The demo runs on its own page (demo.html) with a trimmed top bar. */
 const DEMO_PAGE = !!(document.body && document.body.dataset.mode === 'demo');
 
-/* ============================================================
-   CSV parsing → trades
-   ============================================================ */
-function parseCSV(text){
-  const rows=[]; let i=0, field='', row=[], q=false; const n=text.length;
-  const push=()=>{row.push(field);field='';};
-  const eol=()=>{push();if(row.length>1||row[0]!=='')rows.push(row);row=[];};
-  while(i<n){const c=text[i];
-    if(q){ if(c==='"'){ if(text[i+1]==='"'){field+='"';i++;} else q=false; } else field+=c; }
-    else { if(c==='"')q=true; else if(c===',')push(); else if(c==='\n')eol(); else if(c==='\r'){} else field+=c; }
-    i++;
-  }
-  if(field!==''||row.length)eol();
-  return rows;
-}
-
-/* derive the futures root ticker: MESM2025 → MES, M2KZ2025 → M2K, MES1! → MES */
-function rootSym(s){
-  if(!s) return '?';
-  s = s.toUpperCase().replace(/^.*:/,'');
-  s = s.replace(/[FGHJKMNQUVXZ]\d{1,4}$/,'').replace(/\d*!$/,'');
-  return s || '?';
-}
-
-function toTrades(text){
-  const rows=parseCSV(text); if(!rows.length) return [];
-  const head=rows[0].map(h=>h.trim().toLowerCase());
-  const ix=name=>head.findIndex(h=>h.includes(name));
-  const cT=ix('time'),
-        cP=ix('realized pnl (value)')>=0?ix('realized pnl (value)'):ix('realized pnl'),
-        cA=ix('action');
-  const out=[];
-  for(let r=1;r<rows.length;r++){
-    const row=rows[r]; if(!row||!row[cT]) continue;
-    const t=row[cT].trim(); const pnl=parseFloat(row[cP]); if(isNaN(pnl)) continue;
-    const action=cA>=0?row[cA]:'';
-    const sm=action.match(/symbol\s+(\S+)\s+at price/i);
-    const symbol=sm?sm[1]:'';
-    const side= /close short/i.test(action)?'short' : /close long/i.test(action)?'long' : '';
-    out.push({time:t, date:t.slice(0,10), pnl, symbol, root:rootSym(symbol), side});
-  }
-  out.sort((a,b)=> a.time<b.time?-1:a.time>b.time?1:0);
-  return out;
-}
+/* CSV parsing now lives in adapters.js (window.Adapters) — platform-specific
+   format detection + normalization to the internal trade shape below. */
 
 /* ============================================================
    Metrics
@@ -430,8 +388,20 @@ function isoWeek(d){ const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.ge
 /* ============================================================
    Rendering — advanced statistics
    ============================================================ */
+function fmtDur(ms){
+  const s=Math.round(ms/1000);
+  if(s<90) return s+'s';
+  const mn=Math.round(s/60);
+  if(mn<90) return mn+'m';
+  const h=Math.floor(mn/60), rem=mn%60;
+  if(h<24) return h+'h'+(rem?' '+rem+'m':'');
+  const d=Math.floor(h/24); return d+'d'+(h%24?' '+(h%24)+'h':'');
+}
 function renderAdv(m){
   const c=costModel(m);
+  // hold time is only available for fills-based platform exports (round-trip matched)
+  const held=(m.trades||[]).filter(t=>t.holdMs!=null && t.holdMs>0);
+  const avgHold=held.length? held.reduce((a,t)=>a+t.holdMs,0)/held.length : null;
   const rows=[
     ['head','Performance Metrics'],
     ['Avg Daily PnL', `<span class="av ${cls(m.avgDaily)}">${usd(m.avgDaily)}</span>`],
@@ -459,6 +429,10 @@ function renderAdv(m){
     ['First Trade Date', `<span class="av">${m.firstDate}</span>`],
     ['Last Trade Date', `<span class="av">${m.lastDate}</span>`],
   ];
+  if(avgHold!=null){
+    rows.splice(rows.indexOf(rows.find(r=>r[0]==='Max Consecutive Losses'))+1, 0,
+      ['Avg Hold Time', `<span class="av">${fmtDur(avgHold)}</span> <span class="av na">· ${held.length}/${m.n}</span>`]);
+  }
   document.getElementById('adv').innerHTML=rows.map(([a,b])=>
     a==='head'?`<div class="subhead">${b}</div>`
     :`<div class="arow"><span class="al">${a}</span>${b}</div>`).join('');
@@ -584,25 +558,99 @@ function renderLoaded(name, metaHtml){
   renderDash();
 }
 
-/* Import a CSV, merging only the delta into local storage. */
-async function importCSV(text,name){
-  const parsed=toTrades(text);
-  if(!parsed.length){
-    alert('No trades found. Expected TradingView balance-history columns: Time · Realized PnL (value) · Action.');
-    return;
+/* ============================================================
+   CSV staging → parse/detect → import
+   ------------------------------------------------------------
+   A picked file is parsed and held in PENDING (not committed). The user
+   confirms the auto-detected Platform, then commits: landing → enter the
+   app; manage panel → merge into the existing data. The Platform choice is
+   per-upload only — after import, the dropdown resets.
+   ============================================================ */
+let PENDING=null;      // { ctx:'landing'|'manage', rawText, name, result }
+let FILE_CTX='landing';
+
+const stageEls=ctx=> ctx==='manage'
+  ? { sel:$('dm_platform'), status:$('dm_parsestatus'), btn:$('dm_import') }
+  : { sel:$('c_platform'),  status:$('landingStatus'),  btn:$('startBtn') };
+
+function isCsvFile(file){
+  if(!file) return false;
+  // require a .csv extension or an explicit CSV mime type (exports always have one)
+  return /\.csv$/i.test(file.name) || /csv/i.test(file.type||'');
+}
+function setStageStatus(ctx,msg,kind){
+  const {status}=stageEls(ctx); if(!status) return;
+  status.textContent=msg||''; status.className='parsestatus'+(kind?' '+kind:'');
+}
+function resetStage(ctx){
+  if(PENDING && PENDING.ctx===ctx) PENDING=null;
+  const {sel,btn}=stageEls(ctx);
+  if(sel) sel.value='';
+  if(btn) btn.disabled=true;
+  setStageStatus(ctx,'');
+  const f=$('file'); if(f) f.value='';
+}
+function stageFile(file,ctx){
+  if(!isCsvFile(file)){ setStageStatus(ctx,'Please choose a .csv file.','err'); return; }
+  const r=new FileReader();
+  r.onerror=()=>setStageStatus(ctx,'Could not read that file.','err');
+  r.onload=()=>stageText(String(r.result||''), file.name, ctx);
+  r.readAsText(file);
+}
+function stageText(text,name,ctx){
+  PENDING={ctx,rawText:text,name};
+  reparseStage(ctx, /*isAuto*/true);
+}
+function reparseStage(ctx,isAuto){
+  if(!PENDING || PENDING.ctx!==ctx){ return; }
+  const {sel,btn}=stageEls(ctx);
+  const override = sel ? sel.value : '';
+  let r;
+  try{ r=Adapters.parse(PENDING.rawText, override||undefined); }
+  catch(e){ r={ok:false,error:'Could not read that file.'}; }
+  PENDING.result=r;
+  if(r.ok){
+    if(isAuto && !override && sel) sel.value=r.platform;     // reflect the auto-detected platform
+    setStageStatus(ctx, `Detected ${r.label}${r.beta?' (beta — verify the numbers)':''} · ${r.trades.length} trade${r.trades.length===1?'':'s'} ready to import`, 'ok');
+    if(btn) btn.disabled=false;
+  } else {
+    setStageStatus(ctx, r.error||'Could not parse this file.', 'err');
+    if(btn) btn.disabled=true;
   }
+}
+function onPlatformChange(ctx){ reparseStage(ctx,/*isAuto*/false); }
+
+async function commitPending(ctx){
+  if(!PENDING || PENDING.ctx!==ctx || !PENDING.result || !PENDING.result.ok) return;
+  const trades=PENDING.result.trades, name=PENDING.name;
   DEMO_MODE=false;
   let metaHtml;
   if(Store.available()){
-    const {added,duplicate,total}=await Store.addTrades(parsed);
+    const {added,duplicate,total}=await Store.addTrades(trades);
     TRADES=await Store.getAllTrades();
     JOURNAL_DATES=await Store.journalDates();
     metaHtml=`<b>${total}</b> trades &nbsp;·&nbsp; +${added} new · ${duplicate} dup &nbsp;·&nbsp; ${TRADES[0].date} → ${TRADES[TRADES.length-1].date}`;
   } else {
-    TRADES=parsed;
+    TRADES=trades;
     metaHtml=`<b>${TRADES.length}</b> trades &nbsp;·&nbsp; ${TRADES[0].date} → ${TRADES[TRADES.length-1].date}`;
   }
-  renderLoaded(name, metaHtml);
+  const manage = ctx==='manage';
+  resetStage(ctx);                       // clear the staging UI + platform select (per-upload only)
+  if(manage){
+    await reloadFromStore();
+    renderDataManager();
+  } else {
+    renderLoaded(name, metaHtml);        // enter the populated app
+  }
+}
+
+function platformOptionsHtml(){
+  return '<option value="">Auto-detect</option>'
+    + Adapters.list().map(a=>`<option value="${a.id}">${a.label}${a.beta?' (beta)':''}</option>`).join('');
+}
+function initPlatformSelects(){
+  const html=platformOptionsHtml();
+  ['c_platform','dm_platform'].forEach(id=>{ const el=$(id); if(el) el.innerHTML=html; });
 }
 
 /* ============================================================
@@ -640,7 +688,8 @@ function runDemo(){
   updateGate();
   // demo data is in-memory only — it never touches local storage
   DEMO_MODE=true;
-  TRADES=toTrades(demoCSV());
+  const dr=Adapters.parse(demoCSV(),'tradingview');
+  TRADES=dr.ok?dr.trades:[];
   // no source label on the demo (the DEMO badge already says it); just the meta
   renderLoaded('', `<b>${TRADES.length}</b> trades &nbsp;·&nbsp; sample data, not saved`);
 }
@@ -1044,6 +1093,7 @@ function openDataManager(){
   if(!Store.available()){ alert('Local storage is not available in this browser.'); return; }
   const ov=$('dataModal'); if(!ov) return;
   ov.classList.add('open'); document.body.style.overflow='hidden';
+  resetStage('manage');     // platform select returns to "Auto-detect" each time it's opened
   renderDataManager();
 }
 function closeDataManager(){ const ov=$('dataModal'); if(ov) ov.classList.remove('open'); document.body.style.overflow=''; }
@@ -1133,12 +1183,11 @@ $('prev').onclick=()=>{ if(!METRICS_ALL)return;
   if(--calMonth<0){calMonth=11;calYear--;} renderCalendar(); if(SCOPE==='month') renderDash(); };
 $('next').onclick=()=>{ if(!METRICS_ALL)return;
   if(++calMonth>11){calMonth=0;calYear++;} renderCalendar(); if(SCOPE==='month') renderDash(); };
-on('file','change',e=>{ const f=e.target.files[0]; if(!f)return;
-  const r=new FileReader(); r.onload=async()=>{ await importCSV(r.result,f.name);
-    // if the data manager is open (Load CSV came from there), refresh its lists
-    if($('dataModal') && $('dataModal').classList.contains('open')) renderDataManager();
-  };
-  r.readAsText(f); e.target.value=''; });   // allow re-selecting the same file
+// A picked file is staged (parsed + platform-detected), not loaded immediately.
+on('file','change',e=>{ const f=e.target.files[0]; e.target.value=''; if(!f)return; stageFile(f, FILE_CTX); });
+on('c_platform','change',()=>onPlatformChange('landing'));
+on('dm_platform','change',()=>onPlatformChange('manage'));
+on('startBtn','click',()=>commitPending('landing'));
 document.querySelectorAll('#scope button').forEach(b=>b.onclick=()=>setScope(b.dataset.s));
 
 /* The demo lives on its own page (demo.html), reached from the homepage.
@@ -1149,7 +1198,7 @@ on('endDemoBtn','click',()=>{ try{ window.close(); }catch(_){}
 
 on('exportBtn','click',exportReport);
 on('manageBtn','click',openDataManager);
-on('setupLoad','click',()=>$('file').click());
+on('setupLoad','click',()=>{ FILE_CTX='landing'; $('file').click(); });
 on('setuphead','click',()=>$('setup').classList.toggle('collapsed'));
 // The loaded-source text opens the data manager (only once data is loaded).
 on('srcname','click',()=>{ if($('dataModal') && document.body.classList.contains('loaded')) openDataManager(); });
@@ -1174,7 +1223,8 @@ if($('dataModal')){
   on('dm_close','click',closeDataManager);
   $('dataModal').addEventListener('click',e=>{ if(e.target.id==='dataModal') closeDataManager(); });
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDataManager(); });
-  on('dm_load','click',()=>$('file').click());
+  on('dm_load','click',()=>{ FILE_CTX='manage'; $('file').click(); });
+  on('dm_import','click',()=>commitPending('manage'));
   on('dm_export','click',dmExport);
   on('dm_importBtn','click',()=>$('dm_importFile').click());
   on('dm_importFile','change',e=>{ const f=e.target.files[0]; if(f) dmImport(f); e.target.value=''; });
@@ -1204,6 +1254,7 @@ if($('dataModal')){
     return;
   }
   initSetup();
+  initPlatformSelects();
   initPanels();
   initFilters();
   wireJournal();

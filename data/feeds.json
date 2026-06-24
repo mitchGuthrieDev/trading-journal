@@ -44,6 +44,14 @@
     "TRADESTATION": {
       "CME (non-pro)": [["CME Real-Time", 10], ["CBOT Real-Time", 10], ["NYMEX Real-Time", 10], ["COMEX Real-Time", 10]],
       "Other": [["None", 0]]
+    },
+    "TVPAPER": {
+      "Free": [["Free realtime feed (CBOE BZX, crypto, forex, NSE)", 0]],
+      "Futures (non-pro)": [["CME Group — CME, CBOT, NYMEX, COMEX", 7]],
+      "US Stocks (non-pro)": [["US Stock Markets Bundle (NYSE, NASDAQ, Arca, GIDS, OTC)", 9.95],
+        ["NASDAQ", 3], ["NYSE", 3], ["NYSE Arca", 3], ["OTC Markets", 3], ["NASDAQ GIDS", 5]],
+      "International (non-pro)": [["Eurex", 2], ["London Stock Exchange", 4], ["Tokyo Stock Exchange", 3],
+        ["Bursa Malaysia", 2], ["Borsa Istanbul", 1]]
     }
   }
 }

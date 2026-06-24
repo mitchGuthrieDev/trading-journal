@@ -32,11 +32,11 @@
   <div id="landing">
     <div class="lhead">
       <p class="leyebrow">Blotterbook</p>
-      <h1 class="ltitle">Load a balance&#8209;history CSV to begin</h1>
-      <p class="llead">Export your account balance history from TradingView as a CSV, choose your broker,
-        data feed, and state below, then load the file. Re&#8209;uploads merge — only new trades are added,
-        and nothing ever leaves your browser.</p>
-      <p class="lmeta">Expected columns: Time · Realized PnL (value) · Action</p>
+      <h1 class="ltitle">Load a trade-history CSV to begin</h1>
+      <p class="llead">Export your trade history from your trading platform as a CSV, choose your broker,
+        data feed, and state below, then load the file — Blotterbook auto-detects the platform format.
+        Re&#8209;uploads merge, only new trades are added, and nothing ever leaves your browser.</p>
+      <p class="lmeta">Supports TradingView, Tradovate, Rithmic, Sierra Chart, TradeStation, MotiveWave, Webull, IBKR &amp; Schwab/thinkorswim</p>
     </div>
 
     <div class="setup" id="setup">
@@ -55,8 +55,14 @@
           <div class="fld state"><label for="c_state_sel">State (tax)</label>
             <select id="c_state_sel"></select></div>
         </div>
-        <div class="hintline">Choose a broker, data feed, and state to enable <b>Load CSV</b>, then load your file below. Commission and feed rates follow the broker.</div>
-        <button class="btn loadbtn disabled" id="setupLoad" title="Select broker, data feed, and state first" disabled>Load CSV</button>
+        <div class="hintline">Choose a broker, data feed, and state to enable <b>Load CSV</b>. Pick your export's CSV — Blotterbook detects the trading platform, then hit <b>Start Blotterbook</b>.</div>
+        <div class="loadrow">
+          <button class="btn loadbtn disabled" id="setupLoad" title="Select broker, data feed, and state first" disabled>Load CSV</button>
+          <div class="fld plat"><label for="c_platform">Platform</label>
+            <select id="c_platform"></select></div>
+        </div>
+        <div class="parsestatus" id="landingStatus"></div>
+        <button class="btn startbtn" id="startBtn" disabled>Start Blotterbook &rarr;</button>
       </div>
     </div>
   </div>
@@ -234,8 +240,12 @@
         <div class="dmactions">
           <button class="dmbtn" id="dm_load">Load CSV…</button>
           <input type="file" id="file" accept=".csv,text/csv" hidden>
+          <div class="fld plat"><label for="dm_platform">Platform</label>
+            <select id="dm_platform"></select></div>
+          <button class="dmbtn" id="dm_import" disabled>Import</button>
         </div>
-        <p class="dmhint">Import another TradingView balance-history CSV. Re-uploads merge — only genuinely new trades are added, so importing an overlapping export is always safe.</p>
+        <div class="parsestatus" id="dm_parsestatus"></div>
+        <p class="dmhint">Pick a CSV exported from your trading platform — Blotterbook detects the format, then hit <b>Import</b> to merge it in. Re-uploads merge by a stable trade id, so importing an overlapping export is always safe. The platform choice applies to this upload only.</p>
       </div>
 
       <div class="dmsec"><h3>Backup &amp; restore</h3>
@@ -275,6 +285,7 @@
 
 <script src="store.js"></script>
 <script src="entitlements.js"></script>
+<script src="adapters.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
