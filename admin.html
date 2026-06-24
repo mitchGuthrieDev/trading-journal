@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin — Blotterbook</title>
+<link rel="stylesheet" href="site.css">
+<style>
+  .adminkeyrow{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px}
+  .adminkeyrow .fld{display:flex;flex-direction:column;gap:5px}
+  .adminkeyrow label{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+  .adminkeyrow input{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    font-family:var(--mono);font-size:13px;padding:8px 10px;border-radius:7px;outline:none;min-width:240px}
+  .adminkeyrow input:focus{border-color:var(--accent)}
+  .modes{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+  .modebtn{cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--txt);
+    font-family:inherit;font-size:13.5px;padding:10px 16px;border-radius:9px;display:inline-flex;align-items:center;gap:8px}
+  .modebtn:hover{border-color:var(--accent)}
+  .modebtn .d{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+  .modebtn.on{border-color:var(--accent);background:var(--panel)}
+  .modebtn[data-mode="live"] .d{background:var(--green)}
+  .modebtn[data-mode="offline"] .d{background:var(--red)}
+  .modebtn[data-mode="maintenance"] .d{background:var(--warn)}
+  .modebtn[data-mode="auto"] .d{background:var(--accent)}
+  .curstate{font-family:var(--mono);font-size:13px;color:var(--dim)}
+  .curstate b{color:var(--txt)}
+  .amsg{font-family:var(--mono);font-size:12.5px;margin-top:10px;min-height:16px}
+  .amsg.ok{color:var(--green)} .amsg.err{color:var(--red)}
+</style>
+</head>
+<body>
+
+<header>
+  <nav class="nav">
+    <a class="wordmark" href="index.html"><span class="dot"></span>Blotterbook</a>
+    <input type="checkbox" id="navtoggle" class="navtoggle" aria-label="Toggle navigation menu">
+    <div class="navlinks">
+      <a href="index.html">Home</a>
+      <a href="changelog.html">Changelog</a>
+      <a class="navlaunch" href="/app/">Launch Blotterbook &rarr;</a>
+    </div>
+    <a class="cta" href="/app/">Launch Blotterbook &rarr;</a>
+    <label class="hamburger" for="navtoggle" title="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></label>
+  </nav>
+</header>
+
+<div class="wrap">
+  <p class="eyebrow">Admin</p>
+  <h1>Configuration</h1>
+  <p class="blurb">Internal controls for Blotterbook. This page should be locked down with
+    <b>Cloudflare Access</b>; changes also require the admin key below.</p>
+
+  <div class="note warn"><b>Access-controlled.</b> Protect this page (and ideally
+    <code>admin.blotterbook.com</code>) with Cloudflare Access. Writes additionally require the
+    <code>ADMIN_KEY</code> secret, and the status is stored in the <code>STATUS_KV</code> namespace.</div>
+
+  <h2>Homepage “Live” indicator</h2>
+  <p>Override the status pill shown on the marketing homepage. <b>Auto</b> hands control back to the
+    automatic check (pings <code>/app/</code>); the others force a fixed state.</p>
+
+  <p class="curstate" id="curstate">Current: loading…</p>
+
+  <div class="adminkeyrow">
+    <div class="fld"><label for="adminkey">Admin key</label>
+      <input type="password" id="adminkey" placeholder="ADMIN_KEY" autocomplete="off"></div>
+    <div class="fld"><label for="label">Custom label (optional)</label>
+      <input type="text" id="label" maxlength="40" placeholder="e.g. Back at 5pm ET"></div>
+  </div>
+
+  <div class="modes" id="modes">
+    <button class="modebtn" data-mode="auto"><span class="d"></span>Auto-detect</button>
+    <button class="modebtn" data-mode="live"><span class="d"></span>Live</button>
+    <button class="modebtn" data-mode="offline"><span class="d"></span>Offline</button>
+    <button class="modebtn" data-mode="maintenance"><span class="d"></span>Maintenance</button>
+  </div>
+  <p class="amsg" id="amsg"></p>
+
+  <h2>More controls</h2>
+  <p>Additional admin configuration will live here (feature flags, reference-data refresh, etc.).</p>
+</div>
+
+<footer class="site">
+  <div class="frow">
+    <span class="fbrand"><span class="dot"></span>Blotterbook</span>
+    <div class="flinks">
+      <a href="index.html">Home</a>
+      <a href="changelog.html">Changelog</a>
+      <a href="legal.html">Legal</a>
+    </div>
+    <p class="disclaimer">Internal admin page — not for public use.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var KEYLS='bb_admin_key';
+  var keyInput=document.getElementById('adminkey');
+  var labelInput=document.getElementById('label');
+  var msg=document.getElementById('amsg');
+  var cur=document.getElementById('curstate');
+  try{ keyInput.value=localStorage.getItem(KEYLS)||''; }catch(_){}
+
+  function setMsg(t,kind){ msg.textContent=t||''; msg.className='amsg'+(kind?' '+kind:''); }
+  function mark(mode){ document.querySelectorAll('.modebtn').forEach(function(b){ b.classList.toggle('on', b.dataset.mode===mode); }); }
+
+  function loadStatus(){
+    fetch('/api/status',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+      var when=d.updatedAt?(' · updated '+new Date(d.updatedAt).toLocaleString()):'';
+      cur.innerHTML='Current: <b>'+(d.mode||'auto')+'</b>'+(d.label?(' — “'+d.label+'”'):'')+when;
+      mark(d.mode||'auto');
+      if(d.label && !labelInput.value) labelInput.value=d.label;
+    }).catch(function(){ cur.textContent='Current: unavailable (deploy on Cloudflare to use)'; });
+  }
+
+  function save(mode){
+    var key=(keyInput.value||'').trim();
+    try{ localStorage.setItem(KEYLS,key); }catch(_){}
+    if(!key){ setMsg('Enter the admin key first.','err'); return; }
+    setMsg('Saving…');
+    fetch('/api/status',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':key},
+      body:JSON.stringify({mode:mode,label:(labelInput.value||'').trim()})})
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
+      .then(function(res){
+        if(res.ok){ setMsg('Saved: '+res.d.mode+(res.d.label?(' (“'+res.d.label+'”)'):''),'ok'); loadStatus(); }
+        else setMsg('Error: '+(res.d.error||'request failed'),'err');
+      })
+      .catch(function(){ setMsg('Network error — is this deployed on Cloudflare?','err'); });
+  }
+
+  document.querySelectorAll('.modebtn').forEach(function(b){
+    b.addEventListener('click',function(){ save(b.dataset.mode); });
+  });
+  loadStatus();
+})();
+</script>
+
+</body>
+</html>

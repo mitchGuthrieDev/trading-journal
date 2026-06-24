@@ -527,7 +527,8 @@ function setDashVisible(v){
   document.getElementById('dash').style.display = v?'':'none';
   document.getElementById('scoperow').style.display = v?'':'none';
   document.body.classList.toggle('loaded', v);          // drives top-bar / setup visibility
-  if(v) document.getElementById('setup').classList.remove('collapsed');   // expand on fresh load
+  // Broker & Costs starts minimized on a populated dashboard; expanded on the landing.
+  const setup=document.getElementById('setup'); if(setup) setup.classList.toggle('collapsed', v);
 }
 /* The not-loaded view is the centered landing block (#landing) in the markup,
    shown via the body:not(.loaded) rule; the cards row stays empty until load. */
@@ -660,7 +661,7 @@ function demoCSV(){
   let seed=246813579; const rnd=()=>{ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; };
   const syms=['MESM2025','MESM2025','MESM2025','MNQM2025','MNQM2025','MCLN2025'];
   const rows=[['Time','Action','Realized PnL (value)']];
-  const start=new Date(2026,5,1), end=new Date(2026,5,30);   // a full month: Jun 1 → Jun 30 2026
+  const start=new Date(2024,6,1), end=new Date(2026,5,30);   // two years: Jul 1 2024 → Jun 30 2026
   for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
     const dow=d.getDay(); if(dow===0||dow===6) continue;       // weekdays only
     if(rnd()<0.15) continue;                                    // a few days flat/off

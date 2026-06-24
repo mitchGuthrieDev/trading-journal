@@ -16,7 +16,7 @@
 reads a balance-history CSV exported from **TradingView**, parses it entirely in the browser, stores
 it **locally** (IndexedDB), and renders performance, calendar, cost, filter, and statistics views.
 All computation is client-side and **no trade data ever leaves the browser**. The only network
-calls are loading the app's own reference-data JSON and an optional PayPal donate button.
+call is loading the app's own reference-data JSON.
 
 > **Design pillars (intentional constraints):** compute happens locally, there are **no runtime
 > dependencies**, and the whole thing deploys as static files to **Cloudflare Pages**. The app
@@ -53,7 +53,8 @@ calls are loading the app's own reference-data JSON and an optional PayPal donat
   roadmap.html          shipped vs. planned checklist (styled like the changelog)
   changelog.html        "Blotterlog" — commit history (reads the cached /api/changelog endpoint)
   legal.html            disclaimers, terms of use, privacy summary
-  site.css              shared styles for howto / roadmap / changelog / legal
+  admin.html            internal admin controls (Cloudflare Access–gated; sets the Live indicator)
+  site.css              shared styles for howto / roadmap / changelog / legal / admin
 /app/                   the journal app
   index.html            app markup (links app.css + app.js)
   demo.html             the demo on its own page (shares app.css/app.js; opens in a new tab)
@@ -71,6 +72,7 @@ calls are loading the app's own reference-data JSON and an optional PayPal donat
 /functions/             Cloudflare Pages Functions
   api/changelog.js      cached (1h) GitHub commit feed for the changelog page
   api/geo.js            visitor region (Cloudflare edge geo) → pre-fill the tax state
+  api/status.js         homepage Live-indicator status (GET public; POST admin-only, KV-backed)
   api/{me,checkout,webhook}.js   Stripe/accounts scaffold
   README.md             accounts/payments/storage-tier plan
 /scripts/
@@ -88,11 +90,11 @@ anchor links plus links to the standalone info pages:
 
 | Section | Purpose |
 | --- | --- |
-| **Home** | The hero (banner, tagline) with **Launch Blotterbook** and **See Demo** CTAs, plus a **Live** status pill that pings `/app/` and reports whether the app is responding. |
+| **Home** | The hero (banner, tagline) with **Launch Blotterbook** and **See Demo** CTAs, plus a **Live** status pill — it honors an admin override from `/api/status` and otherwise pings `/app/`. |
 | **Features** | A three-column grid of the app's capabilities (privacy, cost model, tax, broker comparison, curve/calendar, stats). |
 | **Use Cases** | The pitch — Blotterbook as both a profit/budgeting calculator and a private journal. |
 | **Platforms** | A grid of supported import platforms, each badged **Verified · real data** (TradingView) or **Beta · synthetic** (the rest), linking to the How-To guides. |
-| **Pricing** | Two cards: **Blotterbook — Free** (donations welcome) and a greyed-out, planned **Online app (~$49/mo)**. The current CSV-driven app stays free. |
+| **Pricing** | Two cards: **Blotterbook — Free** and a greyed-out, planned **Online app (~$49/mo)**. The current CSV-driven app stays free. |
 | **FAQ** | Expandable questions covering supported data, cost/tax modeling, and limitations. |
 
 **Standalone info pages** (share `site.css`):
@@ -123,6 +125,25 @@ Cron-Triggered Worker writing to KV; the Cache-API version is the Pages-native e
 the tax estimate. No IP or third-party service, nothing stored; it never overrides a chosen/saved
 state and silently does nothing off-Cloudflare or outside the US.
 
+### Admin page &amp; the Live indicator
+
+`admin.html` is an internal control page (and a `/api/status` Pages Function). The homepage's **Live**
+pill first reads `/api/status`: if an admin has set a fixed status (**Live**, **Offline**, or
+**Maintenance**, with an optional custom label) it shows that; otherwise (**Auto**) it falls back to
+pinging `/app/`. Setup on Cloudflare:
+
+1. Bind a **KV namespace** as `STATUS_KV` to the Pages project (stores the status).
+2. Set an **`ADMIN_KEY`** secret; `POST /api/status` requires a matching `x-admin-key` header.
+3. Gate `admin.html` (and ideally an `admin.blotterbook.com` custom domain) with **Cloudflare Access**.
+
+`GET /api/status` is public (the homepage needs it); writes are admin-only.
+
+### Mobile navigation
+
+On narrow screens the header's nav links collapse behind a **hamburger menu** that replaces the
+Launch button; tapping it drops down the full nav (including a Launch link). Implemented with a
+CSS-only checkbox toggle on every page (homepage + the shared `site.css` pages).
+
 ## Quick start
 
 1. Serve the folder over http (see [Development](#development--deployment)) and open `/app/`.
@@ -133,8 +154,8 @@ state and silently does nothing off-Cloudflare or outside the US.
 4. Click **Load CSV** and select the file. Your data is saved locally — it's restored
    automatically next time you open the app. Load more CSVs later from **Manage data → Load CSV**.
 
-Prefer to look around first? Open **See Demo** on the homepage for a generated, profitable sample
-month (not saved). To erase your data, use **Manage data → Erase all local data**.
+Prefer to look around first? Open **See Demo** on the homepage for a generated, profitable two-year
+sample dataset (not saved). To erase your data, use **Manage data → Erase all local data**.
 
 ## Input: the CSV
 
@@ -201,7 +222,7 @@ They're flagged *(beta — verify the numbers)* in the UI until validated agains
 | --- | --- |
 | **Top bar** | The **Blotterbook** wordmark (links to the homepage) and the loaded-source text — once data is loaded, clicking it opens **Manage data** (it does nothing before load); it's truncated so long filenames don't bloat the bar. Actions: **Changelog**, **Export report**, **Manage data**, Contact. |
 | **Landing (no data)** | The intro and the **Broker & Costs** module sit centered as a group (like the homepage hero). After **Load CSV**, a **Platform** dropdown (auto-filled by the detector) and a parse-status line appear, then **Start Blotterbook** commits and enters the app. |
-| **Broker & Costs** | Broker (incl. **TradingView PaperTrade**) / data feed / platform fee / state. Drives the cost model only — independent of the CSV's platform. Collapsible once loaded; selections persist. |
+| **Broker & Costs** | Broker (incl. **TradingView PaperTrade**) / data feed / platform fee / state. Drives the cost model only — independent of the CSV's platform. **Starts minimized** once data is loaded (the load/Start controls are hidden); selections persist. |
 | **Scope toggle** | Switches most views between *All time* and the *Selected month*. |
 | **Filters** | Date range, symbol, side, session (RTH/ETH), and day-of-week. Applies before everything. |
 | **Stat cards** | Net PnL (+ take-home), win rate, profit factor, avg win/loss, max drawdown. |
@@ -212,10 +233,10 @@ They're flagged *(beta — verify the numbers)* in the UI until validated agains
 | **Definitions & Caveats** | How each number is computed and where the data falls short. |
 
 **Demo (its own page).** The demo lives at `app/demo.html` and is reached from the homepage
-(**See Demo**), not the app. It's the full app on a generated, profitable month of sample data,
-minus the Load CSV / Manage data controls; an **End demo** button returns to the homepage (closing
-the tab when the browser allows). The header shows a purple **DEMO** badge. Demo data is in-memory
-only and never persists.
+(**See Demo**), not the app. It's the full app on a generated, profitable **two years** of sample
+data, minus the Load CSV / Manage data controls; an **End demo** button returns to the homepage
+(closing the tab when the browser allows). The header shows a purple **DEMO** badge. Demo data is
+in-memory only and never persists.
 
 **Export report.** **Export report** opens a condensed **performance report** in a new tab — period
 summary tiles, a cost &amp; tax breakdown, key statistics, and per-symbol commissions, in the
@@ -375,9 +396,8 @@ is async: `loadRefData()` → `Store.init()` → `restoreSession()` (or `runDemo
 
 ## Pricing & tiers (scaffold)
 
-**The current app — CSV-driven and Cloudflare-hosted — is free and stays free.** It's supported by
-optional donations (the PayPal button). There is **no one-time/local desktop app** planned; the
-hosted platform is the product.
+**The current app — CSV-driven and Cloudflare-hosted — is free and stays free.** There is **no
+one-time/local desktop app** planned; the hosted platform is the product.
 
 The only planned paid tier is a future **online app (~$49/mo)** that would connect **directly to
 brokers and trading platforms** for data instead of importing CSVs. It's not built; pricing is
@@ -385,7 +405,7 @@ indicative.
 
 | Tier | Bought via | Storage / data | Status |
 | --- | --- | --- | --- |
-| Free | donations | IndexedDB (this browser), CSV import | shipped |
+| Free | free to use | IndexedDB (this browser), CSV import | shipped |
 | Online (direct-connect) | subscription (~$49/mo) | server-side + live broker/platform feeds | planned |
 
 `/functions/api/{me,checkout,webhook}.js` are stubbed Cloudflare Pages Functions for Stripe
@@ -452,10 +472,9 @@ every figure clearly an *estimate* in the UI.
 All parsing, computation, and storage happen locally in your browser; **trade data is never
 uploaded**. No accounts, no tracking, no advertising cookies — the local storage that holds your data
 and settings is first-party and essential (so **no GDPR cookie banner is needed**). The only outbound
-calls, none of which carry your trades: the app's own `/data/*.json`; the optional PayPal donate
-button; `/api/geo` to pre-fill the tax state from your coarse region (nothing stored); and the
-changelog reading public commit data via the cached `/api/changelog` endpoint. The full statement is
-on [`legal.html`](legal.html).
+calls, none of which carry your trades: the app's own `/data/*.json`; `/api/geo` to pre-fill the tax
+state from your coarse region (nothing stored); and the changelog reading public commit data via the
+cached `/api/changelog` endpoint. The full statement is on [`legal.html`](legal.html).
 
 ## Development & deployment
 

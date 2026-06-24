@@ -50,9 +50,27 @@
     background:var(--accent);color:#0d1014;font-weight:600;font-size:13.5px;
     padding:9px 16px;border-radius:9px;transition:filter .15s,transform .15s}
   .btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px)}
+  /* mobile menu (hamburger replaces the Launch button) */
+  .nav{position:relative}
+  .navtoggle{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+  .hamburger{display:none;margin-left:auto;cursor:pointer;align-items:center;justify-content:center;
+    width:40px;height:36px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+  .hamburger svg{width:20px;height:20px;stroke:var(--txt);stroke-width:2;fill:none;stroke-linecap:round}
+  .navtoggle:focus-visible ~ .hamburger{border-color:var(--accent)}
+  .navlaunch{display:none}
   @media(max-width:760px){
-    .navlinks{display:none}
     .nav{gap:10px}
+    .navcta{display:none}
+    .hamburger{display:inline-flex}
+    .navlinks{display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;gap:2px;
+      background:rgba(13,16,20,.98);backdrop-filter:saturate(150%) blur(10px);
+      border-bottom:1px solid var(--line);padding:8px 16px 16px;margin:0}
+    .navtoggle:checked ~ .navlinks{display:flex}
+    .navlinks a{font-size:15px;padding:12px 10px;border-bottom:1px solid var(--line)}
+    .navlinks a:last-child{border-bottom:none}
+    .navlaunch{display:block;color:#0d1014;background:var(--accent);font-weight:600;
+      border-radius:9px;margin-top:10px;text-align:center}
+    .navlaunch:hover{background:var(--accent);color:#0d1014}
   }
 
   /* ============ generic section frame ============ */
@@ -171,8 +189,6 @@
   .soon-badge{align-self:flex-start;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
     text-transform:uppercase;color:var(--faint);border:1px solid var(--line);
     padding:4px 10px;border-radius:6px;margin-bottom:14px}
-  .donate-row{margin:6px 0 16px}
-  #donate-button-container{min-height:42px}
 
   /* ============ FAQ ============ */
   .faq-list{margin-top:30px;max-width:840px;border-top:1px solid var(--line)}
@@ -205,6 +221,7 @@
 <header id="hdr">
   <nav class="nav">
     <a class="wordmark" href="#home"><span class="dot"></span>Blotterbook</a>
+    <input type="checkbox" id="navtoggle" class="navtoggle" aria-label="Toggle navigation menu">
     <div class="navlinks">
       <a href="#features">Features</a>
       <a href="#platforms">Platforms</a>
@@ -213,10 +230,14 @@
       <a href="howto.html">How&nbsp;To</a>
       <a href="roadmap.html">Roadmap</a>
       <a href="changelog.html">Changelog</a>
+      <a class="navlaunch" href="/app/">Launch Blotterbook &rarr;</a>
     </div>
     <div class="navcta">
       <a class="btn-primary" href="/app/">Launch Blotterbook &rarr;</a>
     </div>
+    <label class="hamburger" for="navtoggle" title="Menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </label>
   </nav>
 </header>
 
@@ -252,7 +273,7 @@
       <div class="fcard">
         <div class="ficon"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/></svg></div>
         <h3>Private by design</h3>
-        <p>Your CSV is parsed and stored entirely in your browser via IndexedDB. Trade data never leaves the page — the only network calls are the app's own reference data and an optional donate button.</p>
+        <p>Your CSV is parsed and stored entirely in your browser via IndexedDB. Trade data never leaves the page — the only network calls are the app's own reference data.</p>
       </div>
       <div class="fcard">
         <div class="ficon"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 3 7-8"/><path d="M16 6h4v4"/></svg></div>
@@ -347,23 +368,20 @@
   <div class="inner reveal">
     <p class="eyebrow">Pricing</p>
     <h2 class="h2">Free today. Free as long as it's CSV-driven.</h2>
-    <p class="lead">Blotterbook is free to use and kept going by donations. The app in its current form — CSV-driven and Cloudflare-hosted — stays free. A paid tier only arrives if and when we build direct connections to brokers and trading platforms; until then, there's nothing to buy.</p>
+    <p class="lead">Blotterbook is free to use. The app in its current form — CSV-driven and Cloudflare-hosted — stays free. A paid tier only arrives if and when we build direct connections to brokers and trading platforms; until then, there's nothing to buy.</p>
     <div class="price-grid two">
 
       <div class="plan featured">
         <span class="ribbon">Available now</span>
         <h3>Blotterbook</h3>
-        <p class="sub">The full app, free. Donate any amount if it saves you money and you want to fund development.</p>
-        <div class="amt">Free <small>· donations welcome</small></div>
-        <div class="donate-row">
-          <div id="donate-button-container"><div id="donate-button"></div></div>
-        </div>
+        <p class="sub">The full app, free — no account, nothing uploaded, everything runs in your browser.</p>
+        <div class="amt">Free</div>
         <ul>
           <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Full journal, cost model, and tax estimate</li>
           <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Live broker, fee, and feed reference data</li>
           <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Everything runs locally in your browser</li>
         </ul>
-        <p class="foot-note">Secure donation via PayPal. No account required to use the app.</p>
+        <p class="foot-note">No sign-up required to use the app.</p>
       </div>
 
       <div class="plan soon">
@@ -395,7 +413,7 @@
       </details>
       <details>
         <summary><svg class="q-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Do I need an account, and is anything uploaded?</summary>
-        <p class="ans">No account, no sign-up, nothing uploaded. The only outbound network calls are loading the app's own reference-data JSON (brokers, fees, feeds, state tax) and the optional PayPal donate button. Use <code>Clear data</code> any time to wipe everything stored in your browser.</p>
+        <p class="ans">No account, no sign-up, nothing uploaded. The only outbound network call is loading the app's own reference-data JSON (brokers, fees, feeds, state tax). Use <code>Manage data</code> any time to back up, edit, or wipe everything stored in your browser.</p>
       </details>
       <details>
         <summary><svg class="q-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>How are commissions and fees calculated?</summary>
@@ -446,8 +464,6 @@
   </div>
 </footer>
 
-<!-- PayPal donate button -->
-<script src="https://www.paypalobjects.com/donate/sdk/donate-sdk.js" charset="UTF-8"></script>
 <script>
   // Header border on scroll
   var hdr=document.getElementById('hdr');
@@ -455,33 +471,37 @@
     hdr.classList.toggle('scrolled',window.scrollY>8);
   },{passive:true});
 
+  // Close the mobile menu after tapping a link
+  var navtoggle=document.getElementById('navtoggle');
+  document.querySelectorAll('.navlinks a').forEach(function(a){
+    a.addEventListener('click',function(){ if(navtoggle) navtoggle.checked=false; });
+  });
+
   // Reveal-on-scroll
   var io=new IntersectionObserver(function(entries){
     entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
   },{threshold:.12});
   document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
 
-  // Live status — check whether the app is responding
+  // Live status — an admin override (set on the admin page) wins; otherwise auto-detect by pinging the app
   (function(){
     var pill=document.getElementById('livepill'), txt=document.getElementById('livetext');
     function set(state,label){ pill.classList.remove('live','down'); pill.classList.add(state); txt.textContent=label; }
-    fetch('app/',{method:'GET',cache:'no-store'})
-      .then(function(r){ if(r.ok){ set('live','Live'); } else { set('down','Offline'); } })
-      .catch(function(){ set('down','Offline'); });
+    function ping(){
+      fetch('app/',{method:'GET',cache:'no-store'})
+        .then(function(r){ set(r.ok?'live':'down', r.ok?'Live':'Offline'); })
+        .catch(function(){ set('down','Offline'); });
+    }
+    fetch('/api/status',{cache:'no-store'})
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(s){
+        if(s && s.mode && s.mode!=='auto'){
+          var live = s.mode==='live';
+          set(live?'live':'down', s.label || (live?'Live':s.mode==='maintenance'?'Maintenance':'Offline'));
+        } else { ping(); }
+      })
+      .catch(ping);
   })();
-
-  // PayPal donate button
-  if(window.PayPal&&PayPal.Donation){
-    PayPal.Donation.Button({
-      env:'production',
-      hosted_button_id:'283D6N3NJJ7T2',
-      image:{
-        src:'https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif',
-        alt:'Donate with PayPal button',
-        title:'PayPal - The safer, easier way to pay online!'
-      }
-    }).render('#donate-button');
-  }
 </script>
 </body>
 </html>

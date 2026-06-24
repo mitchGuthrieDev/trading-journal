@@ -12,13 +12,16 @@
 <header>
   <nav class="nav">
     <a class="wordmark" href="index.html"><span class="dot"></span>Blotterbook</a>
+    <input type="checkbox" id="navtoggle" class="navtoggle" aria-label="Toggle navigation menu">
     <div class="navlinks">
       <a href="index.html#features">Features</a>
       <a href="howto.html">How&nbsp;To</a>
       <a href="roadmap.html">Roadmap</a>
       <a href="changelog.html">Changelog</a>
+      <a class="navlaunch" href="/app/">Launch Blotterbook &rarr;</a>
     </div>
     <a class="cta" href="/app/">Launch Blotterbook &rarr;</a>
+    <label class="hamburger" for="navtoggle" title="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></label>
   </nav>
 </header>
 
@@ -70,10 +73,10 @@
       happen locally; trades and day-notes live in your browser's IndexedDB and are not uploaded.</li>
     <li><b>No accounts, no tracking, no advertising cookies.</b> Local storage used to keep your data
       and settings is first-party and essential — not used to track you across sites.</li>
-    <li><b>Limited outbound calls.</b> The site loads its own reference-data JSON; optionally shows a
-      PayPal donate button; resolves your coarse region (country/state) from Cloudflare's edge to
-      pre-fill the tax state (no IP stored); and the changelog reads public GitHub commit data through
-      a cached endpoint. None of these transmit your trades.</li>
+    <li><b>Limited outbound calls.</b> The site loads its own reference-data JSON; resolves your coarse
+      region (country/state) from Cloudflare's edge to pre-fill the tax state (no IP stored); and the
+      changelog reads public GitHub commit data through a cached endpoint. None of these transmit your
+      trades.</li>
     <li>Export a backup any time from <b>Manage data → Download backup</b> — your data is yours.</li>
   </ul>
 
