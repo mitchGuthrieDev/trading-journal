@@ -800,6 +800,23 @@ async function restoreSession(){
   } else {
     resetApp();
   }
+  autoSelectState();   // fire-and-forget; no-ops if a state is already chosen
+}
+
+/* Pre-select the US state for the tax model from the visitor's coarse region
+   (Cloudflare edge geo via /api/geo). Convenience only — never overrides a
+   chosen/saved state, and silently does nothing off-Cloudflare or outside the US. */
+async function autoSelectState(){
+  const sel=$('c_state_sel'); if(!sel || sel.value) return;
+  try{
+    const r=await fetch('/api/geo',{cache:'no-store'}); if(!r.ok) return;
+    const g=await r.json();
+    if(g.country && g.country!=='US') return;
+    const code=(g.regionCode||'').toUpperCase();
+    if(code && !sel.value && [...sel.options].some(o=>o.value===code)){
+      sel.value=code; updateGate(); recalc(); persistSetup();
+    }
+  }catch(_){}
 }
 
 /* ============================================================
@@ -1268,4 +1285,5 @@ if($('dataModal')){
     catch(err){ console.error('IndexedDB unavailable — running in-memory', err); }
   }
   resetApp();
+  autoSelectState();   // in-memory fallback: still pre-fill the state from region
 })();

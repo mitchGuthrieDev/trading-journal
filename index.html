@@ -130,6 +130,22 @@
   .dual-pitch b{color:var(--txt)}
   .dual-pitch .amp{color:var(--faint);font-family:var(--mono)}
 
+  /* ============ supported platforms ============ */
+  .plat-grid{list-style:none;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:34px}
+  @media(max-width:760px){.plat-grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:460px){.plat-grid{grid-template-columns:1fr}}
+  .plat{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:15px 16px;transition:border-color .2s,transform .2s}
+  .plat:hover{border-color:#33405a;transform:translateY(-2px)}
+  .plat b{font-size:15px;flex:1;font-weight:600}
+  .plat .pdot{width:9px;height:9px;border-radius:50%;background:var(--warn);flex:none}
+  .plat.verified .pdot{background:var(--green);box-shadow:0 0 0 3px rgba(63,185,80,.15)}
+  .plat .pstate{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+  .plat.verified .pstate{color:var(--green)}
+  .plat-legend{margin-top:20px;font-size:12.5px;color:var(--dim);display:flex;gap:20px;flex-wrap:wrap;align-items:center}
+  .plat-legend .lg{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle;background:var(--warn)}
+  .plat-legend .lg.verified{background:var(--green)}
+
   /* ============ pricing ============ */
   .price-grid{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:16px;margin-top:34px;align-items:stretch}
   .price-grid.two{grid-template-columns:1fr 1fr;max-width:760px;margin-left:auto;margin-right:auto}
@@ -191,9 +207,11 @@
     <a class="wordmark" href="#home"><span class="dot"></span>Blotterbook</a>
     <div class="navlinks">
       <a href="#features">Features</a>
-      <a href="#usecases">Use Cases</a>
+      <a href="#platforms">Platforms</a>
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
+      <a href="howto.html">How&nbsp;To</a>
+      <a href="roadmap.html">Roadmap</a>
       <a href="changelog.html">Changelog</a>
     </div>
     <div class="navcta">
@@ -299,6 +317,31 @@
   </div>
 </section>
 
+<!-- ============ SUPPORTED PLATFORMS ============ -->
+<section id="platforms">
+  <div class="inner reveal">
+    <p class="eyebrow">Supported platforms</p>
+    <h2 class="h2">Bring trades from the platform you already use</h2>
+    <p class="lead">Blotterbook auto-detects your export's format and normalizes it — your broker is a
+      separate, cost-only setting. <b>TradingView</b> is verified against real exports; the others are
+      in <b>beta</b>, built from each platform's documented format and exercised with synthetic test
+      data. Step-by-step export guides live in the <a href="howto.html">How&nbsp;To</a>.</p>
+    <ul class="plat-grid" aria-label="Supported trading platforms and test status">
+      <li class="plat verified"><span class="pdot" aria-hidden="true"></span><b>TradingView</b><span class="pstate">Verified · real data</span></li>
+      <li class="plat"><span class="pdot" aria-hidden="true"></span><b>Tradovate</b><span class="pstate">Beta · synthetic</span></li>
+      <li class="plat"><span class="pdot" aria-hidden="true"></span><b>Rithmic R|Trader</b><span class="pstate">Beta · synthetic</span></li>
+      <li class="plat"><span class="pdot" aria-hidden="true"></span><b>Sierra Chart</b><span class="pstate">Beta · synthetic</span></li>
+      <li class="plat"><span class="pdot" aria-hidden="true"></span><b>TradeStation</b><span class="pstate">Beta · synthetic</span></li>
+      <li class="plat"><span class="pdot" aria-hidden="true"></span><b>MotiveWave</b><span class="pstate">Beta · synthetic</span></li>
+      <li class="plat"><span class="pdot" aria-hidden="true"></span><b>Webull</b><span class="pstate">Beta · synthetic</span></li>
+      <li class="plat"><span class="pdot" aria-hidden="true"></span><b>Interactive Brokers</b><span class="pstate">Beta · synthetic</span></li>
+      <li class="plat"><span class="pdot" aria-hidden="true"></span><b>Schwab / thinkorswim</b><span class="pstate">Beta · synthetic</span></li>
+    </ul>
+    <p class="plat-legend"><span><span class="lg verified"></span>Tested on real exports</span>
+      <span><span class="lg"></span>Beta — built from docs &amp; synthetic tests; verify the numbers</span></p>
+  </div>
+</section>
+
 <!-- ============ PRICING ============ -->
 <section id="pricing">
   <div class="inner reveal">
@@ -387,14 +430,19 @@
     <span class="fbrand"><span class="dot"></span>Blotterbook</span>
     <div class="flinks">
       <a href="#features">Features</a>
-      <a href="#usecases">Use Cases</a>
+      <a href="#platforms">Platforms</a>
       <a href="#pricing">Pricing</a>
-      <a href="#faq">FAQ</a>
+      <a href="howto.html">How To</a>
+      <a href="roadmap.html">Roadmap</a>
       <a href="changelog.html">Changelog</a>
-      <a href="/app/">Launch Blotterbook</a>
+      <a href="legal.html">Legal</a>
+      <a href="/app/">Launch</a>
       <a href="mailto:contact@scalineaudio.net?subject=Blotterbook">Contact</a>
     </div>
-    <p class="legal">Blotterbook runs entirely in your browser — your trade data never leaves the page. Cost and tax figures are estimates, not financial or tax advice.</p>
+    <p class="legal">Blotterbook is a trading journal and cost/tax estimation tool — <b>not a broker</b>,
+      and not financial, investment, or tax advice. It runs entirely in your browser; your trade data
+      never leaves the page. All figures are estimates. Trading involves risk of loss. See
+      <a href="legal.html">Legal &amp; Disclaimers</a>.</p>
   </div>
 </footer>
 

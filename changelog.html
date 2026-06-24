@@ -5,125 +5,85 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blotterlog — Blotterbook changelog</title>
 <meta name="description" content="The Blotterlog — a running history of changes to Blotterbook, drawn from the project's commit history.">
-<style>
-  :root{
-    --bg:#0d1014; --panel:#151a21; --panel2:#1b212a; --line:#262d38;
-    --txt:#d6dde6; --dim:#8a94a3; --faint:#5b6470;
-    --green:#3fb950; --accent:#6aa0ff; --take:#c98bff;
-    --mono:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,"Liberation Mono",monospace;
-    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  }
-  *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  html,body{margin:0;min-height:100%}
-  body{background:var(--bg);color:var(--txt);font-family:var(--sans);
-    -webkit-font-smoothing:antialiased;line-height:1.5}
-  a{color:var(--accent);text-decoration:none}
-  body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-    background:radial-gradient(620px 420px at 18% -8%, rgba(106,160,255,.10), transparent 70%),
-      radial-gradient(560px 420px at 96% 4%, rgba(201,139,255,.08), transparent 70%);}
-
-  header{position:sticky;top:0;z-index:50;backdrop-filter:saturate(150%) blur(10px);
-    background:rgba(13,16,20,.86);border-bottom:1px solid var(--line)}
-  .nav{max-width:880px;margin:0 auto;padding:13px 22px;display:flex;align-items:center;gap:14px}
-  .wordmark{font-weight:700;font-size:16px;color:var(--txt);display:inline-flex;align-items:center;gap:9px}
-  .wordmark .dot{width:9px;height:9px;border-radius:2px;background:linear-gradient(135deg,var(--accent),var(--take))}
-  .nav .back{margin-left:auto;color:var(--dim);font-size:13.5px;padding:7px 11px;border-radius:7px}
-  .nav .back:hover{color:var(--txt);background:var(--panel)}
-
-  .wrap{max-width:880px;margin:0 auto;padding:56px 22px 80px}
-  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
-    color:var(--accent);margin:0 0 14px}
-  h1{font-size:clamp(30px,5vw,44px);font-weight:700;letter-spacing:-.02em;margin:0 0 12px;line-height:1.1}
-  .blurb{color:var(--dim);font-size:16px;max-width:640px;line-height:1.65;margin:0 0 8px}
-  .blurb b{color:var(--txt)}
-
-  .log{margin-top:42px;position:relative;padding-left:26px}
-  .log::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:2px;
-    background:linear-gradient(180deg,var(--accent),rgba(201,139,255,.4),transparent)}
-  .entry{position:relative;padding:0 0 30px}
-  .entry::before{content:"";position:absolute;left:-26px;top:4px;width:12px;height:12px;border-radius:50%;
-    background:var(--panel2);border:2px solid var(--accent)}
-  .entry.first::before{background:var(--accent);box-shadow:0 0 0 4px rgba(106,160,255,.15)}
-  .entry .meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:7px}
-  .entry .date{font-family:var(--mono);font-size:12.5px;color:var(--dim)}
-  .entry .hash{font-family:var(--mono);font-size:11.5px;color:var(--faint);
-    background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:2px 7px}
-  .entry .hash a{color:inherit;text-decoration:none}
-  .entry .hash a:hover{color:var(--accent)}
-  .clstatus{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin:0 0 6px}
-  .entry .latest{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
-    color:var(--green);background:rgba(63,185,80,.12);border-radius:5px;padding:2px 8px}
-  .entry h3{font-size:16.5px;margin:0;font-weight:600;letter-spacing:-.01em;line-height:1.4}
-
-  footer{border-top:1px solid var(--line);padding:30px 22px;text-align:center;color:var(--faint);font-size:12.5px}
-  footer a{color:var(--dim)}
-</style>
+<link rel="stylesheet" href="site.css">
 </head>
 <body>
 
 <header>
   <nav class="nav">
     <a class="wordmark" href="index.html"><span class="dot"></span>Blotterbook</a>
-    <a class="back" href="index.html">&larr; Home</a>
+    <div class="navlinks">
+      <a href="index.html#features">Features</a>
+      <a href="howto.html">How&nbsp;To</a>
+      <a href="roadmap.html">Roadmap</a>
+      <a href="changelog.html" class="active">Changelog</a>
+    </div>
+    <a class="cta" href="/app/">Launch Blotterbook &rarr;</a>
   </nav>
 </header>
 
 <div class="wrap">
   <p class="eyebrow">The Blotterlog</p>
   <h1>Changelog</h1>
-  <p class="blurb">A running history of how <b>Blotterbook</b> took shape — pulled live from the project's
-    GitHub commit history each time you open this page. Newest changes first.</p>
+  <p class="blurb">A running history of how <b>Blotterbook</b> took shape, drawn from the project's
+    GitHub commit history. Newest changes first.</p>
   <p class="clstatus" id="clstatus">Loading the latest changes…</p>
 
   <div class="log" id="log"></div>
 </div>
 
-<footer>
-  Blotterbook &middot; <a href="index.html">Home</a> &middot; <a href="/app/">Launch Blotterbook</a> &middot;
-  <a href="mailto:contact@scalineaudio.net?subject=Blotterbook">Contact</a>
+<footer class="site">
+  <div class="frow">
+    <span class="fbrand"><span class="dot"></span>Blotterbook</span>
+    <div class="flinks">
+      <a href="index.html">Home</a>
+      <a href="howto.html">How To</a>
+      <a href="roadmap.html">Roadmap</a>
+      <a href="legal.html">Legal</a>
+      <a href="/app/">Launch</a>
+      <a href="mailto:contact@scalineaudio.net?subject=Blotterbook">Contact</a>
+    </div>
+    <p class="disclaimer">Blotterbook is a trading journal and estimation tool — <b>not a broker</b>,
+      and not financial, investment, or tax advice. All figures are estimates. Trading involves risk of loss.</p>
+  </div>
 </footer>
 
 <script>
 (function(){
-  var REPO='mitchGuthrieDev/blotterbook';
   var log=document.getElementById('log'), status=document.getElementById('clstatus');
 
-  /* Baked-in fallback shown if the GitHub API can't be reached (offline, rate limit, private). */
+  /* Baked-in fallback if our cached endpoint is unavailable (e.g. local dev). */
   var FALLBACK=[
-    {sha:'816ea16',date:'2026-06-23',msg:'Rework app: shared CSS/JS, demo page, report export, data manager, UI fixes'},
-    {sha:'f657f8f',date:'2026-06-23',msg:'Add one-page Blotterbook homepage + Blotterlog changelog; rebrand'},
-    {sha:'a48ab35',date:'2026-06-23',msg:'Restructure into a multi-file app: JSON data, IndexedDB, filters, journal'},
-    {sha:'2e3db36',date:'2026-06-23',msg:'Relocate load controls by state, collapsible setup, and rich README'},
-    {sha:'3a7ce83',date:'2026-06-23',msg:'Add broker selection, date-based perf graph, setup bar, and UX features'},
-    {sha:'7e0e9a6',date:'2026-06-23',msg:'Calculation adjustments, code cleanup, UI tweaks'},
-    {sha:'46a3e1b',date:'2026-06-22',msg:'Add cost calculations to the dashboard'},
-    {sha:'93fc980',date:'2026-06-22',msg:'Initial project commit'}
+    {sha:'',date:'2026-06-24',msg:'Format auto-detection phase 1: platform adapters, detection, fills matcher'},
+    {sha:'',date:'2026-06-23',msg:'UI/UX pass: landing, graph, data manager, report, demo, homepage, changelog'},
+    {sha:'',date:'2026-06-23',msg:'Rework app: shared CSS/JS, demo page, report export, data manager, UI fixes'},
+    {sha:'',date:'2026-06-23',msg:'Add one-page Blotterbook homepage + Blotterlog changelog; rebrand'},
+    {sha:'',date:'2026-06-23',msg:'Restructure into a multi-file app: JSON data, IndexedDB, filters, journal'},
+    {sha:'',date:'2026-06-22',msg:'Add cost calculations to the dashboard'},
+    {sha:'',date:'2026-06-22',msg:'Initial project commit'}
   ];
 
   function esc(s){ return (s||'').replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c];}); }
   function render(items, live){
     log.innerHTML=items.map(function(c,i){
-      var hash=c.url? '<a href="'+c.url+'" target="_blank" rel="noopener">'+c.sha+'</a>' : c.sha;
+      var hash=c.sha ? (c.url? '<a href="'+c.url+'" target="_blank" rel="noopener">'+c.sha+'</a>' : c.sha) : '';
       return '<div class="entry'+(i===0?' first':'')+'">'
-        +'<div class="meta"><span class="date">'+c.date+'</span><span class="hash">'+hash+'</span>'
+        +'<div class="meta"><span class="date">'+c.date+'</span>'
+        +(hash?'<span class="hash">'+hash+'</span>':'')
         +(i===0?'<span class="latest">Latest</span>':'')+'</div>'
         +'<h3>'+esc(c.msg)+'</h3></div>';
     }).join('');
-    if(status) status.textContent = live ? 'Synced from GitHub just now' : 'Showing the last saved snapshot';
+    if(status) status.textContent = live ? 'Synced from GitHub (cached hourly)' : 'Showing the last saved snapshot';
   }
 
   render(FALLBACK, false);
 
-  fetch('https://api.github.com/repos/'+REPO+'/commits?per_page=40', {headers:{'Accept':'application/vnd.github+json'}})
+  /* Read our own cached endpoint — it shields GitHub from per-visit traffic and
+     refreshes about once an hour at the edge, with no redeploy. */
+  fetch('/api/changelog', {headers:{'Accept':'application/json'}})
     .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
-    .then(function(data){
-      if(!Array.isArray(data) || !data.length) return;
-      render(data.map(function(c){
-        var cm=c.commit||{}, au=cm.author||{};
-        return { sha:(c.sha||'').slice(0,7), date:(au.date||'').slice(0,10),
-                 msg:(cm.message||'').split('\n')[0], url:c.html_url };
-      }), true);
+    .then(function(d){
+      if(d && d.ok && Array.isArray(d.commits) && d.commits.length) render(d.commits, true);
     })
     .catch(function(){ /* keep the fallback already rendered */ });
 })();

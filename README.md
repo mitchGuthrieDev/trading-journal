@@ -47,9 +47,13 @@ calls are loading the app's own reference-data JSON and an optional PayPal donat
 ## Project layout
 
 ```
-/                       one-page marketing homepage (index.html) → links to /app
-  index.html            hero + features + use cases + pricing + FAQ (single scroll, anchor nav)
-  changelog.html        "Blotterlog" — change history styled to match the homepage
+/                       marketing + info site (own CSS in index.html; site.css for the rest)
+  index.html            homepage: hero + features + use cases + platforms + pricing + FAQ
+  howto.html            "How To" wiki: getting-started walkthrough + per-platform import guides
+  roadmap.html          shipped vs. planned checklist (styled like the changelog)
+  changelog.html        "Blotterlog" — commit history (reads the cached /api/changelog endpoint)
+  legal.html            disclaimers, terms of use, privacy summary
+  site.css              shared styles for howto / roadmap / changelog / legal
 /app/                   the journal app
   index.html            app markup (links app.css + app.js)
   demo.html             the demo on its own page (shares app.css/app.js; opens in a new tab)
@@ -64,34 +68,60 @@ calls are loading the app's own reference-data JSON and an optional PayPal donat
   feeds.json            per-broker market-data feed options
   state-tax.json        Section 1256 model + per-state top rates
   manifest.json         content hashes for cache-busting (generated)
-/functions/             Cloudflare Pages Functions (Stripe/accounts scaffold)
-  api/{me,checkout,webhook}.js
+/functions/             Cloudflare Pages Functions
+  api/changelog.js      cached (1h) GitHub commit feed for the changelog page
+  api/geo.js            visitor region (Cloudflare edge geo) → pre-fill the tax state
+  api/{me,checkout,webhook}.js   Stripe/accounts scaffold
   README.md             accounts/payments/storage-tier plan
 /scripts/
   build-manifest.mjs    regenerates data/manifest.json (Node built-ins only)
   test-adapters.cjs     synthetic tests for the platform adapters (node scripts/test-adapters.cjs)
 /assets/banner.svg
+LICENSE                 proprietary — all rights reserved
 ```
 
-## Marketing homepage
+## Marketing &amp; info site
 
 The site root (`index.html`) is a **single-page, scrollable marketing site** for Blotterbook,
 styled with the same dark palette and tokens as the app. A minimalist sticky header carries
-anchor links that smooth-scroll to each full-height section:
+anchor links plus links to the standalone info pages:
 
 | Section | Purpose |
 | --- | --- |
 | **Home** | The hero (banner, tagline) with **Launch Blotterbook** and **See Demo** CTAs, plus a **Live** status pill that pings `/app/` and reports whether the app is responding. |
 | **Features** | A three-column grid of the app's capabilities (privacy, cost model, tax, broker comparison, curve/calendar, stats). |
-| **Use Cases** | The pitch — Blotterbook as both a profit/budgeting calculator and a private journal (broker comparison, tax planning, break-even, review). |
-| **Pricing** | Two cards: **Blotterbook — Free** (donations welcome, PayPal button) and a greyed-out, planned **Online app (~$49/mo)** that would connect directly to brokers and trading platforms. The current CSV-driven app stays free. |
-| **FAQ** | Expandable (collapsed-by-default) questions covering supported data, cost/tax modeling, and limitations — a friendlier take on this README. |
+| **Use Cases** | The pitch — Blotterbook as both a profit/budgeting calculator and a private journal. |
+| **Platforms** | A grid of supported import platforms, each badged **Verified · real data** (TradingView) or **Beta · synthetic** (the rest), linking to the How-To guides. |
+| **Pricing** | Two cards: **Blotterbook — Free** (donations welcome) and a greyed-out, planned **Online app (~$49/mo)**. The current CSV-driven app stays free. |
+| **FAQ** | Expandable questions covering supported data, cost/tax modeling, and limitations. |
 
-`changelog.html` ("**Blotterlog**") is a standalone, matching-styled page linked from the header
-and footer. It pulls the **live commit history from the GitHub API** on each load (newest first,
-with links to each commit) and falls back to a baked-in snapshot if the API is unreachable. Both
-pages are static with no build step (the donate button and the GitHub fetch are the only external
-calls).
+**Standalone info pages** (share `site.css`):
+
+- **`howto.html`** — a How-To wiki with a sticky sidebar: a getting-started walkthrough (with
+  non-interactive mockups of the app's modules) and a per-platform import guide for each supported
+  export, each marked verified vs. synthetic-tested.
+- **`roadmap.html`** — a shipped-vs-planned checklist (shipped items crossed off; planned items
+  flagged with priority), styled like the changelog.
+- **`changelog.html`** ("**Blotterlog**") — the commit history. It now reads our own cached
+  **`/api/changelog`** endpoint (see [below](#changelog-caching)) instead of calling GitHub on every
+  visit, and falls back to a baked-in snapshot if the endpoint is unavailable.
+- **`legal.html`** — disclaimers (not a broker, estimates only), terms of use, and a privacy summary,
+  linked from every footer alongside a one-line disclaimer.
+
+### Changelog caching
+
+`functions/api/changelog.js` is a Cloudflare Pages Function that fetches the repo's recent commits
+and caches the response at the edge for **one hour** (Cache API + `Cache-Control`). GitHub is hit at
+most ~once/hour per edge location regardless of traffic, and the data still updates **without a
+redeploy** — it's fetched live, just cached. (A single global once-an-hour refresh would use a
+Cron-Triggered Worker writing to KV; the Cache-API version is the Pages-native equivalent.)
+
+### Location-based tax state
+
+`functions/api/geo.js` returns the visitor's coarse region from Cloudflare's edge metadata
+(`request.cf`), and the app calls `/api/geo` on the landing screen to **pre-select the US state** for
+the tax estimate. No IP or third-party service, nothing stored; it never overrides a chosen/saved
+state and silently does nothing off-Cloudflare or outside the US.
 
 ## Quick start
 
@@ -364,23 +394,38 @@ resolver that will pick the matching `Store` implementation; today it always ret
 
 ## Roadmap
 
-Discussed / planned, roughly in order:
+The live, prettier version is [`roadmap.html`](roadmap.html). Highlights, roughly in priority order:
 
-- **Platform-agnostic CSV parsing** — *Phase 1 shipped:* the adapter registry, header
-  auto-detection, normalization, and the fills round-trip matcher (see
-  [Platform adapters](#platform-adapters--auto-detection)). *Next:* validate the eight `beta`
-  adapters against real exports, widen the futures point-value map, and add a manual column-mapping
-  fallback for unrecognized formats.
-- **Stripe integration** — finish the checkout / webhook / entitlements flow scaffolded in
-  `/functions` so the online tier can be sold.
-- **Accounts + cloud sync** — a `CloudStore` implementing the same `Store` interface for
-  cross-device data (the current per-browser limitation).
-- **Direct broker / platform connections** — pull fills, commissions, and rates live (the basis of
-  the planned online tier), removing the CSV step.
-- **Reference-data upkeep** — keep `data/*.json` (broker/fee/feed/state) current; consider sourcing
-  some rates dynamically.
-- **Deeper analytics** — open-position drawdown (needs entry/exit pairing), more hold-time stats,
-  per-strategy tagging, and richer report exports.
+- **Trustworthy live tax rates & data-feed costs** — *(high priority).* These are the platform's
+  selling point but are currently hand-maintained estimates (effectively web-scraped). They need real
+  sources pulled on a schedule: official CME/exchange fee schedules, per-broker data-feed price lists,
+  and per-state tax tables, written into `data/*.json` rather than guessed. See
+  [the note below](#sourcing-accurate-rate-data).
+- **Validate & harden platform adapters** — confirm the eight `beta` adapters against real exports,
+  widen the futures point-value map, add a manual column-mapping fallback for unrecognized formats.
+- **Main-app web UI redesign** — the vertical stack is great on mobile but wastes desktop real
+  estate; a responsive multi-column dashboard for wide screens.
+- **Code review & refactor pass** — a lot landed fast; a deliberate cleanup before the codebase grows.
+- **Compliance review session** — disclaimers, data handling, and any wording/registration needs as
+  monetization approaches.
+- **Journal feature parity** — trade tags/setups, screenshots & richer notes, R-multiple & risk
+  tracking, MAE/MFE, saved filter views.
+- **Accounts + cross-device sync (zero-knowledge)** — end-to-end-encrypted sync so data moves across
+  devices without us ever seeing it (Obsidian-Sync-style); removes the re-upload-per-device pain while
+  keeping the privacy promise. A `CloudStore` implementing the same `Store` interface.
+- **Stripe integration** — finish the checkout / webhook / entitlements flow scaffolded in `/functions`.
+- **Direct broker / platform connections** — pull fills, commissions, and rates live (the online tier).
+- **Recreate trade charts from CSV** — *(stretch).* Reconstruct a per-trade price/entry-exit chart.
+
+### Sourcing accurate rate data
+
+The cost/tax model is only as good as its inputs, so replacing the hand-maintained estimates is the
+top priority. Approach being considered: a scheduled job (Cron-Triggered Worker) that pulls from
+authoritative sources — the **CME market-data / fee schedules**, each **broker's published data-feed
+price list**, and a **per-state tax-rate table** — normalizes them, and commits updated `data/*.json`
+(then `build-manifest.mjs` re-hashes for cache-busting). Where a clean source/API isn't available,
+fall back to a maintained snapshot with a visible "as of" date rather than silent scraping, and make
+every figure clearly an *estimate* in the UI.
 
 ## Known limitations
 
@@ -404,9 +449,13 @@ Discussed / planned, roughly in order:
 
 ## Privacy
 
-All parsing, computation, and storage happen locally in your browser; trade data is never
-uploaded. The only network calls are the app's own `/data/*.json` and the optional PayPal donate
-button.
+All parsing, computation, and storage happen locally in your browser; **trade data is never
+uploaded**. No accounts, no tracking, no advertising cookies — the local storage that holds your data
+and settings is first-party and essential (so **no GDPR cookie banner is needed**). The only outbound
+calls, none of which carry your trades: the app's own `/data/*.json`; the optional PayPal donate
+button; `/api/geo` to pre-fill the tax state from your coarse region (nothing stored); and the
+changelog reading public commit data via the cached `/api/changelog` endpoint. The full statement is
+on [`legal.html`](legal.html).
 
 ## Development & deployment
 
@@ -424,4 +473,11 @@ the cache-busting manifest fresh). The `.claude/` directory (local preview tooli
 
 ## License
 
-No license specified. All rights reserved by the author unless stated otherwise.
+**Proprietary — all rights reserved.** See [`LICENSE`](LICENSE). The source is published for
+transparency and is viewable, but it is **not** licensed for copying, redistribution, modification,
+or commercial/hosted reuse without written permission. Personal use of the hosted app is fine,
+subject to the on-site [disclaimers and terms](legal.html).
+
+> **Disclaimer.** Blotterbook is a trading journal and cost/tax estimation tool — **not a broker**,
+> and not financial, investment, or tax advice. All figures are estimates; trading involves risk of
+> loss. See [`legal.html`](legal.html).
