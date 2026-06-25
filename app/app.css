@@ -480,3 +480,9 @@
   /* demo data-manager: "preview only" banner */
   .dmnote-demo{margin:0 0 16px;padding:10px 13px;border:1px solid rgba(227,179,65,.32);
     background:rgba(227,179,65,.10);border-radius:9px;color:var(--text);font-size:12.5px;line-height:1.5}
+
+  /* wide displays: let the main app + demo use more horizontal space so the
+     dashboard isn't stranded in a narrow column (staging already goes edge-to-edge
+     above 1100px). Kept moderate to avoid over-stretching the curve / tables. */
+  @media(min-width:1480px){ body:not([data-mode="staging"]) .wrap{max-width:1360px} }
+  @media(min-width:1920px){ body:not([data-mode="staging"]) .wrap{max-width:1520px} }
