@@ -49,6 +49,7 @@
     if (!s) return '?';
     s = s.toUpperCase().trim().replace(/^.*:/, '').replace(/^\//, ''); // drop exchange prefix and thinkorswim "/" futures marker
     s = s.replace(/[FGHJKMNQUVXZ]\d{1,4}$/, '').replace(/\d*!$/, '');
+    s = s.replace(/[^A-Z0-9._-]/g, ''); // restrict to a safe symbol charset so a crafted CSV symbol can't inject HTML downstream
     return s || '?';
   }
 

@@ -490,7 +490,7 @@ function renderCalc(m){
   cap.innerHTML=`Broker: <b>${BROKERS[c.broker].name}</b> &nbsp;·&nbsp; Feed: ${feedName()} &nbsp;·&nbsp; Platform $${c.platform}/mo`;
 
   const body=c.bySym.map(s=>
-    `<tr><td>${s.root}${s.known?'':' <span class="flag">*</span>'}</td>
+    `<tr><td>${esc(s.root)}${s.known?'':' <span class="flag">*</span>'}</td>
       <td>${s.count}</td><td>${money(s.rate)}</td><td>${money(s.rate*2)}</td><td>${money(s.total)}</td></tr>`).join('');
   const anyUnknown=c.bySym.some(s=>!s.known);
   tbl.innerHTML=
@@ -1162,7 +1162,7 @@ function exportReport(){
   const stat=(l,v)=>`<tr><td>${l}</td><td class="num">${v}</td></tr>`;
 
   const symRows=c.bySym.map(s=>
-    `<tr><td>${s.root}${s.known?'':' *'}</td><td class="num">${s.count}</td>
+    `<tr><td>${esc(s.root)}${s.known?'':' *'}</td><td class="num">${s.count}</td>
       <td class="num">${money(s.rate)}</td><td class="num">${money(s.rate*2)}</td>
       <td class="num">${money(s.total)}</td></tr>`).join('');
 
@@ -1382,11 +1382,11 @@ async function renderDataManager(){
   if($('dm_tcount')) $('dm_tcount').textContent = q? `${shown.length} / ${trades.length}` : `${trades.length}`;
   if($('dm_trades')) $('dm_trades').innerHTML = shown.length
     ? (demo
-        ? shown.slice().reverse().map(t=>`<tr><td class="mono">${t.date}</td><td>${t.root}</td>
-            <td>${t.side||'—'}</td><td class="num mono ${cls(t.pnl)}">${usd(t.pnl)}</td></tr>`).join('')
+        ? shown.slice().reverse().map(t=>`<tr><td class="mono">${t.date}</td><td>${esc(t.root)}</td>
+            <td>${esc(t.side||'—')}</td><td class="num mono ${cls(t.pnl)}">${usd(t.pnl)}</td></tr>`).join('')
         : shown.slice().reverse().map(t=>{ const id=Store.tradeId(t);
-            return `<tr><td class="mono">${t.date}</td><td>${t.root}</td>
-            <td>${t.side||'—'}${metaChips(TRADE_META.get(id))}</td><td class="num mono ${cls(t.pnl)}">${usd(t.pnl)}</td>
+            return `<tr><td class="mono">${t.date}</td><td>${esc(t.root)}</td>
+            <td>${esc(t.side||'—')}${metaChips(TRADE_META.get(id))}</td><td class="num mono ${cls(t.pnl)}">${usd(t.pnl)}</td>
             <td class="dmrowact"><button class="dmdel alt" data-edit="${id}" title="Tags, note & screenshots">Edit</button>
             <button class="dmdel" data-trade="${id}" title="Delete this trade">Delete</button></td></tr>`; }).join(''))
     : `<tr><td colspan="${demo?4:5}" class="dmempty">No matching trades.</td></tr>`;
@@ -1418,7 +1418,7 @@ function renderTradeEditor(){
   const e=DM_EDIT, t=e.trade;
   box.innerHTML=
    `<div class="dmeditcard">
-      <div class="dmedit-head"><b>${t.date} · ${t.root} ${t.side||''}</b>
+      <div class="dmedit-head"><b>${t.date} · ${esc(t.root)} ${esc(t.side||'')}</b>
         <span class="mono ${cls(t.pnl)}">${usd(t.pnl)}</span>
         <button class="dmx" data-editclose title="Close">&times;</button></div>
       <label class="dmlbl" for="dm_tags">Tags <span class="dmsublbl">comma-separated</span></label>
