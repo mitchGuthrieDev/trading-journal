@@ -33,10 +33,6 @@ on('setuphead','click',()=>$('setup').classList.toggle('collapsed'));
 // The loaded-source text opens the data manager (only once data is loaded).
 on('srcname','click',()=>{ if($('dataModal') && document.body.classList.contains('loaded')) openDataManager(); });
 
-// Staging redraws the performance graph on resize so it re-measures its (grid) width.
-if(STAGING_PAGE){ let _rsz=null; window.addEventListener('resize',()=>{ clearTimeout(_rsz);
-  _rsz=setTimeout(()=>{ if(METRICS_ALL) renderCurve(curveMetrics()); }, 160); }); }
-
 // Performance overlays are toggle buttons — at least one must stay selected.
 document.querySelectorAll('.curvebtn').forEach(btn=>btn.addEventListener('click',()=>{
   const k=btn.dataset.k;
@@ -66,7 +62,7 @@ if($('dataModal')){
   on('dm_clear','click',async()=>{
     if(!confirm('Erase ALL trades, day-notes and per-trade tags/notes saved in this browser? This cannot be undone.')) return;
     await Store.purge(); JOURNAL_DATES=new Set(); TRADE_META=new Map(); DM_EDIT=null; resetApp(); renderDataManager();
-    logAction('All local data erased', 'err');
+    emit('data:erased');
   });
   // delegated row actions: Edit opens the per-trade editor, Delete removes the trade
   on('dm_trades','click',e=>{
@@ -110,7 +106,7 @@ if($('dataModal')){
   initPanels();
   initFilters();
   wireJournal();
-  initStaging();
+  emit('app:ready');   // staging.js (if loaded) sets up its terminal / session pill / workspace controls
   // Reflect the initial overlay selection on the toggle buttons.
   document.querySelectorAll('.curvebtn').forEach(b=>b.classList.toggle('on',!!curveSel[b.dataset.k]));
 

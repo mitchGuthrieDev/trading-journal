@@ -92,7 +92,7 @@ async function commitPending(ctx){
     TRADES=trades;
     metaHtml=`<b>${TRADES.length}</b> trades &nbsp;·&nbsp; ${TRADES[0].date} → ${TRADES[TRADES.length-1].date}`;
   }
-  logAction('CSV imported · '+(name||'file')+' · now '+TRADES.length+' trades');
+  emit('data:imported', { name, count: TRADES.length });
   const manage = ctx==='manage';
   resetStage(ctx);                       // clear the staging UI + platform select (per-upload only)
   if(manage){
@@ -295,7 +295,7 @@ function wireJournal(){
     document.getElementById('j_stat').textContent = ta.value.trim()?'saved':'';
     const cell=document.querySelector(`#cal .cell[data-date="${selectedDate}"]`);
     if(cell) cell.classList.toggle('hasnote', JOURNAL_DATES.has(selectedDate));
-    logAction('Day note saved · '+selectedDate);
+    emit('note:saved', { date: selectedDate });
     if(STAGING_PAGE && METRICS_ALL) renderCurve(curveMetrics());   // refresh note dots on the graph
   };
   ta.addEventListener('input',()=>{ clearTimeout(jSaveTimer); jSaveTimer=setTimeout(save,500); });

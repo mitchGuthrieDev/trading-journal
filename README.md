@@ -68,10 +68,11 @@ call is loading the app's own reference-data JSON.
   core.js               globals, DOM helpers, metrics, formatting, cost model, reference-data loading
   render.js             dashboard rendering (cards, curve, calendar, advanced, break-even) + scope/filter driver
   data.js               CSV import, demo data, filters, day-notes journal, session restore, setup controls
-  ui.js                 collapsible/drag panels, staging flair (terminal/session/workspaces), file download
+  ui.js                 collapsible/drag panels + file-download / setup-label helpers
   export.js             condensed performance report (print → PDF)
   datamanager.js        Manage-data modal + per-trade editor + backup/restore
-  main.js               DOM event wiring + boot() — loaded LAST (core→render→data→ui→export→datamanager→main)
+  staging.js            staging-ONLY flair (activity terminal, session pill, workspace templates) — loaded only by staging.html
+  main.js               DOM event wiring + boot() — loaded LAST (core→render→data→ui→export→datamanager→[staging]→main)
   adapters.js           platform CSV adapters + format auto-detection + fills matcher
   store.js              IndexedDB persistence (trades, journal, meta, per-trade trademeta)
   entitlements.js       storage-tier resolver (scaffold; always "local" today)
@@ -501,6 +502,13 @@ The former monolithic `app.js` is split (A2) into ordered, concern-scoped classi
 above). They're plain `<script>`s sharing one global scope, not ES modules: `main.js` (loaded last) holds
 all the event wiring + the boot IIFE, so every function/state it calls is already defined. No bundler,
 no build step.
+
+Staging is isolated (A3): all the experimental flair lives in `app/staging.js`, which **only**
+`staging.html` loads (inserted just before `main.js`). Shared code never names a staging symbol — instead
+`core.js` exposes a tiny event bus (`emit`/`onEvent` over an `EventTarget`), and shared actions fire
+events (`app:ready`, `data:imported`, `note:saved`, `trade:deleted`, `backup:created`, `data:erased`)
+that `staging.js` subscribes to for its activity terminal. On the main app and demo there are no
+subscribers, so `emit()` is a no-op — removing `staging.js` leaves them fully working.
 
 ### Shared chrome: tokens + partials (no bundler)
 

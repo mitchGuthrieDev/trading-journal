@@ -41,6 +41,17 @@ const STAGING_PAGE = PAGE_MODE === 'staging';
      (store.js) — never call indexedDB directly from app/render code.
    ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------
+   App event bus — shared code EMITS action events; optional observers
+   (e.g. staging.js) subscribe. The main app and demo register no
+   listeners, so emit() is a harmless no-op there, and shared code never
+   names a staging-only symbol. Events: app:ready, data:imported,
+   note:saved, trade:deleted, backup:created, data:erased.
+   ------------------------------------------------------------------ */
+const BUS = new EventTarget();
+function emit(name, detail){ BUS.dispatchEvent(new CustomEvent(name, { detail })); }
+function onEvent(name, fn){ BUS.addEventListener(name, e => fn(e.detail)); }
+
 /* CSV parsing now lives in adapters.js (window.Adapters) — platform-specific
    format detection + normalization to the internal trade shape below. */
 

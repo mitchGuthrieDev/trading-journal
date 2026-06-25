@@ -185,7 +185,7 @@ async function dmDeleteTrade(id){
   await Store.deleteTrade(id);
   await reloadFromStore();
   await renderDataManager();
-  logAction('Trade deleted · '+id, 'warn');
+  emit('trade:deleted', { id });
 }
 async function dmDeleteNote(date){
   await Store.deleteJournal(date);
@@ -197,7 +197,7 @@ async function dmExport(){
   try{
     const data=await Store.exportAll();
     downloadFile(`blotterbook-backup-${fmtDate(new Date())}.json`, JSON.stringify(data,null,2));
-    logAction('Session backup created');
+    emit('backup:created');
   }catch(e){ console.error('backup export failed', e); alert('Could not create the backup file.'); }
 }
 async function dmImport(file){
