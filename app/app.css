@@ -378,7 +378,11 @@
     text-transform:uppercase;color:var(--faint);text-align:left;font-weight:600;padding:9px 12px;border-bottom:1px solid var(--line)}
   .dmtab td{padding:7px 12px;border-bottom:1px solid var(--line)}
   .dmtab td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
-  .dmtab td.dmrowact{text-align:right;width:1%;white-space:nowrap;display:flex;gap:6px;justify-content:flex-end}
+  /* keep this a real table cell — display:flex on a <td> drops it out of the
+     column model and overlaps the PnL cell. Space the buttons with margin. */
+  .dmtab td.dmrowact{text-align:right;width:1%;white-space:nowrap}
+  .dmtab td.dmrowact .dmdel{vertical-align:middle}
+  .dmtab td.dmrowact .dmdel + .dmdel{margin-left:6px}
   .dmdel.alt{color:var(--accent)}
   .dmdel.alt:hover{border-color:var(--accent);color:var(--accent)}
   /* tag chips + markers on trade rows */
