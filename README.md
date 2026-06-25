@@ -48,13 +48,18 @@ call is loading the app's own reference-data JSON.
 
 ```
 /                       marketing + info site (own CSS in index.html; site.css for the rest)
+  _headers              Cloudflare Pages security headers (CSP + hardening) for every response
+  tokens.css            design tokens (colors + fonts) — single source, used by every surface
   index.html            homepage: hero + features + use cases + platforms + pricing + FAQ
   howto.html            "How To" wiki: getting-started walkthrough + per-platform import guides
   roadmap.html          shipped vs. planned checklist (styled like the changelog)
   changelog.html        "Blotterlog" — commit history (reads the cached /api/changelog endpoint)
   legal.html            disclaimers, terms of use, privacy summary
   admin.html            internal admin controls (Cloudflare Access–gated; sets the Live indicator)
-  site.css              shared styles for howto / roadmap / changelog / legal / admin
+  site.css              shared styles for howto / roadmap / changelog / legal / admin (@imports tokens.css)
+/partials/              shared HTML fragments injected at build time (single source)
+  nav.html              the info-site nav (changelog / roadmap / legal / howto)
+  footer.html           the info-site footer
 /app/                   the journal app
   index.html            app markup (links app.css + app.js)
   demo.html             the demo on its own page (shares app.css/app.js; opens in a new tab)
@@ -80,6 +85,7 @@ call is loading the app's own reference-data JSON.
   api/{me,checkout,webhook}.js   Stripe/accounts scaffold
   README.md             accounts/payments/storage-tier plan
 /scripts/
+  build-includes.mjs    injects partials/nav.html + footer.html into the info pages (node scripts/build-includes.mjs)
   build-manifest.mjs    regenerates data/manifest.json (Node built-ins only)
   test-adapters.cjs     synthetic tests for the platform adapters (node scripts/test-adapters.cjs)
 /assets/banner.svg
@@ -483,6 +489,22 @@ enables the experimental features above. Key globals: `TRADES`, `METRICS_ALL`, `
 `calYear`/`calMonth`, `selectedDate`, `JOURNAL_DATES`, `TRADE_META`, `SAVED_FILTERS`, `DEMO_MODE`,
 `PAGE_MODE`/`STAGING_PAGE`. Boot: `loadRefData()` → `Store.init()` → `restoreSession()` (demo runs
 `runDemo()`; staging seeds its DB first).
+
+### Shared chrome: tokens + partials (no bundler)
+
+To keep the static, build-stepless deploy while killing copy-paste drift, two things are single-sourced:
+
+- **Design tokens** live only in [`tokens.css`](tokens.css). `site.css` and `app/app.css` `@import` it;
+  the bespoke homepage links it directly. Change a color or font in one place.
+- **The info-site nav + footer** live only in [`partials/nav.html`](partials/nav.html) and
+  [`partials/footer.html`](partials/footer.html). Each info page (changelog / roadmap / legal / howto)
+  carries `<!-- include:nav active=… -->` / `<!-- include:footer -->` markers, and
+  [`scripts/build-includes.mjs`](scripts/build-includes.mjs) injects the partials between them
+  (`active=KEY` highlights the matching `data-nav` link). It's **idempotent** — re-run it after editing a
+  partial: `node scripts/build-includes.mjs`. The committed HTML already contains the rendered output, so
+  the deploy works with or without running it; it can also be set as the Cloudflare Pages build command.
+  The **homepage and admin keep their own bespoke nav/footer** by design (different links/CTA/scroll-spy)
+  — they only share the tokens.
 
 ## Pricing & tiers (scaffold)
 

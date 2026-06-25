@@ -11,22 +11,24 @@
 <body>
 
 <header>
+  <!-- include:nav active=roadmap -->
   <nav class="nav">
     <a class="wordmark" href="index.html"><span class="dot"></span>Blotterbook</a>
     <input type="checkbox" id="navtoggle" class="navtoggle" aria-label="Toggle navigation menu">
     <div class="navlinks">
-      <a href="index.html#features">Features</a>
-      <a href="index.html#platforms">Platforms</a>
-      <a href="index.html#pricing">Pricing</a>
-      <a href="index.html#faq">FAQ</a>
-      <a href="howto.html">How&nbsp;To</a>
-      <a href="roadmap.html" class="active">Roadmap</a>
-      <a href="changelog.html">Changelog</a>
+      <a data-nav="features" href="index.html#features">Features</a>
+      <a data-nav="platforms" href="index.html#platforms">Platforms</a>
+      <a data-nav="pricing" href="index.html#pricing">Pricing</a>
+      <a data-nav="faq" href="index.html#faq">FAQ</a>
+      <a data-nav="howto" href="howto.html">How&nbsp;To</a>
+      <a data-nav="roadmap" class="active" href="roadmap.html">Roadmap</a>
+      <a data-nav="changelog" href="changelog.html">Changelog</a>
       <a class="navlaunch" href="/app/">Launch Blotterbook &rarr;</a>
     </div>
     <a class="cta" href="/app/">Launch Blotterbook &rarr;</a>
     <label class="hamburger" for="navtoggle" title="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></label>
   </nav>
+  <!-- /include:nav -->
 </header>
 
 <div class="wrap">
@@ -92,12 +94,14 @@
     <a href="mailto:contact@scalineaudio.net?subject=Blotterbook%20roadmap">contact@scalineaudio.net</a>.</div>
 </div>
 
-<footer class="site">
+<!-- include:footer -->
+  <footer class="site">
   <div class="frow">
     <span class="fbrand"><span class="dot"></span>Blotterbook</span>
     <div class="flinks">
       <a href="index.html">Home</a>
       <a href="howto.html">How To</a>
+      <a href="roadmap.html">Roadmap</a>
       <a href="changelog.html">Changelog</a>
       <a href="legal.html">Legal</a>
       <a href="/app/">Launch</a>
@@ -107,6 +111,7 @@
       and not financial, investment, or tax advice. All figures are estimates. Trading involves risk of loss.</p>
   </div>
 </footer>
+  <!-- /include:footer -->
 
 </body>
 </html>
