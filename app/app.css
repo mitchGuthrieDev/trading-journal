@@ -465,9 +465,12 @@
     border:1px solid var(--line);border-radius:7px;padding:5px 8px;max-width:150px}
 
   /* ---- staging: activity terminal ---- */
+  /* terminal fills the module body (no negative space when the panel stretches
+     on the wide grid); falls back to a 160px minimum on narrow single-column. */
+  .panel.term .pbody{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
   .panel.term .termwin{font-family:var(--mono);font-size:11.5px;line-height:1.55;
     background:#0a0d12;border:1px solid var(--line);border-radius:8px;padding:10px 12px;
-    height:160px;overflow:auto;color:#9fb4c7;white-space:pre-wrap;flex:1 1 auto}
+    min-height:160px;overflow:auto;color:#9fb4c7;white-space:pre-wrap;flex:1 1 auto}
   .panel.term .termwin .tl{display:block}
   .panel.term .termwin .tl .ts{color:#5c7186}
   .panel.term .termwin .tl .tm{color:#cde0ef}
