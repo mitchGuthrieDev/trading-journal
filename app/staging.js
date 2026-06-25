@@ -44,7 +44,7 @@ function writeWsTemplates(o){ try{ localStorage.setItem(WS_KEY,JSON.stringify(o)
 function refreshWsSelect(sel){
   const el=document.getElementById('ws_tpl'); if(!el) return;
   const tpls=readWsTemplates();
-  el.innerHTML='<option value="">— Workspace —</option>'
+  el.innerHTML='<option value="">— Default —</option>'
     + Object.keys(tpls).map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
   if(sel) el.value=sel;
 }
@@ -68,12 +68,14 @@ function initStaging(){
   on('ws_save','click',()=>{ const name=(prompt('Name this workspace layout:')||'').trim(); if(!name) return;
     const t=readWsTemplates(); t[name]=currentWorkspace(); writeWsTemplates(t); refreshWsSelect(name);
     logAction('Workspace template saved · '+name); });
-  on('ws_tpl','change',e=>{ const n=e.target.value; if(!n) return; const t=readWsTemplates()[n];
+  on('ws_tpl','change',e=>{ const n=e.target.value;
+    if(!n){   // "— Default —" → drop saved layout and reset to the default arrangement
+      try{ localStorage.removeItem(LS_ORDER); localStorage.removeItem(LS_COLLAPSE); }catch(_){}
+      applyWorkspace({ order:DEFAULT_DASH_ORDER, collapsed:{} });
+      logAction('Layout reverted to default'); return;
+    }
+    const t=readWsTemplates()[n];
     if(t){ applyWorkspace(t); logAction('Workspace template loaded · '+n); } });
-  on('ws_default','click',()=>{ try{ localStorage.removeItem(LS_ORDER); localStorage.removeItem(LS_COLLAPSE); }catch(e){}
-    applyWorkspace({ order:DEFAULT_DASH_ORDER, collapsed:{} });
-    const el=document.getElementById('ws_tpl'); if(el) el.value='';
-    logAction('Layout reverted to default'); });
   // redraw the performance graph on resize so it re-measures its (grid) width
   let _rsz=null; window.addEventListener('resize',()=>{ clearTimeout(_rsz);
     _rsz=setTimeout(()=>{ if(METRICS_ALL) renderCurve(curveMetrics()); }, 160); });
