@@ -856,6 +856,54 @@
       "partial": false,
       "prompt": "A bundle of low-risk cleanups from the second audit: (1) compute `costModel(m)` once in `renderDash()` and thread it into renderCards/renderAdv/renderCalc/dailySeries instead of recomputing it 4–5× per render; (2) merge the two blob-download helpers (`downloadFile` in `ui.js:55` and `expDlBlob` in `export.js:250`) into one that accepts a string or a Blob; (3) data-drive the ~5 parallel metric emitters (export HTML tiles/table, plaintext, markdown, and the dashboard) from one `[{label,value,cls}]` list so a metric change is made once; (4) capture `selectedDate`+textarea value when scheduling the journal autosave (`data.js:301-302`) so a fast day-switch can't write notes to the wrong date; (5) drop the stale inline CSS fallback hexes `var(--panel,#11151b)`/`var(--red,#e0564d)` (`app.css:469,471`) that don't match the real token values; (6) add `git status --porcelain` (fail if non-empty) to the CI drift gate to also catch new untracked build outputs. Done when: each is applied, adapter tests pass, and the build stays idempotent.",
       "doneNote": "**Shipped:** `costModel(m)` computed once per `renderDash()` and threaded into renderCards/renderAdv/renderCalc (was ~4 walks/render); `downloadFile()` now takes a string OR a Blob (replacing `expDlBlob`); the report's headline figures are defined once and rendered as both HTML tiles and the plaintext summary; journal autosave captures date+text at schedule time (no wrong-date writes on a fast day-switch); stale `var(--red,#e0564d)`/`var(--panel,#11151b)` CSS fallbacks removed; and the CI drift gate now also catches untracked outputs via `git status --porcelain`."
+    },
+    {
+      "id": "F10",
+      "title": "(staging) Restyle the 1256 tax row as a collapsible breakdown",
+      "category": "FEATURES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "In the staging Break-even & Cost Budget module, refactor the Section-1256 tax presentation in the cost waterfall (`renderCalc` → `c_rows`/`c_head` in `app/render.js`) to mirror the existing <b>Commissions (all-in)</b> pattern: a single headline line item <b>Est. 1256 Tax (net profit only)</b> showing the total, with the <em>State top rate</em> and <em>Blended 1256 rate</em> lines moved into a collapsible <em>Tax breakdown</em> subsection beneath it — the same `<details>`/collapsible treatment used for the per-symbol commission table (F6). Keep the computed values identical (`stateRate()`, `c.tEff`, `c.tax`); this is presentation only. Staging-scoped (gate behind `STAGING_PAGE` like the F6 commission subsection). Done when: the live Break-even module shows one Est. 1256 Tax line with a collapsible breakdown holding State top rate + Blended 1256 rate, matching the Commissions item's styling, and the numbers are unchanged.",
+      "doneNote": null
+    },
+    {
+      "id": "F11",
+      "title": "Day-notes editor visible only when a day is selected; click-outside deselects",
+      "category": "FEATURES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "The Day-notes editor (`#journal`: `j_date`/`j_stat`/`j_text` in `partials/app-dash.html`) is always shown even when no calendar day is selected. Make it appear only while a day is actively selected (`selectedDate` set) and hide it otherwise, and make a click anywhere OUTSIDE the Trading Calendar module deselect the active day — clear `selectedDate`, remove `.selday`, drop the graph marker, and hide the notes box. Touches `selectedDate`/`selectDay()` (`app/render.js`/`app/data.js`) and a document-level click handler in `app/main.js` (ignore clicks inside `#cal`/the calendar panel and inside the notes editor itself). Lives in shared dashboard code, so verify on app/demo/staging (demo keeps its 'notes disabled' hint). Done when: the notes box is hidden until a day is clicked, clicking outside the calendar module deselects the day and hides the box, and selecting a day still loads/saves its note.",
+      "doneNote": null
+    },
+    {
+      "id": "F12",
+      "title": "(staging) Reverse the Activity Terminal so newest is on top",
+      "category": "FEATURES",
+      "priority": "P3",
+      "effort": "trivial",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "The staging Activity Terminal (`app/staging.js`, the `#termwin` feed) appends new lines at the bottom (oldest-first). Reverse it so the most recent entry is at the TOP of the terminal — prepend each new line (or reverse render order) and adjust any autoscroll (newest is now always visible at the top, so scroll-to-bottom logic should become scroll-to-top or be removed). Keep the timestamp/line formatting and the line cap unchanged. Done when: the latest activity line appears at the top of the terminal and older lines flow downward.",
+      "doneNote": null
+    },
+    {
+      "id": "CH12",
+      "title": "Automate two-track versioning from conventional commits + merges",
+      "category": "CHORE / REFACTOR",
+      "priority": "P2",
+      "effort": "large",
+      "status": "done",
+      "completedDate": "2026-06-26",
+      "partial": false,
+      "prompt": "Replace manual versioning with automation. DESIGN IS DECIDED (analysis done, decisions confirmed) — implement exactly this:\n\n• SOURCE OF TRUTH: one committed `data/versions.json` = {prod, staging} as semver (seed prod \"0.12.0\", staging \"0.22.0\"). The platform 'phase' is DERIVED, not stored: prod major 0 → \"Beta\", ≥1 → stable; platform label = e.g. \"Beta 0.12\".\n• TWO TRACKS: prod (main + demo share it) and staging. (Retires the old per-surface main/demo/staging/platform record.)\n• BUMP LEVEL via conventional commits — the squash-merge title's type: feat→minor, fix/chore/refactor/docs/etc→patch, feat!/BREAKING→major; untyped/legacy→patch.\n• SURFACE SELECTION via changed paths: any PROD-shipping file changed (shared `app/*.js` except staging.js, `app/app.html`, `app/demo.html`, `app/app.css`, `partials/*`, `assets/*`, `tokens.css`, `data/*` except versions.json+backlog.json) bumps BOTH prod and staging (shared code ships to both); ONLY staging-specific files (`app/staging.js`, `app/staging.html`) bump staging alone; only non-app files (info pages, README, backlog, .github) bump nothing.\n• MECHANISM: a CI job on push to main computes the bump from the merge commit + its changed paths, writes data/versions.json, and commits it back to main with [skip ci] (needs `permissions: contents: write`; guard against bumping its own [skip ci] commit).\n• DISPLAY = RUNTIME FETCH: a tiny script (e.g. extend assets/util.js or a versions.js loaded on the app pages) fetches `/data/versions.json` on load and sets each `.ver` badge from the page's `data-mode` (staging→staging, app/demo→prod), shown as vMAJOR.MINOR.PATCH; keep the baked partial literal as an offline fallback. `app/staging.js` must read the badge AFTER it's populated (await/event).\n• ADMIN/API: `/api/config` and the admin panel read versions.json; REMOVE the manual v_main/v_demo/v_staging/v_platform inputs (or make read-only) and retire the KV `versions` record.\n• EXCLUDE versions.json from build-manifest.mjs (like backlog.json) so it doesn't thrash cache-bust hashes.\n• DO NOT TOUCH separate concerns: store.js DB_VERSION, backup `version`, manifest.json hashes, refDataVersion.\n\nDone when: a merge to main auto-bumps the correct track(s) per the rules, every surface shows the source-of-truth version at runtime (with offline fallback), the manual admin version entry is gone, adapter/auth tests + the build drift gate stay green, and no separate concern regressed.",
+      "doneNote": "**Shipped:** one source of truth data/versions.json ({prod, staging}) replaces the two disconnected sources. A CI job (.github/workflows/version-bump.yml -> scripts/bump-version.mjs) bumps on merge to main — level from the conventional-commit type, track from changed paths (shared code -> both, app/staging.* -> staging, non-app -> none) — and commits versions.json back as chore(release): ... [skip ci]. Badges are runtime-fetched (assets/util.js) with the baked partial literal as offline fallback; /api/config + admin show the values read-only (manual inputs + KV versions record retired); phase derived from prod major (0.x -> Beta). versions.json excluded from the manifest; separate concerns (DB_VERSION, backup version, manifest hashes, refDataVersion) untouched. 24 bump-logic unit tests + 7 Chromium assertions pass; added to CI. README versioning section rewritten. Seed prod 0.12.0 / staging 0.22.0."
     }
   ],
   "howToDrive": [
