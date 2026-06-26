@@ -7,7 +7,12 @@
 /* ============================================================
    Collapsible + drag-to-reorder panels (persisted)
    ============================================================ */
-const LS_ORDER='tj_order', LS_COLLAPSE='tj_collapsed';
+// Layout state lives in localStorage, which is per-ORIGIN (shared across app/demo/staging pages).
+// Staging is a separate environment, so it gets its own namespaced keys — rearranging/collapsing
+// modules in staging must NOT leak into prod/demo (and vice versa). prod + demo share one set
+// (they're the same environment; the demo mirrors prod 1:1). STAGING_PAGE is set in core.js.
+const LS_SUFFIX = STAGING_PAGE ? '_staging' : '';
+const LS_ORDER='tj_order'+LS_SUFFIX, LS_COLLAPSE='tj_collapsed'+LS_SUFFIX;
 function saveOrder(){
   const ord=[...document.querySelectorAll('#dash .panel')].map(p=>p.dataset.key);
   try{ localStorage.setItem(LS_ORDER,JSON.stringify(ord)); }catch(e){}
