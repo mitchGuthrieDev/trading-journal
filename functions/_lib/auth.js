@@ -32,6 +32,18 @@ async function hmacKey(secret){
   return crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 }
 
+/* Constant-time string compare that leaks neither contents nor length: HMAC both
+   sides under a fresh random key (fixed 32-byte output) and compare the digests. */
+async function timingSafeEqual(a, b){
+  const k = await crypto.subtle.importKey('raw', crypto.getRandomValues(new Uint8Array(32)),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const ma = new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode(String(a))));
+  const mb = new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode(String(b))));
+  let diff = ma.length ^ mb.length;
+  for (let i = 0; i < ma.length; i++) diff |= ma[i] ^ mb[i];
+  return diff === 0;
+}
+
 /* Issue an opaque token `base64url(payload).base64url(hmac)`. ttlSec = lifetime. */
 export async function issueToken(secret, ttlSec){
   const exp = Date.now() + ttlSec * 1000;
@@ -58,7 +70,7 @@ export async function verifyToken(secret, token){
 export async function isAdminAuthorized(request, env, provided){
   const val = provided != null ? provided : request.headers.get('x-admin-key');
   if (!val) return false;
-  if (env.ADMIN_KEY && val === env.ADMIN_KEY) return true;       // raw-key fallback
+  if (env.ADMIN_KEY && await timingSafeEqual(val, env.ADMIN_KEY)) return true;   // raw-key fallback (constant-time)
   const secret = env.TOKEN_SECRET || env.ADMIN_KEY;
   return secret ? verifyToken(secret, val) : false;
 }

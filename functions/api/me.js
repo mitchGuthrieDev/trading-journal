@@ -6,9 +6,8 @@
  * entitlement provisioned by the Stripe webhook (D1/KV), returning
  * { tier: "local" | "cloud", ... }.
  */
+import { json } from '../_lib/http.js';
+
 export function onRequestGet() {
-  return new Response(
-    JSON.stringify({ tier: 'local', cloudSync: false }),
-    { headers: { 'content-type': 'application/json' } }
-  );
+  return json({ tier: 'local', cloudSync: false });
 }

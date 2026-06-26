@@ -14,9 +14,8 @@
  *
  * Needs env: STRIPE_SECRET_KEY, STRIPE_PRICE_ONE_TIME, STRIPE_PRICE_SUBSCRIPTION.
  */
+import { json } from '../_lib/http.js';
+
 export function onRequestPost() {
-  return new Response(
-    JSON.stringify({ error: 'not_implemented', message: 'Checkout is not wired up yet.' }),
-    { status: 501, headers: { 'content-type': 'application/json' } }
-  );
+  return json({ error: 'not_implemented', message: 'Checkout is not wired up yet.' }, 501);
 }

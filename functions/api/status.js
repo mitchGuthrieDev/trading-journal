@@ -12,16 +12,10 @@
    back to auto and POST returns an error explaining the missing binding. */
 
 import { isAdminAuthorized } from '../_lib/auth.js';
+import { json, rateLimited } from '../_lib/http.js';
 
 const KEY = 'live';
 const MODES = ['auto', 'live', 'offline', 'maintenance'];
-
-function json(obj, status = 200) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
-  });
-}
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -34,6 +28,7 @@ export async function onRequest(context) {
   }
 
   if (request.method === 'POST') {
+    if (await rateLimited(env, 'status', request)) return json({ error: 'rate limited' }, 429);
     if (!(await isAdminAuthorized(request, env))) {
       return json({ error: 'unauthorized' }, 401);
     }

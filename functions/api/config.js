@@ -10,6 +10,7 @@
    Defaults: { flags: { showBetaAdapters:true, maintenanceBanner:false }, refDataVersion:null } */
 
 import { isAdminAuthorized } from '../_lib/auth.js';
+import { json, rateLimited } from '../_lib/http.js';
 
 const KEY = 'config';
 const DEFAULTS = {
@@ -21,12 +22,6 @@ const DEFAULTS = {
   versions: { main: 'v0.11', demo: 'v0.11', staging: 'v0.13', platform: 'Beta 1.0' }
 };
 
-function json(obj, status = 200) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
-  });
-}
 async function read(kv) {
   if (!kv) return { ...DEFAULTS };
   try { const raw = await kv.get(KEY); return raw ? { ...DEFAULTS, ...JSON.parse(raw) } : { ...DEFAULTS }; }
@@ -40,6 +35,7 @@ export async function onRequest(context) {
   if (request.method === 'GET') return json(await read(kv));
 
   if (request.method === 'POST') {
+    if (await rateLimited(env, 'config', request)) return json({ error: 'rate limited' }, 429);
     if (!(await isAdminAuthorized(request, env))) return json({ error: 'unauthorized' }, 401);
     if (!kv) return json({ error: 'STATUS_KV namespace is not bound' }, 500);
     let body; try { body = await request.json(); } catch (_) { return json({ error: 'invalid JSON body' }, 400); }
