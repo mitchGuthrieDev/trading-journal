@@ -15,9 +15,8 @@
  *
  * Needs env: STRIPE_WEBHOOK_SECRET (+ a D1 or KV binding for accounts).
  */
+import { json } from '../_lib/http.js';
+
 export function onRequestPost() {
-  return new Response(
-    JSON.stringify({ error: 'not_implemented', message: 'Webhook handler is not wired up yet.' }),
-    { status: 501, headers: { 'content-type': 'application/json' } }
-  );
+  return json({ error: 'not_implemented', message: 'Webhook handler is not wired up yet.' }, 501);
 }

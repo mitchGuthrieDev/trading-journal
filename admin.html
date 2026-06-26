@@ -282,7 +282,7 @@
   document.getElementById('launchstaging').addEventListener('click',function(){
     var key=(keyInput.value||'').trim();
     var sm=document.getElementById('stagemsg');
-    if(key){ document.cookie='bb_staging='+encodeURIComponent(key)+';path=/app/;SameSite=Strict;max-age=3600';
+    if(key){ document.cookie='bb_staging='+encodeURIComponent(key)+';path=/app/;SameSite=Strict;Secure;max-age=3600';
       sm.textContent=''; }
     else { sm.textContent='No admin key — staging will only open if ADMIN_KEY is unset on the server.'; sm.className='amsg err'; }
     window.open('/app/staging.html','_blank','noopener');

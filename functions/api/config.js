@@ -10,6 +10,7 @@
    Defaults: { flags: { showBetaAdapters:true, maintenanceBanner:false }, refDataVersion:null } */
 
 import { isAdminAuthorized } from '../_lib/auth.js';
+import { json } from '../_lib/http.js';
 
 const KEY = 'config';
 const DEFAULTS = {
@@ -21,12 +22,6 @@ const DEFAULTS = {
   versions: { main: 'v0.11', demo: 'v0.11', staging: 'v0.13', platform: 'Beta 1.0' }
 };
 
-function json(obj, status = 200) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
-  });
-}
 async function read(kv) {
   if (!kv) return { ...DEFAULTS };
   try { const raw = await kv.get(KEY); return raw ? { ...DEFAULTS, ...JSON.parse(raw) } : { ...DEFAULTS }; }

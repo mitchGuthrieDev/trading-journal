@@ -48,8 +48,7 @@ export async function onRequest(context) {
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       // edge + browser cache for an hour; stale copy served while revalidating
-      'Cache-Control': `public, max-age=${TTL}, s-maxage=${TTL}, stale-while-revalidate=86400`,
-      'Access-Control-Allow-Origin': '*'
+      'Cache-Control': `public, max-age=${TTL}, s-maxage=${TTL}, stale-while-revalidate=86400`
     }
   });
   // only cache successful responses at the edge

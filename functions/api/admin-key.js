@@ -11,12 +11,7 @@
    admin page falls back to manual key entry. */
 
 import { issueToken, verifyAccessJwt } from '../_lib/auth.js';
-
-function json(obj, status = 200) {
-  return new Response(JSON.stringify(obj), {
-    status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
-  });
-}
+import { json } from '../_lib/http.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
