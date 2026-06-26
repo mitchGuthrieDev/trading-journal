@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Public marketing/info pages only. /app/ (the journal app) and /admin.html are
+     intentionally excluded — no indexable content, and disallowed in robots.txt. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://blotterbook.com/</loc></url>
+  <url><loc>https://blotterbook.com/howto.html</loc></url>
+  <url><loc>https://blotterbook.com/roadmap.html</loc></url>
+  <url><loc>https://blotterbook.com/changelog.html</loc></url>
+  <url><loc>https://blotterbook.com/legal.html</loc></url>
+</urlset>

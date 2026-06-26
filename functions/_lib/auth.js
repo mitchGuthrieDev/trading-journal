@@ -115,3 +115,43 @@ export async function verifyAccessJwt(assertion, teamDomain, aud){
     return ok ? payload : null;
   } catch (_) { return null; }
 }
+
+/* Non-secret diagnostic for the /api/admin-key?check debug aid. Decodes the Access
+   assertion (no verification needed to read it — it's the caller's own token) and
+   reports, separately, the signature validity and the iss/aud/exp claim checks so a
+   misconfigured ACCESS_TEAM_DOMAIN/ACCESS_AUD is obvious. Returns NO secrets — only
+   the token's own claims and the configured (public) team domain / AUD identifier. */
+export async function inspectAccessJwt(assertion, teamDomain, aud) {
+  const out = { present: !!assertion };
+  if (!assertion) return out;
+  try {
+    const parts = assertion.split('.');
+    out.decodable = parts.length === 3;
+    if (parts.length !== 3) return out;
+    const header = JSON.parse(b64urlToString(parts[0]));
+    const payload = JSON.parse(b64urlToString(parts[1]));
+    const norm = s => String(s || '').replace(/\/+$/, '');
+    out.alg = header.alg || null;
+    out.kid = header.kid || null;
+    out.iss = payload.iss || null;
+    out.email = payload.email || null;
+    out.aud = Array.isArray(payload.aud) ? payload.aud : (payload.aud != null ? [payload.aud] : []);
+    const now = Math.floor(Date.now() / 1000);
+    out.exp = payload.exp || null;
+    out.expired = payload.exp ? now >= payload.exp : null;
+    if (teamDomain) { out.issExpected = norm(teamDomain); out.issMatches = norm(out.iss) === norm(teamDomain); }
+    if (aud) { out.audExpected = aud; out.audMatches = out.aud.includes(aud); }
+    // signature check, independent of the claim checks above
+    if (teamDomain && header.alg === 'RS256' && header.kid) {
+      try {
+        const jwk = (await getJwks(teamDomain)).find(k => k.kid === header.kid);
+        out.kidFound = !!jwk;
+        if (jwk) {
+          const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+          out.signatureValid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, b64urlToBytes(parts[2]), enc.encode(parts[0] + '.' + parts[1]));
+        }
+      } catch (e) { out.jwksError = String((e && e.message) || e).slice(0, 100); }
+    }
+  } catch (e) { out.error = String((e && e.message) || e).slice(0, 100); }
+  return out;
+}

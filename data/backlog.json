@@ -646,11 +646,11 @@
       "category": "CHORE / REFACTOR",
       "priority": "P3",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Add a root `robots.txt` and `sitemap.xml`. `admin.html` already carries noindex/nofollow, but there is no sitemap advertising the public pages (home/howto/roadmap/changelog/legal) and no robots.txt. Add a minimal `robots.txt` that references the sitemap and disallows `/app/` and `/admin.html` at the crawler level, plus a `sitemap.xml` listing the public pages. Done when: both files serve at the root and validate.",
-      "doneNote": null
+      "doneNote": "**Audit + shipped.** A Cloudflare-managed robots.txt was already served at the edge (AI Crawl Control: `User-agent:* / Allow:/` + `Content-Signal: search=yes,ai-train=no`, and `Disallow:/` for Amazonbot, Applebot-Extended, Bytespider, CCBot, ClaudeBot, CloudflareBrowserRenderingCrawler, Google-Extended, GPTBot, meta-externalagent; no sitemap). Per decision, that managed file was DISABLED in the Cloudflare dashboard so there's one source of truth. Added a committed root `robots.txt` that subsumes the prior AI-crawler blocks + the `Content-Signal` reservation, and adds `Disallow: /app/` + `/admin.html` and a `Sitemap:` line; plus `sitemap.xml` listing the 5 public pages (matching their CH5 canonical URLs). Verified: sitemap is valid XML and its locs equal the page canonicals; robots carries the disallows + content-signal + sitemap line. NOTE: confirm on the live site post-deploy that only our file serves (the Cloudflare override is off)."
     },
     {
       "id": "CH7",
