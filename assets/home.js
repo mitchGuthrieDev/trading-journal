@@ -43,7 +43,7 @@
     var pill=document.getElementById('livepill'), txt=document.getElementById('livetext');
     function set(state,label){ pill.classList.remove('live','down','maint'); pill.classList.add(state); txt.textContent=label; }
     function ping(){
-      fetch('app/',{method:'GET',cache:'no-store'})
+      fetch('/app/',{method:'GET',cache:'no-store'})
         .then(function(r){ set(r.ok?'live':'down', r.ok?'Live':'Offline'); })
         .catch(function(){ set('down','Offline'); });
     }

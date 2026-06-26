@@ -1,13 +1,13 @@
 @import "../tokens.css";   /* design tokens (colors + fonts) — single source */
 /* ============================================================================
    Breakpoint scale (L1) — a small named scale shared across app.css, site.css,
-   and the homepage's inline <style>. Media queries can't read CSS variables, so
-   the scale is a convention: use these canonical widths, not ad-hoc ones.
+   and the homepage's <style> (/assets/home.js's page). Media queries can't read CSS
+   variables, so the scale is a convention: use these canonical widths, not ad-hoc ones.
      xs   460   single-column phones (.adv, .plat-grid)
-     sm   560   small phones (.cards, .grid3, .mcards)
+     sm   560   small phones (.cards, .mcards, .uc-row)
      cal  620   dense grids switch to scroll / 2-col (.calgrid, .dmgrid)
-     md   760   tablet (nav → hamburger, .uc-grid, .plat-grid 2-col, .wiki*, .adv 2-col)
-     lg   900   small laptop (.cards 2-col, .grid3 2-col, .price-grid)
+     md   760   tablet (nav → hamburger, .feat-explorer stack, .plat-grid 2-col, .wiki*, .adv 2-col)
+     lg   900   small laptop (.cards 2-col, .uc-row 2-col, .price-grid)
    Wide (min-width) tiers, each a distinct purpose (kept, not merged):
      1100  staging dashboard → 2 columns
      1480  main .wrap → 1360px
