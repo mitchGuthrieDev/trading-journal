@@ -2,6 +2,14 @@
 /* Shared tiny utilities, loaded as a classic global script before any page's own scripts.
    Single source for HTML escaping across the app, the info pages, and the admin panel (A7). */
 
+/* S14: the staging-launch link may carry a short-lived admin token as ?k=<token>. Strip it
+   from the URL on load so it doesn't linger in the address bar or browser history. (The
+   middleware already consumed it on the initial request; staging.html also sends no Referer.) */
+(function(){
+  if (typeof location === 'undefined' || !/[?&]k=/.test(location.search)) return;
+  try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+})();
+
 /* Escape text for safe interpolation into HTML — including BOTH quote characters, so a value
    placed inside a "double-" or 'single-quoted' attribute can't break out of it. */
 function esc(s){
@@ -10,11 +18,20 @@ function esc(s){
   }[c]));
 }
 
+/* Platform phase label derived from the prod major: 0.x → "Beta x", ≥1 → just the version.
+   Browser-shared single source for the admin panel (A11); MIRROR of platformLabel() in
+   scripts/bump-version.mjs (the Node/CI side — keep the two in sync if the rule changes). */
+function platformLabel(prod){
+  var major = parseInt(String(prod).split('.')[0], 10) || 0;
+  return (major < 1 ? 'Beta ' : '') + prod;
+}
+
 /* CH12 — populate the version badge(s) at runtime from data/versions.json, so all surfaces
    read one source of truth without a rebuild. The baked `.ver` literal stays as the offline
    fallback. Two tracks: staging page → `staging`, app + demo → `prod`. Exposes
    window.__versionsReady (a promise) so app/staging.js can read the badge after it's set. */
 (function(){
+  if (typeof window !== 'undefined') window.__versionsReady = Promise.resolve(null);  // always a promise (CH14)
   if (typeof document === 'undefined') return;
   const badges = document.querySelectorAll('.ver');
   if (!badges.length) return;                              // info/admin pages have no badge
