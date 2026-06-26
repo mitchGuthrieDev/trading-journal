@@ -485,28 +485,16 @@
       "doneNote": null
     },
     {
-      "id": "CH4",
-      "title": "Add an effort-based model dispatcher for backlog items",
-      "category": "CHORE / REFACTOR",
-      "priority": "P3",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "Build a small operator-side dispatcher so a backlog item runs on the model matching its `effort` tag, instead of relying on a human to switch models by hand (a static instruction line in `data/backlog.json` can't change the running model — it must be set before the work runs). Read an item's `effort` from `data/backlog.json` by id and launch the work on the mapped model: `small`/`trivial` → Haiku 4.5 (`claude-haiku-4-5`); `medium` → Sonnet 4.6 (`claude-sonnet-4-6`); `large`/high → Opus 4.8 (`claude-opus-4-8`); `ongoing`/`guardrail` default to Sonnet 4.6. Implement as thin dev tooling — e.g. a Node script that, given an item id, resolves the effort→model mapping and either prints the model + item prompt for the operator or spawns a Claude Code session/subagent with that model override. Keep it OUT of the deployed static site (dev-only; not app code). Done when: invoking the dispatcher with an item id selects the effort-mapped model and surfaces/runs that item's prompt, the mapping is documented, and no per-effort model instructions live inside backlog.json itself.",
-      "doneNote": null
-    },
-    {
       "id": "S7",
       "title": "Escape backup-restore symbol/tag option sinks (stored XSS)",
       "category": "SECURITY",
       "priority": "P1",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Close a stored-XSS chain via backup restore. CSV-imported symbols are charset-filtered by `rootSym()`, but `Store.importAll()` (`app/store.js`) writes `trades[].root` and `trademeta[].tags` from an untrusted backup JSON with NO sanitization, and those values are rendered into `<option>` elements WITHOUT escaping in `syncFilterOptions()` (`app/data.js` ~180) and `syncTagFilter()` (~194) — a crafted tag/root such as `'><img src=x onerror=alert(1)>` executes in the app origin (can read IndexedDB + the admin token). Wrap both interpolations in the existing `esc()`, AND sanitize at the trust boundary in `Store.importAll()` (run `root` through `Adapters.rootSym()`, strip angle-brackets/ampersand/quote chars from tags) so restored data matches CSV-imported data. Done when: importing a backup whose tag/symbol contains an HTML payload renders inert text in the filter dropdowns and chips, and a normal backup round-trips unchanged.",
-      "doneNote": null
+      "doneNote": "**Shipped:** two layers. Sink: the f_symbol/f_tag filter <option> interpolations (app/data.js) are now wrapped in esc(). Boundary: Store.importAll() (app/store.js) forces trades[].root through Adapters.rootSym() and strips <>&\"' from trademeta tags, so a restored backup matches CSV-imported data. Verified in Chromium: importing a backup whose symbol is a crafted img/onerror payload does NOT execute (no alert, no live element), the root is stored as sanitized text (EVILIMGSRCXONERROR...), the dropdown renders inert text, and a normal restore still completes."
     },
     {
       "id": "S8",
@@ -514,11 +502,11 @@
       "category": "SECURITY",
       "priority": "P2",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Small hardening pass in `functions/` + admin: (1) add `;Secure` to the `bb_staging` admin-token cookie (`admin.html` ~285) — it carries an admin credential; (2) make the raw-key fallback compare constant-time in `isAdminAuthorized()` (`functions/_lib/auth.js`, currently `val===env.ADMIN_KEY`) via an HMAC-equal or `crypto.subtle.verify`; (3) add `Cache-Control: no-store` to `/api/me` (`functions/api/me.js`) before it ever returns per-user data; (4) drop the unnecessary wildcard `Access-Control-Allow-Origin` from `/api/changelog` (all callers are same-origin under the CSP). Done when: the staging cookie is Secure, the raw-key compare is constant-time, `/api/me` is no-store, and `/api/changelog` sends no wildcard CORS header; admin + staging still work.",
-      "doneNote": null
+      "doneNote": "**Shipped:** (1) the bb_staging admin-token cookie now carries ;Secure; (2) the raw-key fallback in isAdminAuthorized() uses a constant-time compare (HMAC both sides under a random key — leaks neither contents nor length); (3) /api/me is now no-store (via the shared json() helper); (4) dropped the wildcard Access-Control-Allow-Origin from /api/changelog. Verified with a Node WebCrypto test: constant-time accept/reject, me.js no-store, all function modules import."
     },
     {
       "id": "S9",
@@ -526,11 +514,11 @@
       "category": "SECURITY",
       "priority": "P2",
       "effort": "medium",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Remove `'unsafe-inline'` from the CSP `script-src` — it is the biggest residual XSS amplifier (it is what lets an injected script/onerror run; e.g. it is the difference between S7 being exploitable or not). Move the first-party inline `<script>` blocks (homepage `index.html`, `admin.html`, `changelog.html`, and any app page) into external `.js` files, then set `script-src 'self'` in `_headers`. Keep `style-src 'unsafe-inline'` only if inline `style=` attributes remain (or externalize those too). There is no build step, so this is plain file moves. Done when: every page loads its script from an external file, `_headers` `script-src` is `'self'` with no `unsafe-inline`, and app/demo/staging/admin/home still function in preview.",
-      "doneNote": null
+      "doneNote": "**Shipped:** removed the last inline executable scripts so the CSP forbids inline JS. Moved each page's inline <script> to its own file (index->/assets/home.js, admin->/assets/admin.js, changelog->/assets/changelog.js); rewrote the main/demo new-tab Export report to load external /assets/report.js with per-report data in a non-executable <script type=application/json> block and addEventListener-wired buttons (it inherits the app CSP). _headers script-src is now 'self' (no 'unsafe-inline'); style-src keeps it (inline styles remain). Verified in Chromium UNDER THE EXACT DEPLOYED CSP HEADER: homepage feature explorer, admin backlog, the demo new-tab report (downloads a clean HTML file), and the staging export modal all work with ZERO CSP violations; no inline on*= handlers remain in served HTML."
     },
     {
       "id": "S10",
@@ -538,11 +526,11 @@
       "category": "SECURITY",
       "priority": "P3",
       "effort": "medium",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Harden the admin write path further (already behind Access + token): (1) add lightweight rate limiting to `/api/status`, `/api/config`, `/api/admin-key` (e.g. a KV-backed counter keyed by IP or Access email with a short window) to blunt brute force/abuse; (2) stop persisting the admin token in `localStorage` (`admin.html`) — keep it in a page-session JS variable, or have the function set an HttpOnly+Secure+SameSite cookie — so an XSS cannot lift a live credential. Done when: rapid repeated admin POSTs are throttled, and the admin token is no longer readable from localStorage.",
-      "doneNote": null
+      "doneNote": "**Shipped (defense-in-depth):** added a best-effort KV-backed fixed-window rate limiter (functions/_lib/http.js rateLimited()) keyed by Access email / client IP — /api/status + /api/config at 30/min, /api/admin-key at 20/min, 429 over limit; fails OPEN if STATUS_KV is unbound so it can't lock the admin out. assets/admin.js no longer writes the admin token (or any key) to localStorage — it lives only in the page-session field and autoKey() re-issues a fresh token each load, so an XSS can't lift a persisted credential. Verified with a Node test (35 reqs at limit 30 -> 5 blocked; fail-open without KV)."
     },
     {
       "id": "S11",
@@ -646,11 +634,11 @@
       "category": "CHORE / REFACTOR",
       "priority": "P2",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "No page has Open Graph, Twitter-card, or canonical tags, so shared links render bare previews. Add `og:title/description/image/url/type` plus `twitter:card` and `rel=canonical` to `index.html` (and ideally the info pages), and provide a raster (PNG/JPG) OG image — the existing `assets/banner.svg` will not render as an OG image. Titles + meta descriptions are already present and good. Done when: sharing the homepage produces a rich preview card and each public page declares a canonical URL.",
-      "doneNote": null
+      "doneNote": "**Shipped:** generated a 1200x630 raster OG card (assets/og-image.png, branded dark card). index.html gets full Open Graph + Twitter summary_large_image tags + rel=canonical; howto/roadmap/changelog/legal each get rel=canonical + per-page OG/Twitter (own title/description, shared OG image). Shared links now render a rich preview and every public page declares a canonical URL."
     },
     {
       "id": "CH6",
@@ -670,11 +658,11 @@
       "category": "CHORE / REFACTOR",
       "priority": "P2",
       "effort": "medium",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Nothing enforces the manual tooling: there is no CI, no package.json, and nothing guarantees that `build-includes.mjs` (partials) and `build-manifest.mjs` (cache-bust hashes) were re-run after edits, or that `test-adapters.cjs` passes before deploy. Add a GitHub Actions workflow (and/or set the Cloudflare Pages build command) that runs both build scripts and FAILS if they produce a diff, and runs the adapter tests. Consider a SessionStart hook so web sessions run the tests. Done when: a change that edits a partial or data file without re-running the builds fails CI, and the adapter tests run automatically.",
-      "doneNote": null
+      "doneNote": "**Shipped:** .github/workflows/ci.yml (push to main + PRs) runs test-adapters.cjs, regenerates partials (build-includes) + the data manifest (build-manifest), and FAILS on any uncommitted diff — so stale partials or a stale manifest can't merge. Made build-manifest deterministic for the gate: dropped the generatedAt timestamp (nothing reads it; the app cache-busts the manifest fetch itself) and excluded backlog.json (admin-only, fetched no-store) so the manifest stops churning on backlog edits. Verified: manifest re-run = no diff, 55/55 adapter tests pass, build-includes idempotent. Note: a SessionStart hook isn't committable (.claude/ is gitignored) — the Actions workflow is the enforcement."
     },
     {
       "id": "CH8",
@@ -682,11 +670,11 @@
       "category": "CHORE / REFACTOR",
       "priority": "P2",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "The same version numbers live in `functions/api/config.js` DEFAULTS, each app page's `.ver` badge, a hardcoded literal in `app/staging.js` (~82, 'Staging session ready · v0.13'), and the `admin.html` placeholders — a bump means four-plus hand-edits and silent drift, and the staging.js literal is easy to miss. At minimum, make `staging.js` read the version from the `.ver` element instead of the literal, and document a one-place bump checklist; better, drive each page badge from a single shared constant. Done when: bumping the staging version no longer requires editing `staging.js`, and the remaining drift points are documented and reduced.",
-      "doneNote": null
+      "doneNote": "**Shipped:** app/staging.js reads the version from the .ver page badge instead of a hardcoded 'v0.13' in the activity-terminal 'session ready' line, so a bump no longer touches staging.js. README documents a version-bump checklist (badge = display source; reconcile config.js KV defaults + admin placeholder). Verified: the staging terminal shows 'Staging session ready · v0.13' read from the badge."
     },
     {
       "id": "CH9",
@@ -694,11 +682,11 @@
       "category": "CHORE / REFACTOR",
       "priority": "P3",
       "effort": "trivial",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Two small cleanups surfaced by the audit: (1) the L1 breakpoint-scale comment block at the top of `app/app.css` still cites F7-deleted classes (`.grid3`, `.uc-grid`) as live examples — update to surviving selectors (`.uc-row`, `.feat-explorer`, `.plat-grid`, `.price-grid`); (2) the homepage live-status pill pings `fetch('app/')` (relative) while every other call is absolute — change to `fetch('/app/')` for path-independence and convention. Done when: the CSS comment references real classes and the pill uses the absolute `/app/` path.",
-      "doneNote": null
+      "doneNote": "**Shipped:** the app/app.css L1 breakpoint-scale comment now references surviving selectors (.uc-row, .feat-explorer) instead of the F7-deleted .grid3/.uc-grid; assets/home.js live-status pill pings /app/ (absolute) instead of the relative app/, matching every other fetch + the _redirects convention."
     },
     {
       "id": "CH10",
@@ -706,11 +694,11 @@
       "category": "CHORE / REFACTOR",
       "priority": "P3",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "The `json(obj,status)` Response helper is byte-identical in `functions/api/config.js`, `status.js`, and `admin-key.js`, while `me.js`/`checkout.js`/`webhook.js`/`geo.js` hand-roll inconsistent variants (e.g. lowercase content-type, no Cache-Control). Add a single `json()` to a shared `functions/_lib/http.js` (or `_lib/auth.js`) and import it everywhere so all API responses share one shape (charset + no-store by default). Done when: every API function returns JSON via the shared helper and the response headers are consistent.",
-      "doneNote": null
+      "doneNote": "**Shipped:** new functions/_lib/http.js exports a single json(obj,status,headers) helper (no-store + charset by default). config/status/admin-key dropped their byte-identical local copies; me/checkout/webhook/geo now return via the shared helper for a consistent response shape (also gives /api/me no-store). changelog keeps its bespoke long-cache headers by design. Verified: all function modules import; json() defaults + override correct."
     },
     {
       "id": "A6",
