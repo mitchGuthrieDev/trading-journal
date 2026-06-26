@@ -11,11 +11,21 @@
   function setMsg(t,kind){ msg.textContent=t||''; msg.className='amsg'+(kind?' '+kind:''); }
   function mark(mode){ document.querySelectorAll('.modebtn').forEach(function(b){ b.classList.toggle('on', b.dataset.mode===mode); }); }
 
+  // Fetch with an 8s timeout so a hung/slow endpoint falls into its .catch (e.g. shows
+  // "unavailable") instead of leaving a row stuck forever on "loading…".
+  function fetchT(url, opts){
+    var ctl = (typeof AbortController!=='undefined') ? new AbortController() : null;
+    var o = Object.assign({}, opts||{}); if(ctl) o.signal=ctl.signal;
+    var t = ctl ? setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, 8000) : null;
+    return fetch(url, o).then(function(r){ if(t)clearTimeout(t); return r; },
+                             function(e){ if(t)clearTimeout(t); throw e; });
+  }
+
   // Reached through Cloudflare Access: fetch a SHORT-LIVED signed token (S3) — the raw
   // ADMIN_KEY never reaches the browser. The token is sent as x-admin-key for writes and
   // carried in the bb_staging cookie for launching staging, exactly like the key was.
   function autoKey(){
-    fetch('/api/admin-key',{cache:'no-store'}).then(function(r){ return r.ok?r.json():null; }).then(function(d){
+    fetchT('/api/admin-key',{cache:'no-store'}).then(function(r){ return r.ok?r.json():null; }).then(function(d){
       if(d && d.token){ keyInput.value=d.token;
         var until=d.exp?(' — expires '+new Date(d.exp).toLocaleTimeString()):'';
         authnote.textContent='Authenticated'+(d.email?(' as '+d.email):'')+' — admin token issued'+until+'.'; }
@@ -23,7 +33,7 @@
   }
 
   function loadStatus(){
-    fetch('/api/status',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+    fetchT('/api/status',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
       var when=d.updatedAt?(' · updated '+new Date(d.updatedAt).toLocaleString()):'';
       cur.innerHTML='Current: <b>'+(d.mode||'auto')+'</b>'+(d.label?(' — “'+d.label+'”'):'')+when;
       mark(d.mode||'auto');
@@ -55,14 +65,20 @@
   function setRefMsg(t,k){ refmsg.textContent=t||''; refmsg.className='amsg'+(k?' '+k:''); }
   var verstate=document.getElementById('verstate');
   function loadConfig(){
-    fetch('/api/config',{cache:'no-store'}).then(function(r){return r.json();}).then(function(c){
+    fetchT('/api/config',{cache:'no-store'}).then(function(r){return r.json();}).then(function(c){
       var f=c.flags||{};
       document.querySelectorAll('[data-flag]').forEach(function(el){ el.checked=!!f[el.dataset.flag]; });
       refstate.innerHTML='Cache version: <b>'+(c.refDataVersion?new Date(c.refDataVersion).toLocaleString():'never')+'</b>';
-      // CH12: versions are read-only (automated, sourced from data/versions.json). prod = main+demo.
-      var v=c.versions||{};
-      verstate.innerHTML='Prod (main + demo) <b>'+esc(v.prod||'—')+'</b> · Staging <b>'+esc(v.staging||'—')+'</b> · Platform <b>'+esc(v.platform||'—')+'</b>';
-    }).catch(function(){ refstate.textContent='Config unavailable (deploy on Cloudflare to use)'; verstate.textContent='Versions: unavailable (deploy on Cloudflare to use)'; });
+    }).catch(function(){ refstate.textContent='Config unavailable (deploy on Cloudflare to use)'; });
+  }
+  // CH12: read versions straight from the public source of truth (no server self-fetch, which
+  // hung GET /api/config behind Access). Platform phase derived from the prod major (0.x → Beta).
+  function loadVersions(){
+    fetchT('/data/versions.json',{cache:'no-store'}).then(function(r){return r.json();}).then(function(v){
+      var major=parseInt(String(v.prod||'0').split('.')[0],10)||0;
+      var platform=(major<1?'Beta ':'')+(v.prod||'—');
+      verstate.innerHTML='Prod (main + demo) <b>'+esc(v.prod||'—')+'</b> · Staging <b>'+esc(v.staging||'—')+'</b> · Platform <b>'+esc(platform)+'</b>';
+    }).catch(function(){ verstate.textContent='Versions: unavailable'; });
   }
   function postConfig(body,onMsg){
     var key=(keyInput.value||'').trim();
@@ -79,16 +95,24 @@
   });
   document.getElementById('bumpref').addEventListener('click',function(){ postConfig({bumpRefData:true}, setRefMsg); });
 
-  // Launch staging: carry the admin key as a short-lived cookie so the middleware gate passes,
-  // then open the gated page. (Browsers can't set request headers on a navigation; the Cookie
-  // header is the navigation-safe equivalent.)
+  // Launch staging: carry the short-lived admin token to the gated page TWO ways — a cookie
+  // (the navigation-safe header equivalent) AND a ?k= query-param fallback, since the cookie
+  // isn't always delivered on a window.open navigation. The middleware accepts either, so the
+  // gate passes as long as a token was issued. (Staging now fails closed without a credential,
+  // so an empty token field means Access didn't issue one — surface that clearly.)
   document.getElementById('launchstaging').addEventListener('click',function(){
     var key=(keyInput.value||'').trim();
     var sm=document.getElementById('stagemsg');
-    if(key){ document.cookie='bb_staging='+encodeURIComponent(key)+';path=/app/;SameSite=Strict;Secure;max-age=3600';
-      sm.textContent=''; }
-    else { sm.textContent='No admin key — staging will only open if ADMIN_KEY is unset on the server.'; sm.className='amsg err'; }
-    window.open('/app/staging.html','_blank','noopener');
+    var url='/app/staging.html';
+    if(key){
+      document.cookie='bb_staging='+encodeURIComponent(key)+';path=/app/;SameSite=Lax;Secure;max-age=3600';
+      url+='?k='+encodeURIComponent(key);
+      sm.textContent=''; sm.className='amsg';
+    } else {
+      sm.textContent='No admin token in the key field yet — it’s issued via Access on load. Wait for the “Authenticated…” note, then retry.';
+      sm.className='amsg err';
+    }
+    window.open(url,'_blank','noopener');
   });
 
   // ---- backlog (read-only view of data/backlog.json) ----
@@ -160,5 +184,6 @@
   autoKey();
   loadStatus();
   loadConfig();
+  loadVersions();
   loadBacklog();
 })();
