@@ -476,14 +476,16 @@
     #dash .panel[data-key="perf"]{grid-column:1 / -1}
     .adv{grid-template-columns:1fr}
     /* L6: on the wide multi-column grid, only the full-width Performance panel stays collapsible.
-       For the others the chevron is noise, so hide it AND force the body visible — a panel
-       collapsed on a narrow screen must not get stuck collapsed-with-no-control once it widens.
-       Below 1100px every panel is single-column / full-width and stays collapsible as normal. */
+       For the others the chevron is noise, so hide it; the header click is also a no-op there
+       (ui.js). A panel collapsed on a narrow screen must render exactly like an expanded panel
+       once it widens — so FULLY neutralize the .collapsed state here (padding, header margin,
+       and body display, including the terminal's flex stretch). Below 1100px every panel is
+       single-column / full-width and stays collapsible as normal. */
     #dash .panel:not([data-key="perf"]) .chev{display:none}
-    #dash .panel:not([data-key="perf"]).collapsed .pbody{display:block}
-    #dash .panel.term:not([data-key="perf"]).collapsed .pbody{display:flex}
+    #dash .panel:not([data-key="perf"]).collapsed{padding-bottom:18px}
     #dash .panel:not([data-key="perf"]).collapsed .phead{margin-bottom:12px}
-    #dash .panel:not([data-key="perf"]).collapsed{padding-bottom:0}
+    #dash .panel:not([data-key="perf"]).collapsed .pbody{display:block}
+    #dash .panel.term:not([data-key="perf"]).collapsed .pbody{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
   }
   @media(min-width:1700px){
     #dash{grid-template-columns:repeat(3,minmax(0,1fr))}
