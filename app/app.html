@@ -16,7 +16,23 @@
     <div class="brand">
       <a class="bwordmark" href="../index.html" title="Back to the Blotterbook homepage">Blotterbook</a>
 
-      <span class="ver" title="Main app version">v0.16.0</span>
+      <span class="ver" title="Main app version">v0.17.0</span>
+
+      <!-- session-status pill — promoted to all surfaces (CH16) -->
+      <span class="sesswrap">
+        <button class="sesspill online" id="sesspill" title="Session status — click for details" aria-haspopup="true" aria-expanded="false">
+          <span class="sessdot"></span><span class="sesstxt">Session</span>
+        </button>
+        <div class="sesspop" id="sesspop" hidden>
+          <h4>Session status</h4>
+          <ul>
+            <li><span class="sessdot online"></span><b>Online</b> — connected; every module is available.</li>
+            <li><span class="sessdot offline"></span><b>Offline</b> — no internet. The journal keeps working locally; any module that needs the network is paused.</li>
+            <li><span class="sessdot degraded"></span><b>Degraded</b> — local data looks corrupted. Restore from a backup in Manage data.</li>
+          </ul>
+          <p class="muted">No module currently needs a connection — this indicator is forward-looking flair.</p>
+        </div>
+      </span>
 
       <!-- session-status pill — promoted to all surfaces (CH16) -->
       <span class="sesswrap">
