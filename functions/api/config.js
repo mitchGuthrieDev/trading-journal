@@ -25,31 +25,17 @@ async function read(kv) {
 }
 
 // CH12: versions are NOT admin-editable anymore — they're derived from the automated
-// source of truth (data/versions.json). Surface them read-only on GET. Phase label is
-// derived from the prod major (0.x -> Beta).
-function platformLabel(prod) {
-  const major = parseInt(String(prod || '0').split('.')[0], 10) || 0;
-  return (major < 1 ? 'Beta ' : '') + (prod || '');
-}
-async function readVersions(request) {
-  try {
-    const r = await fetch(new URL('/data/versions.json', request.url), { cf: { cacheTtl: 60 } });
-    if (!r.ok) return null;
-    const v = await r.json();
-    return { prod: v.prod, staging: v.staging, platform: platformLabel(v.prod) };
-  } catch (_) { return null; }
-}
+// source of truth (data/versions.json). The admin panel reads that file DIRECTLY in the
+// browser; this Function must NOT self-fetch it. (An earlier version fetched the admin
+// origin's own /data/versions.json from inside the Worker, which — because the admin host
+// is behind Cloudflare Access — got redirected to the Access login and hung GET /api/config,
+// freezing the admin panel's version + cache rows on "loading…".)
 
 export async function onRequest(context) {
   const { request, env } = context;
   const kv = env.STATUS_KV;
 
-  if (request.method === 'GET') {
-    const cfg = await read(kv);
-    const versions = await readVersions(request);
-    if (versions) cfg.versions = versions;   // read-only, sourced from data/versions.json
-    return json(cfg);
-  }
+  if (request.method === 'GET') return json(await read(kv));
 
   if (request.method === 'POST') {
     if (await rateLimited(env, 'config', request)) return json({ error: 'rate limited' }, 429);
