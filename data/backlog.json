@@ -379,11 +379,10 @@
       "category": "REVIEW / AUDIT",
       "priority": "P2",
       "effort": "medium",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
-      "prompt": "Analyze and review the Advanced Statistics feature in staging. (a) What information can we clean up or cut? (b) What stats might customers expect that we're missing? (c) Document how the 'best/worst weekday' values are calculated and the reasoning for including them (and whether they earn their place). (d) UI cleanup: the Edge and Distribution sections are inconsistent — several entries render the main value in the MIDDLE of the entry instead of aligned like the rest; make the layout consistent. Deliver a written recommendation + apply the contained UI consistency fixes; spin off larger stat additions as their own items. Done when: a written review (cut/add/rationale) exists, the weekday calc is documented, and the Edge/Distribution layout is consistent.",
-      "doneNote": null
+      "doneNote": "Reviewed the Advanced Statistics module and shipped the contained UI fix. UI: wrapped every stat value in a single `.avg` flex group (app/render.js + app/app.css) so rows with a secondary value (Long/Short PnL, Best/Worst Day, Best/Worst Weekday, Avg Hold) no longer strand the MAIN figure in the middle of the row — all 21 rows now right-align at the same edge (verified in-browser). WEEKDAY CALC documented in core.js: bestDow/worstDow bucket each trade by local weekday and pick the active weekday with the highest/lowest TOTAL PnL; noted the caveat that total (not per-trade) PnL skews toward heavily-traded weekdays and is noisy on small samples (the demo's 'worst weekday' is still +$14.9k), so it marginally earns its place — flagged for normalization/replacement. WRITTEN REVIEW delivered (cut/add/rationale); spun off the larger work: F15 (add avg-winner/loser, payoff ratio, max-DD % + duration, profit concentration, optional Sortino/streak-$) and CH18 (trim redundant Total Commissions + Account Information rows; normalize or replace Best/Worst Weekday)."
     },
     {
       "id": "R6",
@@ -1061,6 +1060,30 @@
       "completedDate": "2026-06-26",
       "partial": false,
       "doneNote": "Activity-terminal polish: removed role=\"log\" from #termwin (kept aria-live=\"polite\") since lines are inserted newest-first (insertBefore), which role=log doesn't expect — documented the choice in the partial. Added a comment flagging that DEFAULT_DASH_ORDER must stay in sync with the data-key order in app-dash.html; hoisted the bare 200 terminal line-cap to const TERM_MAX_LINES; added a note that the 'degraded' session state is reserved/forward-looking (no caller by design)."
+    },
+    {
+      "id": "F15",
+      "title": "Advanced Stats — add the metrics traders expect",
+      "category": "FEATURES",
+      "priority": "P3",
+      "effort": "medium",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the R5 review of the Advanced Statistics module (renderAdv in app/render.js, data from compute() in app/core.js): add the high-value metrics a serious trader expects, all computable from data we already have (no new inputs). Candidates, grouped under the existing subheads: (1) Avg winner / Avg loser ($) and Payoff ratio (avgW / |avgL|) — we already compute avgW/avgL/wl; surface them here as well as on the card. (2) Max drawdown $ AND % (peak-relative) plus drawdown duration (trades or days from peak to trough) — we have maxDD and curve; add the % and span. (3) Profit concentration — % of total net profit contributed by the top 5 (or top 10%) winning trades, a 'are you reliant on a few big trades' signal. (4) Optional: Sortino (downside-deviation Sharpe) alongside the existing daily Sharpe; largest winning/losing STREAK $ (not just the mcw/mcl counts). Keep the layout consistent with the R5 .avg value-group fix, keep the Definitions panel caveats in sync, and don't regress the shared (all-surface) render. Done when: the new metrics render correctly from the active dataset, are documented in the Definitions panel, and the module stays visually consistent.",
+      "doneNote": null
+    },
+    {
+      "id": "CH18",
+      "title": "Advanced Stats cleanup — trim redundancy + rework Best/Worst Weekday",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "R5 cleanup of the Advanced Statistics module (renderAdv, app/render.js). (1) TRIM redundancy: 'Total Commissions' duplicates the Break-even & Cost Budget panel's 'Commissions (all-in)' line — cut it from Advanced Stats (or replace with something non-duplicative). Reconsider the 'Account Information' section: 'First Trade Date'/'Last Trade Date' restate the date range already shown by the scope/cost panel, and 'Active Days' appears in the cost sub-line — either cut the section or fold the one useful value elsewhere; an 'advanced statistics' module shouldn't end on plain metadata. (2) REWORK Best/Worst Weekday: today these are TOTAL PnL per weekday (documented in core.js), which is misleading — with the demo data the 'Worst Weekday' is still +$14.9k because you simply trade fewer/smaller days then. Decide: normalize to per-trade (or per-trading-day) AVERAGE PnL per weekday so 'best/worst' is comparable, OR cut the two rows in favor of a full weekday breakdown (the F14 Win Rate modal already shows every weekday). Keep the .avg value-group layout. Done when: the redundant rows are gone (or justified), and Best/Worst Weekday is either normalized to an average or replaced, with the Definitions/caveats updated to match.",
+      "doneNote": null
     }
   ],
   "howToDrive": [
