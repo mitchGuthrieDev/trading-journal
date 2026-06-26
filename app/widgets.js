@@ -5,7 +5,9 @@
    staging. Loaded AFTER datamanager.js and BEFORE main.js, so its event subscriptions are
    registered before boot() emits app:ready. */
 
-const WS_KEY='tj_ws_templates';
+// Workspace templates also live in per-origin localStorage — namespace staging so its templates
+// stay separate from prod/demo (matches LS_ORDER/LS_COLLAPSE in ui.js). STAGING_PAGE is in core.js.
+const WS_KEY='tj_ws_templates'+(STAGING_PAGE?'_staging':'');
 // A12: must stay in sync with the data-key panel order in partials/app-dash.html
 // (used by the "— Default —" workspace reset to restore the original arrangement).
 const DEFAULT_DASH_ORDER=['perf','cal','cost','adv','defs','term'];
