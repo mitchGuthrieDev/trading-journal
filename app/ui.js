@@ -34,6 +34,10 @@ function initPanels(){
     if(col[p.dataset.key]) p.classList.add('collapsed');
     const head=p.querySelector('.phead'), grip=p.querySelector('.grip');
     head.addEventListener('click',e=>{ if(e.target.closest('.grip'))return;
+      // L6: when the collapse control is hidden (non-full-width panel on the wide grid), the
+      // header click is a no-op — don't toggle a state the user can't see or reverse.
+      const chev=p.querySelector('.chev');
+      if(chev && getComputedStyle(chev).display==='none') return;
       p.classList.toggle('collapsed'); saveCollapsed(); });
     grip.addEventListener('mousedown',()=>p.setAttribute('draggable','true'));
     grip.addEventListener('mouseup',()=>p.removeAttribute('draggable'));
