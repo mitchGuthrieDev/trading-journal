@@ -10,29 +10,37 @@
 <body>
 <div class="wrap">
 
+  <!-- include:app-topbar mode=app -->
   <!-- ============ top bar ============ -->
   <div class="top">
     <div class="brand">
       <a class="bwordmark" href="../index.html" title="Back to the Blotterbook homepage">Blotterbook</a>
+
       <span class="ver" title="Main app version">v0.11</span>
+
       <small id="srcname" title="Manage your local data">no data loaded</small>
+
     </div>
     <div class="topright">
       <div class="src" id="srcmeta"></div>
       <div class="topbtns">
+
         <a class="btn" id="changelogBtn" href="../changelog.html" title="What's changed — the Blotterlog">Changelog</a>
         <button class="btn" id="exportBtn" title="Generate a condensed performance report in a new tab">Export report</button>
         <button class="btn" id="manageBtn" title="Load, edit, back up, and manage the data saved in this browser">Manage data</button>
         <a class="btn" id="contactBtn"
            href="mailto:contact@blotterbook.com?subject=Blotterbook%20%E2%80%94%20support%20%2F%20feedback&body=Tell%20us%20what%20you%20need%20help%20with%20or%20what%20you%27d%20like%20to%20see%3A%0A%0A"
            title="Questions, support requests, or feedback — opens a draft in your email app">Contact</a>
+
       </div>
     </div>
   </div>
+  <!-- /include:app-topbar -->
 
   <!-- include:app-landing mode=app -->
   <!-- ============ landing intro + setup (setup is reused, collapsible, once loaded) ============ -->
   <div id="landing">
+
     <div class="lhead">
       <p class="leyebrow">Blotterbook</p>
       <h1 class="ltitle">Load a trade-history CSV to begin</h1>
@@ -41,6 +49,7 @@
         Re&#8209;uploads merge, only new trades are added, and nothing ever leaves your browser.</p>
       <p class="lmeta">Supports TradingView, Tradovate, Rithmic, Sierra Chart, TradeStation, MotiveWave, Webull, IBKR &amp; Schwab/thinkorswim</p>
     </div>
+
 
     <div class="setup" id="setup">
       <div class="setuphead" id="setuphead">
@@ -58,6 +67,7 @@
           <div class="fld state"><label for="c_state_sel">State (tax)</label>
             <select id="c_state_sel"></select></div>
         </div>
+
         <div class="hintline"><b>Load CSV</b> and Blotterbook detects the trading platform. Choose a broker, data feed, and state, then hit <b>Start Blotterbook</b>.</div>
         <div class="loadrow">
           <button class="btn loadbtn" id="setupLoad" title="Load a CSV exported from your trading platform">Load CSV</button>
@@ -66,6 +76,7 @@
         </div>
         <div class="parsestatus" id="landingStatus"></div>
         <button class="btn startbtn" id="startBtn" disabled>Start Blotterbook &rarr;</button>
+
       </div>
     </div>
   </div>
@@ -287,7 +298,8 @@
 </div>
   <!-- /include:app-modal -->
 
-<script src="store.js"></script>
+<!-- include:app-scripts mode=app -->
+  <script src="store.js"></script>
 <script src="entitlements.js"></script>
 <script src="adapters.js"></script>
 <script src="core.js"></script>
@@ -297,5 +309,6 @@
 <script src="export.js"></script>
 <script src="datamanager.js"></script>
 <script src="main.js"></script>
+  <!-- /include:app-scripts -->
 </body>
 </html>
