@@ -61,6 +61,22 @@ Admin-auth environment variables (set in the Pages dashboard):
 - `ACCESS_TEAM_DOMAIN` — e.g. `https://<team>.cloudflareaccess.com` (enables S4).
 - `ACCESS_AUD` — the Access application's Audience (AUD) tag (enables S4).
 
+**Is S4 actually on? `GET /api/admin-key?check`** — run it through Access (the admin host)
+and read the JSON. It issues NO token and returns NO secret; it reports whether S4 is
+enforced and, separately, the signature / issuer / audience / expiry checks so a
+misconfigured env var is obvious:
+
+- `s4Active` — true only when both `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` are set (when
+  false, the endpoint is falling back to the presence-only check — S4 is effectively off).
+- `accessTeamDomain` / `accessAud` — the configured values, to eyeball against your dash.
+- `jwt.signatureValid` — the assertion's signature verified against the team JWKS.
+- `jwt.issMatches` — token `iss` equals `ACCESS_TEAM_DOMAIN` (false ⇒ wrong team domain).
+- `jwt.audMatches` — token `aud` includes `ACCESS_AUD` (false ⇒ wrong AUD tag).
+- `jwt.expired`, `jwt.kidFound`, `jwt.email`, `jwt.present`.
+
+Healthy config: `s4Active:true` and `jwt` shows `signatureValid:true, issMatches:true,
+audMatches:true, expired:false`.
+
 ## Environment variables (set in the Pages dashboard when implementing)
 
 - `STRIPE_SECRET_KEY`

@@ -10,7 +10,7 @@
    also behind Access + the _middleware gate). Off-Access it returns 401 and the
    admin page falls back to manual key entry. */
 
-import { issueToken, verifyAccessJwt } from '../_lib/auth.js';
+import { issueToken, verifyAccessJwt, inspectAccessJwt } from '../_lib/auth.js';
 import { json, rateLimited } from '../_lib/http.js';
 
 export async function onRequest(context) {
@@ -18,6 +18,23 @@ export async function onRequest(context) {
   if (await rateLimited(env, 'admin-key', request, 20, 60)) return json({ error: 'rate limited' }, 429);
   const assertion = request.headers.get('Cf-Access-Jwt-Assertion');
   let email = request.headers.get('Cf-Access-Authenticated-User-Email') || null;
+
+  // Debug aid: GET /api/admin-key?check reports whether S4 (Access-JWT verification) is
+  // active and exactly why a JWT would pass/fail — WITHOUT issuing a token or returning
+  // any secret. Run it through Access (admin host) and read `s4Active` + the `jwt` block.
+  if (new URL(request.url).searchParams.has('check')) {
+    return json({
+      check: true,
+      s4Active: !!(env.ACCESS_TEAM_DOMAIN && env.ACCESS_AUD),   // verification is enforced only when both are set
+      accessTeamDomain: env.ACCESS_TEAM_DOMAIN || null,         // not a secret
+      accessAud: env.ACCESS_AUD || null,                        // app identifier, not a secret
+      adminKeySet: !!env.ADMIN_KEY,
+      tokenSecretSet: !!env.TOKEN_SECRET,
+      tokenTtlSec: Number(env.ADMIN_TOKEN_TTL_SEC) || 7200,
+      jwt: await inspectAccessJwt(assertion, env.ACCESS_TEAM_DOMAIN, env.ACCESS_AUD)
+    });
+  }
+
   if (!assertion) return json({ error: 'not authenticated' }, 401);
 
   // S4: verify the Access JWT signature + audience when Access is configured.
