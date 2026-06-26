@@ -112,32 +112,43 @@
     animation:bob 2.4s ease-in-out infinite}
   @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
 
-  /* ============ features grid ============ */
-  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px}
-  @media(max-width:880px){.grid3{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:560px){.grid3{grid-template-columns:1fr}}
-  .fcard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:22px;
-    transition:border-color .2s,transform .2s,background .2s}
-  .fcard:hover{border-color:#33405a;transform:translateY(-3px);background:var(--panel2)}
+  /* ============ features (merged: condensed use-case row + clickable explorer) — F7 ============ */
+  /* Breakpoint scale (L1): xs 460 · sm 560 · cal 620 · md 760 · lg 900 — full table in app/app.css. */
   .ficon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
-    background:rgba(106,160,255,.12);margin-bottom:14px}
+    background:rgba(106,160,255,.12);flex:none}
   .ficon svg{width:18px;height:18px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-  .fcard h3{font-size:16px;margin:0 0 7px;font-weight:600;letter-spacing:-.01em}
-  .fcard p{margin:0;color:var(--dim);font-size:13.5px;line-height:1.6}
 
-  /* ============ use cases ============ */
-  #usecases{background:linear-gradient(180deg,transparent,rgba(21,26,33,.5),transparent)}
-  .uc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:34px}
-  @media(max-width:760px){.uc-grid{grid-template-columns:1fr}}
-  .uc{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:24px;
+  /* condensed use-cases — one horizontal row of four, above the feature explorer */
+  .uc-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:30px}
+  .ucx{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;
     position:relative;overflow:hidden}
-  .uc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+  .ucx::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
     background:linear-gradient(180deg,var(--accent),var(--take))}
-  .uc .tagline{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
-    color:var(--take);margin:0 0 9px}
-  .uc h3{font-size:18px;margin:0 0 9px;font-weight:600;letter-spacing:-.01em}
-  .uc p{margin:0;color:var(--dim);font-size:14px;line-height:1.65}
-  .uc p em{color:var(--txt);font-style:normal}
+  .ucx .tagline{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--take);margin:0 0 7px}
+  .ucx h3{font-size:14.5px;margin:0 0 6px;font-weight:600;letter-spacing:-.01em;line-height:1.25}
+  .ucx p{margin:0;color:var(--dim);font-size:12.5px;line-height:1.55}
+  @media(max-width:900px){.uc-row{grid-template-columns:repeat(2,1fr)}}   /* lg */
+  @media(max-width:560px){.uc-row{grid-template-columns:1fr}}            /* sm */
+
+  /* clickable feature list (left) + detail panel (right) */
+  .feat-explorer{display:grid;grid-template-columns:minmax(0,360px) 1fr;gap:18px;margin-top:18px;align-items:stretch}
+  .feat-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .feat-item{display:flex;align-items:center;gap:13px;cursor:pointer;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    transition:border-color .18s,background .18s,transform .18s}
+  .feat-item:hover{border-color:#33405a;transform:translateX(2px)}
+  .feat-item .fl-t{font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+  .feat-item.is-active{border-color:var(--accent);background:var(--panel2)}
+  .feat-item.is-active .ficon{background:rgba(106,160,255,.22)}
+  .feat-detail{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px 30px;
+    display:flex;flex-direction:column;justify-content:center}
+  .feat-detail .ficon{width:44px;height:44px;border-radius:11px;margin-bottom:16px}
+  .feat-detail .ficon svg{width:23px;height:23px}
+  .feat-detail h3{font-size:21px;margin:0 0 11px;font-weight:600;letter-spacing:-.015em}
+  .feat-detail p{margin:0;color:var(--dim);font-size:15px;line-height:1.7;max-width:54ch}
+  @media(max-width:760px){ .feat-explorer{grid-template-columns:1fr} }
+
   .dual-pitch{margin-top:30px;display:inline-flex;align-items:center;gap:14px;flex-wrap:wrap;
     font-size:14px;color:var(--dim);background:var(--panel);border:1px solid var(--line);
     border-radius:11px;padding:14px 18px}
@@ -164,7 +175,7 @@
   /* ============ pricing ============ */
   .price-grid{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:16px;margin-top:34px;align-items:stretch}
   .price-grid.two{grid-template-columns:1fr 1fr;max-width:760px;margin-left:auto;margin-right:auto}
-  @media(max-width:880px){.price-grid,.price-grid.two{grid-template-columns:1fr}}
+  @media(max-width:900px){.price-grid,.price-grid.two{grid-template-columns:1fr}}   /* lg (was 880) */
   .plan{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px;
     display:flex;flex-direction:column}
   .plan.featured{border-color:rgba(106,160,255,.5);
@@ -266,70 +277,33 @@
     <p class="eyebrow">Features</p>
     <h2 class="h2">Everything in one private dashboard</h2>
     <p class="lead">Blotterbook turns a raw broker export into an honest picture of your trading — gross, net of every fee, and after an estimated tax bill. No accounts, no uploads, no dependencies.</p>
-    <div class="grid3">
-      <div class="fcard">
+
+    <!-- condensed use-cases, horizontal -->
+    <div class="uc-row">
+      <div class="ucx"><p class="tagline">Cost intelligence</p><h3>Brokers &amp; feeds vs. real PnL</h3><p>Flip commission tiers and data feeds; watch your net move across your real history.</p></div>
+      <div class="ucx"><p class="tagline">Tax planning</p><h3>Location-based estimates</h3><p>A Section 1256 blend on positive net profit, by state — know it long before April.</p></div>
+      <div class="ucx"><p class="tagline">Business budgeting</p><h3>Break-even before you trade</h3><p>Subscriptions + commissions become a break-even-per-trade and a clear cost waterfall.</p></div>
+      <div class="ucx"><p class="tagline">Discipline &amp; review</p><h3>Journal every session</h3><p>Day-notes, equity-curve markup, and stats by session and weekday to find your edge.</p></div>
+    </div>
+
+    <!-- clickable feature list (left) + detail (right) -->
+    <div class="feat-explorer">
+      <ul class="feat-list" id="featList">
+        <li class="feat-item is-active" data-i="0"><span class="ficon"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/></svg></span><span class="fl-t">Private by design</span></li>
+        <li class="feat-item" data-i="1"><span class="ficon"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 3 7-8"/><path d="M16 6h4v4"/></svg></span><span class="fl-t">True after-cost performance</span></li>
+        <li class="feat-item" data-i="2"><span class="ficon"><svg viewBox="0 0 24 24"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg></span><span class="fl-t">Location-based tax model</span></li>
+        <li class="feat-item" data-i="3"><span class="ficon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></span><span class="fl-t">Broker &amp; data-feed comparison</span></li>
+        <li class="feat-item" data-i="4"><span class="ficon"><svg viewBox="0 0 24 24"><path d="M3 12l4-4 4 4 4-6 4 8"/><path d="M3 20h18"/></svg></span><span class="fl-t">Equity curve &amp; calendar</span></li>
+        <li class="feat-item" data-i="5"><span class="ficon"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8v5l-4 2v-7z"/></svg></span><span class="fl-t">Filters, journal &amp; statistics</span></li>
+      </ul>
+      <div class="feat-detail" id="featDetail">
         <div class="ficon"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/></svg></div>
         <h3>Private by design</h3>
         <p>Your CSV is parsed and stored entirely in your browser via IndexedDB. Trade data never leaves the page — the only network calls are the app's own reference data.</p>
       </div>
-      <div class="fcard">
-        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 3 7-8"/><path d="M16 6h4v4"/></svg></div>
-        <h3>True after-cost performance</h3>
-        <p>Per-symbol, broker-aware commissions plus CME exchange, clearing, and NFA fees are modeled on every round turn — so Net and Take-home reflect what you actually keep, not gross PnL.</p>
-      </div>
-      <div class="fcard">
-        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg></div>
-        <h3>Location-based tax model</h3>
-        <p>A Section 1256 estimate blends 60/40 long/short-term federal rates with your state's top marginal rate, applied only to positive net profit. Pick your state and see take-home update instantly.</p>
-      </div>
-      <div class="fcard">
-        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
-        <h3>Broker &amp; data-feed comparison</h3>
-        <p>Model AMP, EdgeClear, Tradovate / NinjaTrader, Optimus, thinkorswim, Interactive Brokers, and TradeStation. Switch broker or data feed and watch the cost — and your net — change.</p>
-      </div>
-      <div class="fcard">
-        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M3 12l4-4 4 4 4-6 4 8"/><path d="M3 20h18"/></svg></div>
-        <h3>Equity curve &amp; calendar</h3>
-        <p>A cumulative performance graph with Gross / Net / Take-home overlays and hover detail, plus a Sunday-first monthly calendar of daily PnL with weekly summaries and day-notes.</p>
-      </div>
-      <div class="fcard">
-        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8v5l-4 2v-7z"/></svg></div>
-        <h3>Filters, journal &amp; statistics</h3>
-        <p>Filter by date, symbol, side, session (RTH/ETH), and weekday. Keep day-notes per session. Read expectancy, profit factor, drawdown, streaks, and an illustrative Sharpe — all after costs.</p>
-      </div>
     </div>
-  </div>
-</section>
 
-<!-- ============ USE CASES ============ -->
-<section id="usecases">
-  <div class="inner reveal">
-    <p class="eyebrow">Use Cases</p>
-    <h2 class="h2">A budgeting tool and a trade journal in one</h2>
-    <p class="lead">Most journals tell you what you made. Blotterbook tells you what you <em>keep</em> — and helps you plan the business of trading around it.</p>
-    <div class="uc-grid">
-      <div class="uc">
-        <p class="tagline">Cost intelligence</p>
-        <h3>Compare brokers and data feeds against your real PnL</h3>
-        <p>Before you switch brokers, <em>see it</em>. Flip between commission tiers and data-feed plans and watch exactly how each one moves your net and take-home across your actual trade history — not a marketing calculator.</p>
-      </div>
-      <div class="uc">
-        <p class="tagline">Tax planning</p>
-        <h3>Location-based, real-time tax estimates</h3>
-        <p>Pick your state and Blotterbook applies a Section 1256 blended rate to your positive net profit on the fly. Know roughly what you'll owe — and what's truly yours — long before April.</p>
-      </div>
-      <div class="uc">
-        <p class="tagline">Business budgeting</p>
-        <h3>Know your break-even before you place a trade</h3>
-        <p>Monthly platform and data-feed subscriptions plus per-trade commissions roll into a break-even-per-trade figure and a clear cost waterfall, so you can budget your trading like the business it is.</p>
-      </div>
-      <div class="uc">
-        <p class="tagline">Discipline &amp; review</p>
-        <h3>Journal every session and find your edge</h3>
-        <p>Mark up the equity curve, leave day-notes on the calendar, and slice performance by session and weekday. The advanced stats surface your best and worst days, streaks, and long/short split.</p>
-      </div>
-    </div>
-    <div class="dual-pitch reveal">
+    <div class="dual-pitch">
       <span><b>The pitch:</b> profit calculator <span class="amp">&amp;</span> budgeting tool <span class="amp">+</span> a private trade journal — without a single byte leaving your browser.</span>
     </div>
   </div>
@@ -466,7 +440,7 @@
       <a href="changelog.html">Changelog</a>
       <a href="legal.html">Legal</a>
       <a href="/app/">Launch</a>
-      <a href="mailto:contact@scalineaudio.net?subject=Blotterbook">Contact</a>
+      <a href="mailto:contact@blotterbook.com?subject=Blotterbook">Contact</a>
     </div>
     <p class="legal">Blotterbook is a trading journal and cost/tax estimation tool — <b>not a broker</b>,
       and not financial, investment, or tax advice. It runs entirely in your browser; your trade data
@@ -493,6 +467,28 @@
     entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
   },{threshold:.12});
   document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+
+  // Features explorer (F7): click a feature in the list to show its detail on the right.
+  (function(){
+    var list=document.getElementById('featList'), detail=document.getElementById('featDetail');
+    if(!list||!detail) return;
+    var FEAT_BODY=[
+      "Your CSV is parsed and stored entirely in your browser via IndexedDB. Trade data never leaves the page — the only network calls are the app's own reference data.",
+      "Per-symbol, broker-aware commissions plus CME exchange, clearing, and NFA fees are modeled on every round turn — so Net and Take-home reflect what you actually keep, not gross PnL.",
+      "A Section 1256 estimate blends 60/40 long/short-term federal rates with your state's top marginal rate, applied only to positive net profit. Pick your state and see take-home update instantly.",
+      "Model AMP, EdgeClear, Tradovate / NinjaTrader, Optimus, thinkorswim, Interactive Brokers, and TradeStation. Switch broker or data feed and watch the cost — and your net — change.",
+      "A cumulative performance graph with Gross / Net / Take-home overlays and hover detail, plus a Sunday-first monthly calendar of daily PnL with weekly summaries and day-notes.",
+      "Filter by date, symbol, side, session (RTH/ETH), and weekday. Keep day-notes per session. Read expectancy, profit factor, drawdown, streaks, and an illustrative Sharpe — all after costs."
+    ];
+    var items=list.querySelectorAll('.feat-item');
+    function show(i){
+      var li=items[i]; if(!li) return;
+      items.forEach(function(el){ el.classList.toggle('is-active', +el.dataset.i===i); });
+      detail.innerHTML='<div class="ficon">'+li.querySelector('.ficon').innerHTML+'</div>'
+        +'<h3>'+li.querySelector('.fl-t').innerHTML+'</h3><p>'+FEAT_BODY[i]+'</p>';
+    }
+    items.forEach(function(el){ el.addEventListener('click',function(){ show(+el.dataset.i); }); });
+  })();
 
   // Live status — an admin override (set on the admin page) wins; otherwise auto-detect by pinging the app
   (function(){
