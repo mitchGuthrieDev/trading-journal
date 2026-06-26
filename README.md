@@ -289,8 +289,11 @@ the changelog (the Blotterlog) record "shipped to prod in v`X`".
   into the right `partials/app-*.html` so all three pages get it.
 - **HTML in a partial behind `<!--IF mode=staging-->`** → widen the conditional (see the demo step).
 
-**Not everything promotes.** The staging *dev tools* — activity terminal, session-status pill,
-workspace templates — are scaffolding for trialing changes, not product. Leave them staging-only.
+**Everything promotes.** Staging is purely a **proving ground** — every feature trialed there is
+destined for prod + demo, including the activity terminal, session-status pill, and workspace
+templates. The goal is full feature parity; nothing is permanently staging-only. (Read-only features
+like the terminal and pill just mirror over; UI-preference state like saved layouts isn't trade data,
+so it may persist on demo — only *trade*-mutating controls get the demo lock-down in step 4.)
 
 **Promotion checklist** (one feature at a time):
 
