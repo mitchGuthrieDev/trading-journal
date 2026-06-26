@@ -11,10 +11,11 @@
    admin page falls back to manual key entry. */
 
 import { issueToken, verifyAccessJwt } from '../_lib/auth.js';
-import { json } from '../_lib/http.js';
+import { json, rateLimited } from '../_lib/http.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
+  if (await rateLimited(env, 'admin-key', request, 20, 60)) return json({ error: 'rate limited' }, 429);
   const assertion = request.headers.get('Cf-Access-Jwt-Assertion');
   let email = request.headers.get('Cf-Access-Authenticated-User-Email') || null;
   if (!assertion) return json({ error: 'not authenticated' }, 401);

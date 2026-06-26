@@ -1,11 +1,12 @@
 (function(){
-  var KEYLS='bb_admin_key';
+  // The admin token (S3) is a live credential — keep it in the page-session field only,
+  // never localStorage (S10), so an XSS can't lift a persisted token. autoKey() re-issues
+  // a fresh token on each load via Access; a manually-typed raw key just isn't remembered.
   var keyInput=document.getElementById('adminkey');
   var labelInput=document.getElementById('label');
   var msg=document.getElementById('amsg');
   var cur=document.getElementById('curstate');
   var authnote=document.getElementById('authnote');
-  try{ keyInput.value=localStorage.getItem(KEYLS)||''; }catch(_){}
 
   function setMsg(t,kind){ msg.textContent=t||''; msg.className='amsg'+(kind?' '+kind:''); }
   function mark(mode){ document.querySelectorAll('.modebtn').forEach(function(b){ b.classList.toggle('on', b.dataset.mode===mode); }); }
@@ -15,7 +16,7 @@
   // carried in the bb_staging cookie for launching staging, exactly like the key was.
   function autoKey(){
     fetch('/api/admin-key',{cache:'no-store'}).then(function(r){ return r.ok?r.json():null; }).then(function(d){
-      if(d && d.token){ keyInput.value=d.token; try{ localStorage.setItem(KEYLS,d.token); }catch(_){}
+      if(d && d.token){ keyInput.value=d.token;
         var until=d.exp?(' — expires '+new Date(d.exp).toLocaleTimeString()):'';
         authnote.textContent='Authenticated'+(d.email?(' as '+d.email):'')+' — admin token issued'+until+'.'; }
     }).catch(function(){});
@@ -32,7 +33,6 @@
 
   function save(mode){
     var key=(keyInput.value||'').trim();
-    try{ localStorage.setItem(KEYLS,key); }catch(_){}
     if(!key){ setMsg('Enter the admin key first.','err'); return; }
     setMsg('Saving…');
     fetch('/api/status',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':key},
