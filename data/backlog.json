@@ -5,6 +5,7 @@
   "tags": "Tags: P1 do-soon · P2 durable win · P3 polish. Send them one at a time (one surface/concern per turn).",
   "updated": "2026-06-26",
   "note": "Committed source of truth for the engineering backlog (replaces the retired .claude/backlog.md). The admin panel shows category/effort/status only; prompt + doneNote stay here.",
+  "commitConvention": "Conventional-commit titles (enables CH12 automated versioning): when committing, and ESPECIALLY when titling a PR / squash-merge, lead the title with a conventional-commit type so the version bump can be derived automatically — `feat:` (new capability → minor), `fix:` (bug fix → patch), `chore:`/`refactor:`/`docs:`/`style:`/`test:`/`perf:` (→ patch), and append `!` (e.g. `feat!:`) or a `BREAKING CHANGE:` footer for a breaking change (→ major). Scope it when useful, e.g. `feat(staging): …`. Untyped/legacy titles default to a patch bump. Keep the existing Co-Authored-By and Claude-Session trailers on the commit body.",
   "categories": [
     "SECURITY",
     "ARCHITECTURE / DUPLICATION",
