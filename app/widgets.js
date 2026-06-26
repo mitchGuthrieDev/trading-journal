@@ -6,7 +6,10 @@
    registered before boot() emits app:ready. */
 
 const WS_KEY='tj_ws_templates';
+// A12: must stay in sync with the data-key panel order in partials/app-dash.html
+// (used by the "— Default —" workspace reset to restore the original arrangement).
 const DEFAULT_DASH_ORDER=['perf','cal','cost','adv','defs','term'];
+const TERM_MAX_LINES=200;   // ring-buffer cap for the activity terminal
 
 function logAction(msg, kind){
   const win=document.getElementById('termwin'); if(!win) return;
@@ -16,9 +19,11 @@ function logAction(msg, kind){
   const tm=document.createElement('span'); tm.className='tm'; tm.textContent=msg;
   line.appendChild(ts); line.appendChild(tm);
   win.insertBefore(line, win.firstChild);                      // newest on top (F12)
-  while(win.children.length>200) win.removeChild(win.lastChild);   // trim oldest (now last)
+  while(win.children.length>TERM_MAX_LINES) win.removeChild(win.lastChild);   // trim oldest (now last)
   win.scrollTop=0;                                             // keep the newest line in view
 }
+// 'degraded' is reserved/forward-looking — no caller sets it yet (the pill is honest flair,
+// per the popup copy); only 'online'/'offline' fire today from the connectivity listeners.
 function setSession(state){   // 'online' | 'offline' | 'degraded'
   const pill=document.getElementById('sesspill'); if(!pill) return;
   pill.classList.remove('online','offline','degraded'); pill.classList.add(state);
@@ -88,6 +93,7 @@ function initWidgets(){
 
 /* Subscribe to shared app-action events → terminal log lines (all surfaces, CH16). */
 onEvent('app:ready',     initWidgets);
+onEvent('data:loaded',   d=>logAction('Loaded · '+((d&&d.name)||'data')+' · '+(d&&d.count)+' trades'));   // B20: initial dataset (demo sample / restored)
 onEvent('data:imported', d=>logAction('CSV imported · '+((d&&d.name)||'file')+' · now '+(d&&d.count)+' trades'));
 onEvent('note:saved',    d=>logAction('Day note saved · '+(d&&d.date)));
 onEvent('trade:deleted', d=>logAction('Trade deleted · '+(d&&d.id), 'warn'));

@@ -259,7 +259,9 @@
         <h2>Activity terminal</h2><button class="chev" aria-label="Collapse">&#9662;</button></div>
       <div class="pbody">
         <p class="hint">A live, read-only feed of actions on this workspace — CSV loads, edits, backups. Display only; it takes no input.</p>
-        <div class="termwin" id="termwin" aria-live="polite" role="log"></div>
+        <!-- A12: aria-live="polite" announces each new line; NO role="log" because lines are
+             inserted newest-first (insertBefore), and role="log" assumes appended entries. -->
+        <div class="termwin" id="termwin" aria-live="polite"></div>
       </div>
     </section>
   <!-- /include:app-dash -->
@@ -346,7 +348,7 @@
       <div><h2>Export report</h2><div class="dmsub">Preview, then download in your chosen format or email a copy.</div></div>
       <button class="dmx" data-expclose title="Close">&times;</button>
     </div>
-    <div class="expbody"><iframe id="exp_preview" title="Performance report preview"></iframe></div>
+    <div class="expbody"><iframe id="exp_preview" title="Performance report preview" sandbox="allow-same-origin allow-modals"></iframe></div>
     <div class="exptools">
       <select id="exp_format" aria-label="Download format">
         <option value="">Choose format…</option>

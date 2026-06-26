@@ -44,11 +44,11 @@ const STAGING_PAGE = PAGE_MODE === 'staging';
    ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------
-   App event bus — shared code EMITS action events; optional observers
-   (e.g. staging.js) subscribe. The main app and demo register no
-   listeners, so emit() is a harmless no-op there, and shared code never
-   names a staging-only symbol. Events: app:ready, data:imported,
-   note:saved, trade:deleted, backup:created, data:erased.
+   App event bus — shared code EMITS action events; widgets.js (loaded on
+   every surface since CH16) subscribes to mirror them into the activity
+   terminal. emit() stays a harmless no-op on any page without a listener,
+   so shared code never names a widget symbol directly. Events: app:ready,
+   data:imported, note:saved, trade:deleted, backup:created, data:erased.
    ------------------------------------------------------------------ */
 const BUS = new EventTarget();
 function emit(name, detail){ BUS.dispatchEvent(new CustomEvent(name, { detail })); }

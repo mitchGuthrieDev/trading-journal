@@ -38,16 +38,20 @@ function exportReport(){
   ];
   const tiles = headline.map(([k,v,cl])=>tile(k,v,cl)).join('');
 
-  const costTbl =
-     crow('Gross P&L', `<span class="${cls(c.gross)}">${money(c.gross)}</span>`)
-    +crow('Commissions (all-in)', `<span class="neg">${money(-c.totalComm)}</span>`)
-    +crow(`Subscriptions (${money(c.fixedMo)}/mo × ${c.months})`, `<span class="neg">${money(-c.fixedPeriod)}</span>`)
-    +crow('Net P&L (pre-tax)', `<span class="${cls(c.netPreTax)}">${money(c.netPreTax)}</span>`,'tot')
-    +crow('State top rate', stateRate().toFixed(2)+'%','sub')
-    +crow('Blended 1256 rate', (c.tEff*100).toFixed(1)+'%','sub')
-    +crow('Est. 1256 tax (net profit only)', `<span class="neg">${money(-c.tax)}</span>`,'sub')
-    +crow('After-tax take-home', `<span class="${cls(c.afterTax)}">${money(c.afterTax)}</span>`,'tot')
-    +crow('Break-even / trade', money(bePer));
+  // Cost & tax breakdown defined ONCE, rendered as the HTML report table AND the Markdown
+  // download below — so the two can't drift (CH17). [label, value, valueClass, rowClass].
+  const costRows = [
+    ['Gross P&L', money(c.gross), cls(c.gross), ''],
+    ['Commissions (all-in)', money(-c.totalComm), 'neg', ''],
+    [`Subscriptions (${money(c.fixedMo)}/mo × ${c.months})`, money(-c.fixedPeriod), 'neg', ''],
+    ['Net P&L (pre-tax)', money(c.netPreTax), cls(c.netPreTax), 'tot'],
+    ['State top rate', stateRate().toFixed(2)+'%', '', 'sub'],
+    ['Blended 1256 rate', (c.tEff*100).toFixed(1)+'%', '', 'sub'],
+    ['Est. 1256 tax (net profit only)', money(-c.tax), 'neg', 'sub'],
+    ['After-tax take-home', money(c.afterTax), cls(c.afterTax), 'tot'],
+    ['Break-even / trade', money(bePer), '', '']
+  ];
+  const costTbl = costRows.map(([l,v,vc,rc])=>crow(l, vc?`<span class="${vc}">${v}</span>`:v, rc)).join('');
 
   const statsTbl =
      stat('Expectancy / trade', `<span class="${cls(m.expectancy)}">${money(m.expectancy)}</span>`)
@@ -130,8 +134,8 @@ function exportReport(){
       <div class="rmeta">
         Generated <b>${fmtDate(gen)} ${pad2(gen.getHours())}:${pad2(gen.getMinutes())}</b><br>
         Period <b>${range}</b><br>
-        Broker <b>${BROKERS[c.broker]?BROKERS[c.broker].name:c.broker}</b> · Feed ${feedName()}<br>
-        State <b>${stateLabel()}</b> · Platform $${c.platform}/mo
+        Broker <b>${esc(BROKERS[c.broker]?BROKERS[c.broker].name:c.broker)}</b> · Feed ${esc(feedName())}<br>
+        State <b>${esc(stateLabel())}</b> · Platform $${esc(c.platform)}/mo
       </div>
     </div>
 
@@ -169,16 +173,9 @@ function exportReport(){
     +`**Generated:** ${fmtDate(gen)} ${pad2(gen.getHours())}:${pad2(gen.getMinutes())}  \n`
     +`**Broker:** ${BROKERS[c.broker]?BROKERS[c.broker].name:c.broker} · **Feed:** ${feedName()} · **State:** ${stateLabel()}\n\n`
     +`## Summary\n\n| Metric | Value |\n|---|---|\n`
-    +mdRow('Net P&L (pre-tax)', money(c.netPreTax))+mdRow('Take-home (post-tax)', money(c.afterTax))
-    +mdRow('Gross P&L', money(c.gross))+mdRow('Win rate', (m.n?100*m.wins/m.n:0).toFixed(1)+'%')
-    +mdRow('Profit factor', c.pf===Infinity?'∞':c.pf.toFixed(2))+mdRow('Max drawdown', money(-m.maxDD))
-    +mdRow('Trades', String(m.n))+mdRow('Active days', String(m.active))
+    +headline.map(([k,v])=>mdRow(k,v)).join('')          // CH17: same source as the HTML tiles
     +`\n## Cost & tax breakdown\n\n| Line | Amount |\n|---|---|\n`
-    +mdRow('Gross P&L', money(c.gross))+mdRow('Commissions (all-in)', money(-c.totalComm))
-    +mdRow(`Subscriptions (${money(c.fixedMo)}/mo × ${c.months})`, money(-c.fixedPeriod))
-    +mdRow('Net P&L (pre-tax)', money(c.netPreTax))+mdRow('Blended 1256 rate', (c.tEff*100).toFixed(1)+'%')
-    +mdRow('Est. 1256 tax (net profit only)', money(-c.tax))+mdRow('After-tax take-home', money(c.afterTax))
-    +mdRow('Break-even / trade', money(bePer))
+    +costRows.map(([l,v])=>mdRow(l,v)).join('')          // CH17: same source as the HTML cost table
     +`\n_Estimates only — not financial or tax advice._\n`;
 
   // F3 (CH16): preview + multi-format download + email in an in-page modal on every surface
