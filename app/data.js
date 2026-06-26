@@ -151,6 +151,7 @@ function runDemo(){
   TRADES=dr.ok?dr.trades:[];
   // no source label on the demo (the DEMO badge already says it); just the meta
   renderLoaded('', `<b>${TRADES.length}</b> trades &nbsp;·&nbsp; sample data, not saved`);
+  emit('data:loaded', { name: 'sample data', count: TRADES.length });   // B20: terminal reflects the load
 }
 
 /* ============================================================
@@ -204,12 +205,12 @@ function initFilters(){
   const bind=(id,key)=>{ const el=document.getElementById(id); if(el) el.addEventListener('change',e=>{ FILTERS[key]=e.target.value; onFiltersChanged(); }); };
   bind('f_from','from'); bind('f_to','to'); bind('f_symbol','symbol'); bind('f_side','side'); bind('f_session','session'); bind('f_tag','tag');
   document.getElementById('f_reset').addEventListener('click',resetFilters);
-  // saved filters (staging — controls only exist there)
+  // saved filters (shared — all surfaces; f_save is disabled on demo, which has no Store)
   on('f_save','click',saveCurrentFilter);
   on('f_saved','change',e=>{ const s=SAVED_FILTERS.find(x=>x.id===e.target.value); if(s) applyFilterObj(s.f); });
 }
 
-/* ---- saved filters (name, recall, manage) — staging-only UI ---- */
+/* ---- saved filters (name, recall, manage) — shared UI, all surfaces (CH16) ---- */
 let SAVED_FILTERS=[];
 async function loadSavedFilters(){
   if(!Store.available()){ SAVED_FILTERS=[]; return; }
@@ -349,6 +350,7 @@ async function restoreSession(){
     const meta=`<b>${all.length}</b> trades &nbsp;·&nbsp; ${all[0].date} → ${all[all.length-1].date} &nbsp;·&nbsp; <span style="color:var(--dim)">restored from this browser</span>`;
     if(STAGING_PAGE) armStagingLanding(meta);   // F5: staging always opens on the initial state
     else renderLoaded('saved data', meta);
+    emit('data:loaded', { name: 'saved data', count: all.length });   // B20: terminal reflects the restore
   } else {
     resetApp();
   }
@@ -401,9 +403,9 @@ function populateFeeds(brokerKey){
   const feeds=BROKER_FEEDS[brokerKey]||BROKER_FEEDS.AMP||{};
   let h='<option value="">— Select data feed —</option>';
   for(const grp in feeds){
-    h+=`<optgroup label="${grp}">`;
+    h+=`<optgroup label="${esc(grp)}">`;
     for(const [name,cost] of feeds[grp])
-      h+=`<option value="${name}|${cost}" data-cost="${cost}">${name} — $${cost}</option>`;
+      h+=`<option value="${esc(name)}|${esc(cost)}" data-cost="${esc(cost)}">${esc(name)} — $${esc(cost)}</option>`;
     h+='</optgroup>';
   }
   fSel.innerHTML=h;

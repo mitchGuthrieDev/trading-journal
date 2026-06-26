@@ -998,6 +998,72 @@
       "recurring": true,
       "prompt": "REPEATABLE — leave this item OPEN; never mark it done. Run to promote staging-only feature(s) onto prod + demo. Canonical procedure: the README section 'Promoting a feature from staging → prod' (the gate-layer model + 8-step checklist) — read it first; this prompt is the operational driver, the README is the source of truth.\n\nSCOPE: promote the feature(s) named in the request. If none are named, inventory the full staging delta and promote all of it (staging is a proving ground — every feature is destined for prod + demo). Build the inventory by grepping: `STAGING_PAGE` and `if(!STAGING_PAGE)` / `if(STAGING_PAGE)` guards in `app/*.js`; the whole of `app/staging.js`; `<!--IF mode=staging-->` blocks in `partials/*.html`; inline markup in `app/staging.html` that isn't yet in a partial; and the `STAGING_ONLY` set in `scripts/bump-version.mjs`. List each feature and its gate layers before editing.\n\nPER FEATURE: (1) un-gate JS — move shared logic out of `staging.js` into its module, or delete the `STAGING_PAGE` runtime guard so it runs on every surface. (2) un-gate HTML — move inline staging markup into the right `partials/app-*.html`, or widen its `<!--IF mode=staging-->` to the modes it should reach (normally all three). (3) DEMO 1:1 — the feature MUST appear on demo, single-sourced from the SAME partial (never fork a separate demo copy — that is exactly what drifted before), with every TRADE-mutating control `disabled` in the `<!--IF mode=demo-->` path AND guarded by `DEMO_MODE`; read-only features (activity terminal, session pill) and UI-preference state (saved layouts) just mirror over. (4) if a path is no longer staging-exclusive, update the `STAGING_ONLY` set in `scripts/bump-version.mjs`.\n\nTHEN: run `node scripts/build-includes.mjs`; verify all three surfaces in a browser (prod: feature works and persists; demo: feature visible with trade-mutations disabled and nothing saved; staging: unchanged); run the gate — `node scripts/test-adapters.cjs`, `test-version.mjs`, `test-auth.mjs`, plus build-includes/build-manifest idempotency. Title the commit/PR `feat:` (or `fix:`) so CH12 bumps prod by the right level automatically — do NOT hand-edit `data/versions.json`; staging keeps its lead. Add a `data/changelog.json` (F13) entry for the new prod version describing what shipped. Commit + push (open a PR only if asked).\n\nEach run done when: the in-scope staging features are live on prod + demo at 1:1 (demo trade-mutations disabled), all three surfaces verified, the gate is green, a changelog entry is added, and the change is committed/pushed. Leave this item OPEN (repeatable).",
       "doneNote": null
+    },
+    {
+      "id": "B19",
+      "title": "Promoted staging widgets use undefined CSS tokens (wrong colors)",
+      "category": "FIXES",
+      "priority": "P2",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-26",
+      "partial": false,
+      "doneNote": "Mapped the undefined CSS tokens in app/app.css's promoted widget blocks to the canonical ones — --muted→--dim, --text→--txt, --field→--panel2 (dropped the #10141a literal fallback). Verified in-browser: the version badge and session pill resolve to #8a94a3 (--dim) and the workspace select background to #1b212a (--panel2); `grep -nE 'var\\(--(muted|text|field)' app/app.css` returns nothing."
+    },
+    {
+      "id": "C2",
+      "title": "Stale 'staging-only / staging.js' comments after the CH16 promotion",
+      "category": "COMMENTS / READABILITY",
+      "priority": "P2",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-26",
+      "partial": false,
+      "doneNote": "Updated the stale post-CH16 comments that referenced the deleted app/staging.js or labelled promoted features 'staging-only': app/ui.js:5, app/main.js:132 (app:ready) + :97 (saved-filter controls), app/core.js event-bus block, app/data.js:207/:212 (saved filters), app/datamanager.js:68. Each now describes the shared widgets.js / shared saved-filter UI (Save disabled on demo). Left the genuinely staging-only F5 notes (data.js:358, main.js:23) intact."
+    },
+    {
+      "id": "S16",
+      "title": "Escape two admin/innerHTML sinks; sandbox the export-report iframe",
+      "category": "SECURITY",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-26",
+      "partial": false,
+      "doneNote": "Closed three CSP-mitigated escaping/hardening gaps: esc() the admin status mode+label (assets/admin.js:38), the feeds.json optgroup/option labels (app/data.js populateFeeds), and feedName()/broker/state/platform at the two HTML report sinks (render.js cost caption, export.js report header); added sandbox=\"allow-same-origin allow-modals\" to the export-report iframe (#exp_preview). Verified the modal still renders and PNG + Markdown exports download with no console errors."
+    },
+    {
+      "id": "CH17",
+      "title": "De-duplicate the export-report cost/summary rows (HTML vs Markdown)",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-26",
+      "partial": false,
+      "doneNote": "De-duplicated the export-report data: the cost/tax breakdown is now a single `costRows` [label,value,valueClass,rowClass] array and the summary reuses the existing `headline` array; the HTML report table and the Markdown download both map them. This fixed the real drift — the Markdown 'Cost & tax breakdown' now includes the 'State top rate' row the HTML had and MD lacked. Verified the .md download still works."
+    },
+    {
+      "id": "B20",
+      "title": "Demo activity terminal never logs the initial dataset load",
+      "category": "FIXES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-26",
+      "partial": false,
+      "doneNote": "runDemo() and restoreSession() now emit a `data:loaded` event ({name,count}); widgets.js subscribes and logs 'Loaded · <name> · N trades'. Verified the demo activity terminal now shows 'Loaded · sample data · 1539 trades' on open (previously it only showed 'Session ready')."
+    },
+    {
+      "id": "A12",
+      "title": "Activity-terminal a11y + small widget-coupling cleanups",
+      "category": "ARCHITECTURE / DUPLICATION",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-26",
+      "partial": false,
+      "doneNote": "Activity-terminal polish: removed role=\"log\" from #termwin (kept aria-live=\"polite\") since lines are inserted newest-first (insertBefore), which role=log doesn't expect — documented the choice in the partial. Added a comment flagging that DEFAULT_DASH_ORDER must stay in sync with the data-key order in app-dash.html; hoisted the bare 200 terminal line-cap to const TERM_MAX_LINES; added a note that the 'degraded' session state is reserved/forward-looking (no caller by design)."
     }
   ],
   "howToDrive": [

@@ -35,7 +35,7 @@
   function loadStatus(){
     fetchT('/api/status',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
       var when=d.updatedAt?(' · updated '+new Date(d.updatedAt).toLocaleString()):'';
-      cur.innerHTML='Current: <b>'+(d.mode||'auto')+'</b>'+(d.label?(' — “'+d.label+'”'):'')+when;
+      cur.innerHTML='Current: <b>'+esc(d.mode||'auto')+'</b>'+(d.label?(' — “'+esc(d.label)+'”'):'')+esc(when);
       mark(d.mode||'auto');
       if(d.label && !labelInput.value) labelInput.value=d.label;
     }).catch(function(){ cur.textContent='Current: unavailable (deploy on Cloudflare to use)'; });

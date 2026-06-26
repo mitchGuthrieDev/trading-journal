@@ -94,7 +94,7 @@ if($('dataModal')){
   });
   on('dm_notes','click',e=>{ const b=e.target.closest('button[data-note]');
     if(b && confirm('Delete the note for '+b.dataset.note+'?')) dmDeleteNote(b.dataset.note); });
-  // saved-filter controls (staging)
+  // saved-filter controls (shared — all surfaces; Save is disabled on demo)
   on('dm_filters','click',e=>{
     const ap=e.target.closest('[data-filterapply]'); if(ap){ const s=SAVED_FILTERS.find(x=>x.id===ap.dataset.filterapply); if(s){ applyFilterObj(s.f); closeDataManager(); } return; }
     const rn=e.target.closest('[data-filterrename]'); if(rn){ renameSavedFilter(rn.dataset.filterrename).then(renderDataManager); return; }
@@ -129,7 +129,7 @@ if($('dataModal')){
   initPanels();
   initFilters();
   wireJournal();
-  emit('app:ready');   // staging.js (if loaded) sets up its terminal / session pill / workspace controls
+  emit('app:ready');   // widgets.js subscribes to build its terminal / session pill / workspace controls
   // Reflect the initial overlay selection on the toggle buttons.
   document.querySelectorAll('.curvebtn').forEach(b=>b.classList.toggle('on',!!curveSel[b.dataset.k]));
 

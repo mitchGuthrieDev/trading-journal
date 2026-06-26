@@ -348,7 +348,7 @@ function renderCalc(m, c=costModel(m)){
   if(!m || !m.n){ tbl.innerHTML=''; head.innerHTML=''; rowsEl.innerHTML=''; cap.innerHTML=''; return; }
   const bePer= c.n>0 ? (c.totalComm+c.fixedPeriod)/c.n : 0;
 
-  cap.innerHTML=`Broker: <b>${BROKERS[c.broker].name}</b> &nbsp;·&nbsp; Feed: ${feedName()} &nbsp;·&nbsp; Platform $${c.platform}/mo`;
+  cap.innerHTML=`Broker: <b>${esc(BROKERS[c.broker].name)}</b> &nbsp;·&nbsp; Feed: ${esc(feedName())} &nbsp;·&nbsp; Platform $${esc(c.platform)}/mo`;
 
   const body=c.bySym.map(s=>
     `<tr><td>${esc(s.root)}${s.known?'':' <span class="flag">*</span>'}</td>

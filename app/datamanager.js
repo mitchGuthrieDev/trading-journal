@@ -65,7 +65,7 @@ async function renderDataManager(){
         <button class="dmdel" data-trade="${id}"${dis} title="Delete this trade">Delete</button></td></tr>`; }).join('')
     : `<tr><td colspan="5" class="dmempty">No matching trades.</td></tr>`;
 
-  // Saved filters (staging — section only exists there)
+  // Saved filters (shared section — all surfaces; empty on demo, which has no Store)
   if($('dm_filters')) $('dm_filters').innerHTML = SAVED_FILTERS.length
     ? SAVED_FILTERS.map(s=>`<div class="dmrow"><span class="dmnote">${esc(s.name)}</span>
         <button class="dmdel alt" data-filterapply="${s.id}" title="Apply this filter">Apply</button>
