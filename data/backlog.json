@@ -998,6 +998,78 @@
       "recurring": true,
       "prompt": "REPEATABLE — leave this item OPEN; never mark it done. Run to promote staging-only feature(s) onto prod + demo. Canonical procedure: the README section 'Promoting a feature from staging → prod' (the gate-layer model + 8-step checklist) — read it first; this prompt is the operational driver, the README is the source of truth.\n\nSCOPE: promote the feature(s) named in the request. If none are named, inventory the full staging delta and promote all of it (staging is a proving ground — every feature is destined for prod + demo). Build the inventory by grepping: `STAGING_PAGE` and `if(!STAGING_PAGE)` / `if(STAGING_PAGE)` guards in `app/*.js`; the whole of `app/staging.js`; `<!--IF mode=staging-->` blocks in `partials/*.html`; inline markup in `app/staging.html` that isn't yet in a partial; and the `STAGING_ONLY` set in `scripts/bump-version.mjs`. List each feature and its gate layers before editing.\n\nPER FEATURE: (1) un-gate JS — move shared logic out of `staging.js` into its module, or delete the `STAGING_PAGE` runtime guard so it runs on every surface. (2) un-gate HTML — move inline staging markup into the right `partials/app-*.html`, or widen its `<!--IF mode=staging-->` to the modes it should reach (normally all three). (3) DEMO 1:1 — the feature MUST appear on demo, single-sourced from the SAME partial (never fork a separate demo copy — that is exactly what drifted before), with every TRADE-mutating control `disabled` in the `<!--IF mode=demo-->` path AND guarded by `DEMO_MODE`; read-only features (activity terminal, session pill) and UI-preference state (saved layouts) just mirror over. (4) if a path is no longer staging-exclusive, update the `STAGING_ONLY` set in `scripts/bump-version.mjs`.\n\nTHEN: run `node scripts/build-includes.mjs`; verify all three surfaces in a browser (prod: feature works and persists; demo: feature visible with trade-mutations disabled and nothing saved; staging: unchanged); run the gate — `node scripts/test-adapters.cjs`, `test-version.mjs`, `test-auth.mjs`, plus build-includes/build-manifest idempotency. Title the commit/PR `feat:` (or `fix:`) so CH12 bumps prod by the right level automatically — do NOT hand-edit `data/versions.json`; staging keeps its lead. Add a `data/changelog.json` (F13) entry for the new prod version describing what shipped. Commit + push (open a PR only if asked).\n\nEach run done when: the in-scope staging features are live on prod + demo at 1:1 (demo trade-mutations disabled), all three surfaces verified, the gate is green, a changelog entry is added, and the change is committed/pushed. Leave this item OPEN (repeatable).",
       "doneNote": null
+    },
+    {
+      "id": "B19",
+      "title": "Promoted staging widgets use undefined CSS tokens (wrong colors)",
+      "category": "FIXES",
+      "priority": "P2",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "CH16 promoted the staging widget CSS into the always-loaded blocks of `app/app.css`, but those rules reference CSS variables that are NOT defined anywhere in the repo (tokens.css defines `--txt`/`--dim`/`--faint`/`--panel2`/`--warn`, not these): `--muted` (`app.css` ~459 `.ver`, ~465 `.sesspill`, ~467 `.sessdot`, ~474 `.sesspop h4`, ~478 `.sesspop .muted`), `--text` (~482 `.wsbar select`, ~502 `.dmnote-demo`), and `--field` (~482, has a literal `#10141a` fallback so it's only half-broken). They silently fall back to inherited/initial values, so the version badge, session-status pill, workspace-template select, and demo 'preview only' banner render with the wrong (inherited) text/background colors on every surface now that they ship to prod + demo. Fix: rename to the canonical tokens — `--muted`→`--dim` (or `--faint` to taste), `--text`→`--txt`, `--field`→`--panel2`. Done when: `grep -nE 'var\\(--(muted|text|field)' app/app.css` returns nothing and the badge/pill/select/banner colors match the rest of the app chrome.",
+      "doneNote": null
+    },
+    {
+      "id": "C2",
+      "title": "Stale 'staging-only / staging.js' comments after the CH16 promotion",
+      "category": "COMMENTS / READABILITY",
+      "priority": "P2",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "CH16 promoted the staging features to all surfaces and renamed `app/staging.js`→`app/widgets.js`, but a cluster of comments still describe the old staging-only world and point at the deleted file, actively misleading the next maintainer about the module boundary: `app/ui.js:5` ('…moved to staging.js, loaded only by staging.html.'), `app/main.js:132` ('staging.js (if loaded) sets up its terminal…'), `app/core.js:48-50` (event bus framed as 'main app and demo register no listeners' — now false, widgets.js subscribes on every surface), `app/data.js:207` & `:212` ('saved filters — staging-only UI'), `app/datamanager.js:68-69` ('Saved filters (staging — section only exists there)'), `app/main.js:97` ('saved-filter controls (staging)'). Update each to reflect reality: the widgets live in `app/widgets.js` loaded on every page, and the saved-filter UI is shared (Save disabled on demo). Leave the genuinely-staging-only notes intact (e.g. `data.js:358` F5 landing, seedStagingIfEmpty). Done when: no live-code comment references `staging.js` or labels a promoted feature 'staging-only'.",
+      "doneNote": null
+    },
+    {
+      "id": "S16",
+      "title": "Escape two admin/innerHTML sinks; sandbox the export-report iframe",
+      "category": "SECURITY",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "Three defense-in-depth hardening gaps surfaced by the R1 audit — none currently exploitable (strict `script-src 'self'` CSP blocks script execution, and the inputs are admin-only or static repo data), but cheap to close: (1) `assets/admin.js:38` interpolates the KV-stored status `label` straight into `cur.innerHTML` ('… — \"'+d.label+'\"') without escaping — admin-only stored markup injection; `esc()` is already loaded on admin.html, so wrap it: `esc(d.label)`. (2) `app/data.js` ~404-406 builds the data-feed `<optgroup label>`/option text from `feeds.json` labels unescaped, and `core.js feedName()` flows them into innerHTML sinks (`render.js` ~351, `export.js`); `esc()` the group/name (latent — only matters if reference data ever becomes editable). (3) the export-report iframe (`partials/app-modal.html` `#exp_preview`, populated via `app/export.js` `ifr.srcdoc=docNoBar`) has no `sandbox` attribute; add `sandbox=\"allow-same-origin allow-modals\"` (print() for PDF needs allow-modals; PNG/JPEG rasterization reads contentDocument → allow-same-origin) and re-test the PDF/PNG/JPEG paths. Done when: both sinks are esc()'d and the iframe is sandboxed with export still working in all four formats.",
+      "doneNote": null
+    },
+    {
+      "id": "CH17",
+      "title": "De-duplicate the export-report cost/summary rows (HTML vs Markdown)",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "`app/export.js` hand-writes the same report data twice in two renderers: the cost/tax breakdown as HTML `crow(...)` (~42-50) and as Markdown `mdRow(...)` (~177-181), and the summary metrics as HTML tiles vs MD rows (~171-175). They have ALREADY drifted — the HTML cost table includes a 'State top rate' row the Markdown version omits — which is exactly the bug a single source prevents. Refactor each section to one `[label, value, className?]` array (the `headline` array ~29-38 already does this) and emit both formats via small `toHtmlRows()`/`toMdRows()` mappers. Done when: the cost + summary sections are defined once and both the in-modal HTML report and the Markdown download render from the same array (no drift).",
+      "doneNote": null
+    },
+    {
+      "id": "B20",
+      "title": "Demo activity terminal never logs the initial dataset load",
+      "category": "FIXES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "The promoted activity terminal (widgets.js, on all surfaces) advertises 'CSV loads, edits, backups', but its first content line only appears on a MANUAL import: `runDemo()` (`app/data.js` ~142) and `restoreSession()` both call `renderLoaded` directly without emitting `data:imported`, so on the demo (and on app/staging first paint with restored data) the terminal shows only 'Session ready' and never reflects the dataset that's actually loaded. Fix: emit a synthetic load event at the end of `runDemo` (e.g. `emit('data:imported',{name:'sample data',count:TRADES.length})`) and on the restore path (a `data:imported`/new `data:restored` with the restored count), OR adjust the terminal hint copy to match. Done when: opening the demo (and reopening the app with saved data) shows a terminal line for the loaded dataset.",
+      "doneNote": null
+    },
+    {
+      "id": "A12",
+      "title": "Activity-terminal a11y + small widget-coupling cleanups",
+      "category": "ARCHITECTURE / DUPLICATION",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "Polish on the promoted widgets (`app/widgets.js`, `partials/app-dash.html`): (1) A11Y — the terminal panel has `role=\"log\" aria-live=\"polite\"` but `widgets.js` ~18 inserts newest-on-top via `insertBefore(line, win.firstChild)`; `role=\"log\"` expects APPENDED entries, so screen readers may not announce new lines. Keep visual newest-on-top with CSS `flex-direction:column-reverse` while appending in DOM order, or drop `role=\"log\"`; document the choice. (2) COUPLING — `DEFAULT_DASH_ORDER` (`widgets.js:9` `['perf','cal','cost','adv','defs','term']`) must stay in sync by hand with the `data-key` panel order in `partials/app-dash.html` (currently matches); add a comment flagging the coupling, or derive the default from the DOM (`currentWorkspace()` already reads `.panel[data-key]`). (3) NIT — hoist the terminal's bare `200` line-cap literal (`widgets.js` ~19) to a named `const TERM_MAX_LINES`; add a one-line note at `setSession` that the `degraded` state is reserved/forward-looking (no caller by design). Done when: the terminal announces correctly (or role removed with a note), the order coupling is documented/derived, and the magic number is named.",
+      "doneNote": null
     }
   ],
   "howToDrive": [
