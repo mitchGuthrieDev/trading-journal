@@ -9,6 +9,8 @@
 
    Defaults: { flags: { showBetaAdapters:true, maintenanceBanner:false }, refDataVersion:null } */
 
+import { isAdminAuthorized } from '../_lib/auth.js';
+
 const KEY = 'config';
 const DEFAULTS = {
   flags: { showBetaAdapters: true, maintenanceBanner: false },
@@ -38,7 +40,7 @@ export async function onRequest(context) {
   if (request.method === 'GET') return json(await read(kv));
 
   if (request.method === 'POST') {
-    if (!env.ADMIN_KEY || request.headers.get('x-admin-key') !== env.ADMIN_KEY) return json({ error: 'unauthorized' }, 401);
+    if (!(await isAdminAuthorized(request, env))) return json({ error: 'unauthorized' }, 401);
     if (!kv) return json({ error: 'STATUS_KV namespace is not bound' }, 500);
     let body; try { body = await request.json(); } catch (_) { return json({ error: 'invalid JSON body' }, 400); }
     const cur = await read(kv);

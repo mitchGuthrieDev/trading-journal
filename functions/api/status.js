@@ -11,6 +11,8 @@
    Persisted in a KV namespace bound as `STATUS_KV`. If KV isn't bound, GET falls
    back to auto and POST returns an error explaining the missing binding. */
 
+import { isAdminAuthorized } from '../_lib/auth.js';
+
 const KEY = 'live';
 const MODES = ['auto', 'live', 'offline', 'maintenance'];
 
@@ -32,7 +34,7 @@ export async function onRequest(context) {
   }
 
   if (request.method === 'POST') {
-    if (!env.ADMIN_KEY || request.headers.get('x-admin-key') !== env.ADMIN_KEY) {
+    if (!(await isAdminAuthorized(request, env))) {
       return json({ error: 'unauthorized' }, 401);
     }
     if (!kv) return json({ error: 'STATUS_KV namespace is not bound to this Pages project' }, 500);

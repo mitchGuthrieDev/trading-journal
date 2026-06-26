@@ -1,24 +1,41 @@
 /* Cloudflare Pages Function — GET /api/admin-key
-   Returns the ADMIN_KEY to an *already-authenticated* admin so the admin page can
-   pre-fill the key field (no more typing it each visit).
+   Issues a SHORT-LIVED signed admin token to an already-authenticated admin so the
+   admin page can act without the raw ADMIN_KEY ever reaching the browser (S3).
 
    It only responds when the request arrived through Cloudflare Access — i.e. it
-   carries the `Cf-Access-Jwt-Assertion` header that Cloudflare injects on
-   Access-protected hostnames (clients can't forge it). The `_middleware.js` also
-   restricts this route to the admin subdomain. Off-Access (local/preview) it
-   returns 401 and the admin page falls back to manual entry. */
+   carries the `Cf-Access-Jwt-Assertion` header Cloudflare injects on Access-protected
+   hostnames. When ACCESS_TEAM_DOMAIN + ACCESS_AUD are configured, the assertion's
+   signature is verified against the team JWKS before anything is issued (S4); when
+   they're not set, it falls back to requiring the header's presence (the route is
+   also behind Access + the _middleware gate). Off-Access it returns 401 and the
+   admin page falls back to manual key entry. */
+
+import { issueToken, verifyAccessJwt } from '../_lib/auth.js';
+
+function json(obj, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
+  });
+}
 
 export async function onRequest(context) {
   const { request, env } = context;
   const assertion = request.headers.get('Cf-Access-Jwt-Assertion');
-  const email = request.headers.get('Cf-Access-Authenticated-User-Email') || null;
-  if (!assertion) return new Response(JSON.stringify({ error: 'not authenticated' }), {
-    status: 401, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
-  });
-  if (!env.ADMIN_KEY) return new Response(JSON.stringify({ error: 'ADMIN_KEY not set' }), {
-    status: 500, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
-  });
-  return new Response(JSON.stringify({ key: env.ADMIN_KEY, email }), {
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
-  });
+  let email = request.headers.get('Cf-Access-Authenticated-User-Email') || null;
+  if (!assertion) return json({ error: 'not authenticated' }, 401);
+
+  // S4: verify the Access JWT signature + audience when Access is configured.
+  if (env.ACCESS_TEAM_DOMAIN && env.ACCESS_AUD) {
+    const payload = await verifyAccessJwt(assertion, env.ACCESS_TEAM_DOMAIN, env.ACCESS_AUD);
+    if (!payload) return json({ error: 'invalid Access token' }, 401);
+    email = payload.email || email;
+  }
+
+  const secret = env.TOKEN_SECRET || env.ADMIN_KEY;
+  if (!secret) return json({ error: 'ADMIN_KEY not set' }, 500);
+
+  // S3: hand back a short-lived signed token, never the raw key.
+  const ttl = Number(env.ADMIN_TOKEN_TTL_SEC) || 7200; // 2h default
+  const { token, exp } = await issueToken(secret, ttl);
+  return json({ token, exp, email });
 }

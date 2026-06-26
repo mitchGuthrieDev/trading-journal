@@ -38,6 +38,29 @@ so adding the cloud tier does not touch the rest of the app.
 - `functions/api/me.js`       — return the current user's tier. **Stub** that
   returns `{ tier: "local" }` so `Entitlements.current()` has something to call.
 
+## Admin auth (shipped)
+
+`/api/admin-key`, `/api/status`, `/api/config`, and the staging gate
+(`_middleware.js`) share `_lib/auth.js`:
+
+- **Short-lived tokens (S3).** `/api/admin-key` returns a signed HMAC token
+  (not the raw key); the admin page stores and sends the *token*. The raw
+  `ADMIN_KEY` never reaches the browser, but is still accepted server-side as a
+  fallback. Tokens expire (`ADMIN_TOKEN_TTL_SEC`, default 2h).
+- **Access JWT verification (S4).** When `ACCESS_TEAM_DOMAIN` + `ACCESS_AUD` are
+  set, `/api/admin-key` verifies the `Cf-Access-Jwt-Assertion` signature against
+  the team JWKS (cached 1h) + audience/issuer/expiry before issuing a token.
+  Unset → falls back to requiring the header's presence (route is still behind
+  Access + the middleware gate).
+
+Admin-auth environment variables (set in the Pages dashboard):
+
+- `ADMIN_KEY` — the existing admin secret (also the default token-signing secret).
+- `TOKEN_SECRET` — optional dedicated HMAC signing secret (defaults to `ADMIN_KEY`).
+- `ADMIN_TOKEN_TTL_SEC` — optional token lifetime in seconds (default `7200`).
+- `ACCESS_TEAM_DOMAIN` — e.g. `https://<team>.cloudflareaccess.com` (enables S4).
+- `ACCESS_AUD` — the Access application's Audience (AUD) tag (enables S4).
+
 ## Environment variables (set in the Pages dashboard when implementing)
 
 - `STRIPE_SECRET_KEY`

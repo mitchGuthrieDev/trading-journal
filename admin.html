@@ -195,11 +195,14 @@
   function setMsg(t,kind){ msg.textContent=t||''; msg.className='amsg'+(kind?' '+kind:''); }
   function mark(mode){ document.querySelectorAll('.modebtn').forEach(function(b){ b.classList.toggle('on', b.dataset.mode===mode); }); }
 
-  // Auto-populate the admin key when reached through Cloudflare Access (no typing).
+  // Reached through Cloudflare Access: fetch a SHORT-LIVED signed token (S3) — the raw
+  // ADMIN_KEY never reaches the browser. The token is sent as x-admin-key for writes and
+  // carried in the bb_staging cookie for launching staging, exactly like the key was.
   function autoKey(){
     fetch('/api/admin-key',{cache:'no-store'}).then(function(r){ return r.ok?r.json():null; }).then(function(d){
-      if(d && d.key){ keyInput.value=d.key; try{ localStorage.setItem(KEYLS,d.key); }catch(_){}
-        authnote.textContent='Authenticated'+(d.email?(' as '+d.email):'')+' — admin key auto-filled.'; }
+      if(d && d.token){ keyInput.value=d.token; try{ localStorage.setItem(KEYLS,d.token); }catch(_){}
+        var until=d.exp?(' — expires '+new Date(d.exp).toLocaleTimeString()):'';
+        authnote.textContent='Authenticated'+(d.email?(' as '+d.email):'')+' — admin token issued'+until+'.'; }
     }).catch(function(){});
   }
 
