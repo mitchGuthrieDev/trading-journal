@@ -46,11 +46,11 @@
       "category": "SECURITY",
       "priority": "P2",
       "effort": "medium",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Right now `/api/admin-key` returns the raw `ADMIN_KEY` and the admin page caches it in localStorage, and the staging gate carries the raw key in a cookie. Replace this with a short-lived signed token: the Access-authenticated admin endpoint issues a time-limited HMAC token (signed with a server secret), the admin page stores the token (not the key), and `/api/status`, `/api/config`, and the staging gate verify the token instead of comparing the raw key. Keep raw-key acceptance as a fallback if you want. Done when: the raw `ADMIN_KEY` never reaches the browser, admin writes + staging launch still work behind Access, and tokens expire.",
-      "doneNote": null
+      "doneNote": "**Shipped:** new `functions/_lib/auth.js` issues/verifies HMAC-SHA256 tokens. `/api/admin-key` now returns a short-lived signed token (TTL `ADMIN_TOKEN_TTL_SEC`, default 2h; signed with `TOKEN_SECRET`→ falls back to `ADMIN_KEY`) instead of the raw key — the raw `ADMIN_KEY` never reaches the browser. The admin page stores/sends the token (x-admin-key header for writes; `bb_staging` cookie for staging launch). `/api/status`, `/api/config`, and the `_middleware` staging gate verify it via `isAdminAuthorized()`; the raw key stays accepted server-side as a fallback (never handed to a browser). Tokens expire. Verified with a Node WebCrypto test (valid/tamper/expiry/fallback). Full E2E needs the deployed Access+KV env."
     },
     {
       "id": "S4",
@@ -58,11 +58,11 @@
       "category": "SECURITY",
       "priority": "P2",
       "effort": "medium",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "`functions/api/admin-key.js` currently trusts the *presence* of the `Cf-Access-Jwt-Assertion` header. Validate the JWT's signature against Cloudflare Access's JWKS (team domain + AUD) before returning anything, so the endpoint is safe even if it's ever reached off the Access-protected host. Cache the JWKS. Keep the existing 401 behavior off-Access. Done when: a request with a forged/absent assertion is rejected, a genuine Access request succeeds, and the admin page still auto-fills.",
-      "doneNote": null
+      "doneNote": "**Shipped:** `/api/admin-key` verifies the `Cf-Access-Jwt-Assertion` RS256 signature against the team JWKS (`<ACCESS_TEAM_DOMAIN>/cdn-cgi/access/certs`, cached 1h) plus audience (`ACCESS_AUD`), issuer, and expiry before issuing a token (`verifyAccessJwt` in `functions/_lib/auth.js`). When `ACCESS_TEAM_DOMAIN`/`ACCESS_AUD` are unset it falls back to the prior header-presence check (route is still behind Access + the middleware gate). Verified with a Node WebCrypto test using a generated RSA keypair + mocked JWKS: a genuine token is accepted; forged-signature, absent, expired, wrong-aud, wrong-iss, and unknown-kid are all rejected. Full E2E needs the deployed Access env."
     },
     {
       "id": "S5",
@@ -238,11 +238,11 @@
       "category": "FEATURES",
       "priority": "P2",
       "effort": "large",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Replace staging's \"Export report\" (which auto-opens a new tab) with a modal popup (reuse the app's modal pattern): a scrollable PREVIEW of the report plus Download / Email a copy / Close buttons. Beside Download, a format `<select>` — \"Choose format\" (default selected), PDF, PNG, JPEG, MD — with Download DISABLED until a real format is chosen. PDF = the existing print-to-PDF path; PNG/JPEG = rasterize the report node to canvas; MD = generate a Markdown summary. \"Email a copy\" keeps the current mailto behavior (prefilled draft). Build it staging-only (gated by `STAGING_PAGE`) so the main app + demo Export are untouched until promoted. Done when: Export report opens the popup with a live preview; Download is greyed until a format is picked, then exports the chosen format; Email opens a prefilled mailto; Close dismisses; main app + demo Export unchanged.",
-      "doneNote": null
+      "doneNote": "**Shipped (staging-only):** Export report now opens an in-page modal (`#exportModal`) with a scrollable iframe preview + a format `<select>` (PDF print / PNG / JPEG / Markdown; Download disabled until a real format is picked) + Email-a-copy (mailto) + Close. PNG/JPEG rasterize the report via an SVG `<foreignObject>`→canvas (no new dependency); MD builds a markdown summary; PDF prints the iframe. `exportReport()` was refactored to share the report CSS/markup between the unchanged new-tab path (main/demo) and the modal. Verified in Chromium: preview renders, format gating works, MD + PNG downloads succeed, 0 errors; demo/main keep the new-tab export."
     },
     {
       "id": "B1",
@@ -334,11 +334,11 @@
       "category": "FEATURES",
       "priority": "P3",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "In staging, when the Broker & Costs panel is expanded it should stay pinned in view as the user scrolls (e.g. position:sticky at the top), so they can switch broker / feed / fees / state while reading modules lower down (like Advanced Statistics on a non-4K screen) without scrolling back up. Only stick while expanded; collapsing releases it. Degrade to non-sticky on narrow/mobile so it doesn't overlap content. Touch the staging setup markup + `app.css`. Done when: with Broker & Costs expanded it stays visible while scrolling; collapsing returns it to normal flow; mobile unaffected; main app/demo unchanged.",
-      "doneNote": null
+      "doneNote": "**Shipped (staging-only):** the expanded Broker & Costs panel is now `position:sticky` while scrolling the dashboard — `display:contents` on `#landing` (when loaded) lifts `#setup` out of its short box so sticky has the full `.wrap` height. Collapsing the panel returns it to normal flow; below 760px it degrades to non-sticky so it never overlaps content. Gated by `body[data-mode=staging].loaded`. Verified in Chromium: position sticky when expanded, static when collapsed; demo/main unaffected (static)."
     },
     {
       "id": "F5",
@@ -346,11 +346,11 @@
       "category": "FEATURES",
       "priority": "P2",
       "effort": "medium",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Rework the app-state flow so the initial (landing/setup) state is ALWAYS the entry point — whether or not data is already loaded — instead of jumping straight to the dashboard when data exists. The initial state must indicate whether dashboard data is already loaded: if loaded, show a 'data is already loaded' message, ENABLE Start Blotterbook (opens the existing dashboard), and change the lead blurb from 'Load a trade-history CSV to begin' to something like 'Start Blotterbook to access your dashboard'; if no data, behave exactly as today (load-CSV flow, Start gated). Staging-only (gated) until promoted. Touch the staging landing markup + the boot/restore path (`data.js`/`main.js`). Done when: staging always opens on the initial state; it clearly shows loaded vs no-data; Start is enabled + the blurb changes when data exists; the no-data flow is unchanged; main app/demo untouched.",
-      "doneNote": null
+      "doneNote": "**Shipped (staging-only):** staging always boots on the initial/landing state. When the isolated DB has data, `restoreSession` calls `armStagingLanding()` instead of entering the dashboard: it swaps the headline to “Start Blotterbook to access your dashboard”, updates the blurb, shows a “✓ Dashboard data already loaded — N trades” note, and enables Start; Start then opens the existing dashboard via `enterStagingDashboard()`. With no data the normal load-CSV flow is unchanged (Start gated). Main app + demo untouched (verified: demo still boots straight to the dashboard)."
     },
     {
       "id": "F6",
@@ -358,11 +358,11 @@
       "category": "FEATURES",
       "priority": "P3",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "In staging's Break-Even & Cost Budget module, move the per-symbol table (symbol / trades / commission) to become a COLLAPSIBLE subsection nested under the 'Commissions (all-in)' line, styled to match the 'Tax — Section 1256' subsection — so a user can collapse it to see just the Commissions (all-in) total, or expand for the per-symbol breakdown. Touch the staging cost-panel markup + break-even render (`render.js`) + `app.css`. Done when: the symbol/commission table sits under Commissions (all-in) as a collapsible block styled like the 1256 section; collapsing hides the table leaving the all-in total; main app/demo unchanged.",
-      "doneNote": null
+      "doneNote": "**Shipped (staging-only):** the per-symbol commission table moved into a collapsible `<details class=\"csubtable\">` nested under the “Commissions (all-in)” line in the Break-even panel, styled to match the “Tax — Section 1256” subsection (`.csub` + the `.cdefs` ▸/▾ marker). Collapsed shows just the all-in total; expanded shows the breakdown. Built in `render.js` gated by `STAGING_PAGE` (the standalone `#c_comm_table` is left empty in staging). Verified in Chromium: collapsible present with the table inside, `#c_comm_table` empty; demo/main keep the standalone table."
     },
     {
       "id": "F7",
@@ -370,11 +370,11 @@
       "category": "FEATURES",
       "priority": "P2",
       "effort": "large",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Redesign the homepage Features section and fold in Use Cases (then delete the Use Cases section). Reference: https://gwtrade.app/#features. (1) Convert the six feature elements into a clickable LIST; selecting an item shows its detail in a panel to the RIGHT of the list (list-left / detail-right, desktop). (2) Take the four Use Cases elements and place them ABOVE that list, laid out HORIZONTALLY (not the current 2×2 grid), with simplified/shortened copy so they fit the horizontal row. Keep it responsive (this describes the desktop layout; stack sensibly on mobile). Remove the now-redundant Use Cases section. Done when: the homepage has a single Features section = a horizontal row of 4 condensed use-cases above a clickable feature list with a right-hand detail panel; Use Cases is gone; mobile still reads well.",
-      "doneNote": null
+      "doneNote": "**Shipped:** the homepage Features section now leads with a horizontal row of four condensed use-cases, then a clickable feature LIST (left) + detail panel (right) that swaps on selection (first item pre-rendered for initial paint / no-JS). The standalone Use Cases section was removed and its pitch line folded in. Responsive: the use-case row collapses 4→2→1 and the explorer stacks to one column at md (760). Dropped the unused `.grid3/.fcard/.uc/.uc-grid` styles. Verified in Chromium: 4 use-cases, 6 feature items, click swaps detail + active state, single-column on mobile, 0 errors."
     },
     {
       "id": "F8",
@@ -382,11 +382,11 @@
       "category": "FEATURES",
       "priority": "P3",
       "effort": "trivial",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "In the admin panel's read-only Backlog list (`admin.html`, which reads `data/backlog.json`), render items whose status is done with a strikethrough on the title/row so completed items are visually distinct from open ones. Done when: done items show struck-through in the admin backlog list; open/guardrail items are unaffected.",
-      "doneNote": null
+      "doneNote": "**Shipped:** completed (status=done) rows in the admin Backlog list now render the title with `text-decoration:line-through`, visually distinct from open/guardrail items (which are unaffected). Verified in Chromium (computed `line-through` on done titles)."
     },
     {
       "id": "F9",
@@ -394,11 +394,11 @@
       "category": "FEATURES",
       "priority": "P3",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Add filter controls to the admin Backlog module (`admin.html`) to filter the item list by STATUS (open / done / guardrail) and by EFFORT (trivial / small / medium / large). Filters combine; decide whether the per-category counts stay full totals or reflect the active filter, and keep it clear. Done when: the admin can narrow the backlog list by status and effort, and clearing filters restores the full list.",
-      "doneNote": null
+      "doneNote": "**Shipped:** added Status and Effort `<select>` filters (options derived from the data) to the admin Backlog module; they combine and narrow the item LIST only — the per-category counts stay full project totals (noted inline). A Clear-filters button resets both. Verified in Chromium: 40 rows → status=done 21 → +effort=small 12 → clear 40, every shown row matching the active filter."
     },
     {
       "id": "R5",
