@@ -99,7 +99,13 @@ function compute(tr){
   const side=k=>{ const s=tr.filter(t=>t.side===k); const p=s.reduce((a,t)=>a+t.pnl,0);
     return {n:s.length,pnl:p,wins:s.filter(t=>t.pnl>0).length}; };
   const long=side('long'), short=side('short');
-  // day-of-week aggregation (0=Sun..6=Sat)
+  // Day-of-week aggregation (0=Sun..6=Sat). Each trade's calendar date is bucketed by its local
+  // weekday; we sum TOTAL PnL and count per weekday. bestDow / worstDow are the active weekdays
+  // (n>0) with the highest / lowest TOTAL PnL — surfaced in Advanced Stats as "Best/Worst Weekday".
+  // CAVEAT (R5): this is *total*, not per-trade-average, PnL, so a weekday you simply trade more
+  // skews larger in magnitude, and small samples make it noisy. It's a coarse "which day treats me
+  // best" hint; CH18 tracks normalizing it (per-trade avg) or replacing it with a full weekday
+  // breakdown (the F14 Win Rate modal already shows every weekday).
   const dow=Array.from({length:7},()=>({pnl:0,n:0}));
   for(const t of tr){ const wd=new Date(t.date+'T00:00:00').getDay(); dow[wd].pnl+=t.pnl; dow[wd].n++; }
   const dowActive=dow.map((d,i)=>({i,...d})).filter(d=>d.n);

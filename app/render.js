@@ -337,9 +337,12 @@ function renderAdv(m, c=costModel(m)){
     rows.splice(rows.indexOf(rows.find(r=>r[0]==='Max Consecutive Losses'))+1, 0,
       ['Avg Hold Time', `<span class="av">${fmtDur(avgHold)}</span> <span class="av na">· ${held.length}/${m.n}</span>`]);
   }
+  // R5: wrap the value(s) in a single `.avg` group so every row has exactly two flex children
+  // (label + value-group). Rows with a secondary value (e.g. "Long PnL … · 12") used to expose
+  // three flex children, so space-between stranded the MAIN value in the middle of the row.
   document.getElementById('adv').innerHTML=rows.map(([a,b])=>
     a==='head'?`<div class="subhead">${b}</div>`
-    :`<div class="arow"><span class="al">${a}</span>${b}</div>`).join('');
+    :`<div class="arow"><span class="al">${a}</span><span class="avg">${b}</span></div>`).join('');
 }
 
 /* ============================================================
