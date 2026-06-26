@@ -24,15 +24,19 @@ function exportReport(){
       <td class="num">${money(s.rate)}</td><td class="num">${money(s.rate*2)}</td>
       <td class="num">${money(s.total)}</td></tr>`).join('');
 
-  const tiles =
-      tile('Net P&L (pre-tax)', money(c.netPreTax), cls(c.netPreTax))
-    + tile('Take-home (post-tax)', money(c.afterTax), cls(c.afterTax))
-    + tile('Gross P&L', money(c.gross), cls(c.gross))
-    + tile('Win rate', (m.n?100*m.wins/m.n:0).toFixed(1)+'%')
-    + tile('Profit factor', c.pf===Infinity?'∞':c.pf.toFixed(2))
-    + tile('Max drawdown', money(-m.maxDD), 'neg')
-    + tile('Trades', String(m.n))
-    + tile('Active days', String(m.active));
+  // Headline figures defined once, then rendered as HTML tiles AND as the plaintext email
+  // summary below — so the two can't drift (CH11). [label, value, className].
+  const headline = [
+    ['Net P&L (pre-tax)', money(c.netPreTax), cls(c.netPreTax)],
+    ['Take-home (post-tax)', money(c.afterTax), cls(c.afterTax)],
+    ['Gross P&L', money(c.gross), cls(c.gross)],
+    ['Win rate', (m.n?100*m.wins/m.n:0).toFixed(1)+'%', ''],
+    ['Profit factor', c.pf===Infinity?'∞':c.pf.toFixed(2), ''],
+    ['Max drawdown', money(-m.maxDD), 'neg'],
+    ['Trades', String(m.n), ''],
+    ['Active days', String(m.active), '']
+  ];
+  const tiles = headline.map(([k,v,cl])=>tile(k,v,cl)).join('');
 
   const costTbl =
      crow('Gross P&L', `<span class="${cls(c.gross)}">${money(c.gross)}</span>`)
@@ -65,12 +69,7 @@ function exportReport(){
     +`Period: ${range} (${scopeLabel()})\n`
     +`Generated: ${fmtDate(gen)} ${pad2(gen.getHours())}:${pad2(gen.getMinutes())}\n`
     +`Broker: ${BROKERS[c.broker]?BROKERS[c.broker].name:c.broker} · Feed: ${feedName()} · State: ${stateLabel()}\n\n`
-    +`Net P&L (pre-tax): ${money(c.netPreTax)}\n`
-    +`Take-home (post-tax): ${money(c.afterTax)}\n`
-    +`Gross P&L: ${money(c.gross)}\n`
-    +`Win rate: ${(m.n?100*m.wins/m.n:0).toFixed(1)}%\n`
-    +`Profit factor: ${c.pf===Infinity?'∞':c.pf.toFixed(2)}\n`
-    +`Max drawdown: ${money(-m.maxDD)}\n`
+    +headline.slice(0,6).map(([k,v])=>`${k}: ${v}`).join('\n')+'\n'
     +`Trades: ${m.n} · Active days: ${m.active}\n\n`
     +`Commissions: ${money(c.totalComm)} · Subscriptions: ${money(c.fixedPeriod)} · Est. 1256 tax: ${money(c.tax)}\n`
     +`Break-even / trade: ${money(bePer)}\n\n`
@@ -250,10 +249,6 @@ function wireExportModal(){
   if(ov) ov.addEventListener('click',e=>{ if(e.target.id==='exportModal') closeExportReportModal(); });
   document.addEventListener('keydown',e=>{ if(e.key==='Escape' && ov && ov.classList.contains('open')) closeExportReportModal(); });
 }
-function expDlBlob(blob,name){
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
-  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
-}
 async function exportDownload(){
   if(!EXPORT_CUR) return;
   const fmt=(document.getElementById('exp_format')||{}).value;
@@ -263,12 +258,12 @@ async function exportDownload(){
   const note=(t,k)=>{ if(msg){ msg.textContent=t||''; msg.className='parsestatus'+(k?' '+k:''); } };
   try{
     if(fmt==='pdf'){ ifr.contentWindow.focus(); ifr.contentWindow.print(); }
-    else if(fmt==='md'){ expDlBlob(new Blob([EXPORT_CUR.md],{type:'text/markdown;charset=utf-8'}), base+'.md'); note('Markdown downloaded.','ok'); }
+    else if(fmt==='md'){ downloadFile(base+'.md', new Blob([EXPORT_CUR.md],{type:'text/markdown;charset=utf-8'})); note('Markdown downloaded.','ok'); }
     else if(fmt==='png'||fmt==='jpeg'){
       note('Rendering image…');
       const type=fmt==='png'?'image/png':'image/jpeg';
       const blob=await rasterizeReport(ifr, type);
-      expDlBlob(blob, base+'.'+fmt); note('');
+      downloadFile(base+'.'+fmt, blob); note('');
     }
   }catch(err){ console.error('export download failed', err); note('Could not export '+String(fmt).toUpperCase()+' — try PDF or Markdown.','err'); }
 }

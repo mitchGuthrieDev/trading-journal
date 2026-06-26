@@ -6,8 +6,7 @@
 /* ============================================================
    Rendering — cards
    ============================================================ */
-function renderCards(m){
-  const c=costModel(m);
+function renderCards(m, c=costModel(m)){   // c may be passed in to avoid recomputing per render (CH11)
   document.getElementById('cards').innerHTML=`
    <div class="card"><div class="k">Net PnL</div>
      <div class="v ${cls(c.netPreTax)}">${usd(c.netPreTax)}</div>
@@ -295,8 +294,7 @@ function fmtDur(ms){
   if(h<24) return h+'h'+(rem?' '+rem+'m':'');
   const d=Math.floor(h/24); return d+'d'+(h%24?' '+(h%24)+'h':'');
 }
-function renderAdv(m){
-  const c=costModel(m);
+function renderAdv(m, c=costModel(m)){
   // hold time is only available for fills-based platform exports (round-trip matched)
   const held=(m.trades||[]).filter(t=>t.holdMs!=null && t.holdMs>0);
   const avgHold=held.length? held.reduce((a,t)=>a+t.holdMs,0)/held.length : null;
@@ -339,13 +337,12 @@ function renderAdv(m){
 /* ============================================================
    Rendering — break-even / cost budget
    ============================================================ */
-function renderCalc(m){
+function renderCalc(m, c=costModel(m)){
   const tbl=document.getElementById('c_comm_table'),
         head=document.getElementById('c_head'),
         rowsEl=document.getElementById('c_rows'),
         cap=document.getElementById('c_cap');
   if(!m || !m.n){ tbl.innerHTML=''; head.innerHTML=''; rowsEl.innerHTML=''; cap.innerHTML=''; return; }
-  const c=costModel(m);
   const bePer= c.n>0 ? (c.totalComm+c.fixedPeriod)/c.n : 0;
 
   cap.innerHTML=`Broker: <b>${BROKERS[c.broker].name}</b> &nbsp;·&nbsp; Feed: ${feedName()} &nbsp;·&nbsp; Platform $${c.platform}/mo`;
@@ -436,8 +433,8 @@ function activeGraphMetrics(){
 function curveMetrics(){ return STAGING_PAGE ? activeGraphMetrics() : activeMetrics(); }
 function renderDash(){
   if(!METRICS_ALL) return;
-  const m=activeMetrics();
-  renderCards(m); renderAdv(m); renderCalc(m);
+  const m=activeMetrics(), c=costModel(m);   // compute the cost model once, share it (CH11)
+  renderCards(m,c); renderAdv(m,c); renderCalc(m,c);
   renderCurve(STAGING_PAGE ? activeGraphMetrics() : m);
   document.getElementById('scopenote').textContent =
     SCOPE==='all' ? `all ${METRICS_ALL.n} trades` : `${MON[calMonth]} ${calYear}`;
