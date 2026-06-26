@@ -142,11 +142,11 @@
       "category": "ARCHITECTURE / DUPLICATION",
       "priority": "P2",
       "effort": "large",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
+      "status": "done",
+      "completedDate": "2026-06-26",
+      "partial": true,
       "prompt": "Finish what A1 started: the three app pages share a near-identical shell (top bar, landing/setup, the dashboard panels, the data-manager modal) that's hand-kept in three files — `app/staging.html` is a near-verbatim copy of `app/index.html` and the biggest drift risk (A3 isolated the staging *JS*, not the markup). Extend the existing prebuild (`scripts/build-includes.mjs`) to inject a shared app-shell partial, with the per-page differences handled by markers/flags: `data-mode`, the version badge, the demo's trimmed top bar + disabled Manage-data, and the staging-only markup (session pill + popup, the filter Save/Saved controls, the activity-terminal panel). Output must stay 100% static. Done when: the shared top-bar / dashboard / modal markup lives in one source, the three app pages render identically to today (verify main/demo/staging in preview), and editing the shell updates all three.",
-      "doneNote": null
+      "doneNote": "**Shipped (partial):** extended `scripts/build-includes.mjs` to inject shared app-shell partials into all three app pages via a tiny `<!--IF mode=…-->` conditional. Single-sourced into `partials/`: `app-landing.html` (app+staging), `app-scope.html` (all three), `app-filters.html` (+staging saved-filter controls via flag), `app-dash.html` (the five dashboard panels; demo journal-hint via flag), `app-modal.html` (data-manager modal; staging Saved-filters section via flag). Editing a partial + re-running the build updates all three pages. The staging-only Activity Terminal stays inline right after the shared dash include — it exists on staging ALONE, so it was never duplicated. Verified: each built page's id/data-key attribute set is identical to before; demo carries none of the staging-only nodes; the build is idempotent; all three boot in Chromium with 0 page errors (app=5 panels, demo=5, staging=6 incl. terminal + saved-filter controls). **Deferred:** the three top bars stay per-page (version badge, button sets, staging session-pill/workspace-bar diverge too much to fold safely), and demo keeps its bespoke trimmed landing + preview-only data manager."
     },
     {
       "id": "L1",
@@ -154,11 +154,11 @@
       "category": "LAYOUT (web vs mobile)",
       "priority": "P2",
       "effort": "medium",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "There are ~15 distinct media breakpoints across `app/app.css`, `index.html`, and `site.css` (760/880/1180/620/1080/780/680/520/460/900/840/720/660/560… plus staging 1100/1480/1700). Define a small named scale (e.g. sm 560 / md 760 / lg 1080 / xl 1480) and migrate the queries to it, keeping the responsive-in-place approach (do NOT split mobile into separate files). Adjust only where a query doesn't already land near a scale value; don't regress current layouts. Done when: queries use the named scale, and main/demo/staging/marketing look the same or better at mobile/tablet/desktop/4K widths (spot-check in preview at a few widths).",
-      "doneNote": null
+      "doneNote": "**Shipped:** consolidated the ad-hoc media breakpoints into a documented named scale — xs 460 · sm 560 · cal 620 · md 760 · lg 900, plus the wide min-width tiers 1100/1480/1700/1920 (full table commented at the top of `app/app.css`; one-line pointers in `site.css` + `index.html`). CSS media queries can't read custom properties without a build step, so the scale is a documented convention + snapped literals. Snapped the near-duplicates: `.cards` & `.mcards` 520→560, nav-hamburger 720→760, `.grid3` & `.price-grid` 880→900. `@media` conditions now use only {460,560,620,760,900} + the wide tiers — 520/720/880 no longer appear as breakpoints. Responsive-in-place kept (no separate mobile files). Verified in Chromium at the boundary widths (home 1280/900/560, app 560, howto 760 hamburger) — no regressions."
     },
     {
       "id": "L2",
@@ -322,11 +322,11 @@
       "category": "CHORE / REFACTOR",
       "priority": "P3",
       "effort": "medium",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Rename `app/index.html` to `app/app.html`. IMPORTANT URL impact: the app is currently served at `/app/` (directory index = index.html); after the rename `/app/` has no index. Either update every internal Launch link (`/app/` → `/app/app.html`) across the marketing pages + admin + README, OR add a Cloudflare Pages redirect/rewrite so `/app/` still resolves to `app.html` — pick one and apply it consistently. Relative `app.css`/script paths are unaffected; `demo.html` + `staging.html` are already named, so only the main entry changes. Done when: the app loads at its new path, every Launch link works (no dead `/app/` route), and the README reflects the new filename.",
-      "doneNote": null
+      "doneNote": "**Shipped:** `git mv app/index.html → app/app.html`, then added a root `_redirects` rewriting `/app/` → `/app/app.html` (200 = rewrite; the URL stays `/app/`) so the clean URL and every existing Launch link keep working with zero link churn. README updated (file-tree entry, `app.css` shared-by line, promote-staging note, and quick-start — incl. a note that the `/app/` rewrite is Pages-only, so the local static server should open `/app/app.html` directly). No code referenced `app/index.html` directly (the `../index.html` link is the homepage). Verified app.html boots in Chromium."
     },
     {
       "id": "F4",
@@ -454,11 +454,11 @@
       "category": "CHORE / REFACTOR",
       "priority": "P2",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Replace every `contact@scalineaudio.net` with `contact@blotterbook.com` across the repo — marketing pages, the app Contact buttons / mailto links, the legal page, footers, the shared partials, and the README. Update any mailto subject/body links accordingly. Done when: no `contact@scalineaudio.net` remains in the codebase and all Contact links open a draft to `contact@blotterbook.com`.",
-      "doneNote": null
+      "doneNote": "**Shipped:** replaced `contact@scalineaudio.net` → `contact@blotterbook.com` across the marketing pages (index/changelog/howto/roadmap/legal), the app Contact mailto buttons (`app/app.html`, `app/demo.html`), the shared `partials/footer.html`, and `LICENSE` (licensing-inquiry line). mailto subject/body params preserved. The only remaining `contact@scalineaudio.net` is this item's own task description in `data/backlog.json`, left intact as the historical record. NOTE: LICENSE's licensing-inquiry contact was switched to blotterbook.com for consistency with the done-when — revert that one line if licensing should stay on the company domain."
     },
     {
       "id": "CH3",
@@ -466,11 +466,11 @@
       "category": "CHORE / REFACTOR",
       "priority": "P3",
       "effort": "trivial",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-26",
       "partial": false,
       "prompt": "Review `.claude/change-plan.md` — it predates the backlog and is now redundant (we track work in `data/backlog.json`). Confirm nothing in it is still needed, then remove it (or reduce it to a one-line pointer to the backlog) so there's a single planning source. Note: it's gitignored, so this is local cleanup. Done when: change-plan.md is gone or a stub, and the backlog is the sole planning source.",
-      "doneNote": null
+      "doneNote": "**Verified — nothing to remove:** `.claude/change-plan.md` is gitignored and was never committed, so it is absent from the repo and this checkout (confirmed via `git log` — no history). `data/backlog.json` is already the sole committed planning source. No file change was needed; a stray local `change-plan.md` on a dev machine, if any, can be deleted by hand."
     },
     {
       "id": "B3",
