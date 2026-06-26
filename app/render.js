@@ -184,30 +184,48 @@ function renderCurve(m){
     c.setAttribute('r','3.5'); c.setAttribute('fill',s.color); g.appendChild(c); return c; });
   svg.appendChild(g);
 
-  svg.onmousemove=ev=>{
-    const r=svg.getBoundingClientRect(); const mx=(ev.clientX-r.left)/r.width*W;
-    if(mx<padL-2 || mx>W-padR+2){ g.style.display='none'; tip.style.display='none'; return; }
-    let best=disp[0], bd=1e9;
-    for(const p of disp){ const d=Math.abs(xOf(p)-mx); if(d<bd){bd=d;best=p;} }
-    const x=xOf(best);
+  // shared guide+tooltip painter, driven by either the mouse or the keyboard cursor (B10)
+  function showGuideAt(best){
+    const x=xOf(best), r=svg.getBoundingClientRect();
     g.style.display=''; gline.setAttribute('x1',x); gline.setAttribute('x2',x);
     gline.setAttribute('y1',padT); gline.setAttribute('y2',H-padB);
     series.forEach((s,i)=>{ dots[i].setAttribute('cx',x); dots[i].setAttribute('cy',yPx(best[s.key])); });
     tip.style.display='block'; tip.style.left=(x/W*r.width)+'px'; tip.style.top='4px';
     tip.innerHTML=`<div class="td">${best.date}</div>`+series.map(s=>
       `<div class="tr"><span class="sw" style="background:${s.color}"></span>${s.label} <b>${usd(best[s.key])}</b></div>`).join('');
+  }
+  const hideGuide=()=>{ g.style.display='none'; tip.style.display='none'; };
+  const nearestTo=mx=>{ let best=disp[0], bd=1e9; for(const p of disp){ const d=Math.abs(xOf(p)-mx); if(d<bd){bd=d;best=p;} } return best; };
+
+  svg.onmousemove=ev=>{
+    const r=svg.getBoundingClientRect(); const mx=(ev.clientX-r.left)/r.width*W;
+    if(mx<padL-2 || mx>W-padR+2){ hideGuide(); return; }
+    showGuideAt(nearestTo(mx));
   };
-  svg.onmouseleave=()=>{ g.style.display='none'; tip.style.display='none'; };
+  svg.onmouseleave=hideGuide;
 
   // click the graph → select that date and jump the calendar to its month
   svg.style.cursor='crosshair';
   svg.onclick=ev=>{
     const r=svg.getBoundingClientRect(); const mx=(ev.clientX-r.left)/r.width*W;
     if(mx<padL-2 || mx>W-padR+2) return;
-    let best=disp[0], bd=1e9;
-    for(const p of disp){ const d=Math.abs(xOf(p)-mx); if(d<bd){bd=d;best=p;} }
-    selectFromGraph(best.date);
+    selectFromGraph(nearestTo(mx).date);
   };
+
+  // keyboard parity (B10): focus the curve, arrow across dates, Enter/Space to mark one.
+  svg.setAttribute('tabindex','0');
+  svg.setAttribute('role','button');
+  svg.setAttribute('aria-label','Equity curve. Use Left and Right arrows to move across dates and read each day’s value; press Enter to mark the focused date on the calendar.');
+  let kcur=disp.length-1;
+  svg.onkeydown=ev=>{
+    if(ev.key==='ArrowRight'||ev.key==='ArrowLeft'){
+      ev.preventDefault(); kcur=Math.max(0,Math.min(disp.length-1,kcur+(ev.key==='ArrowRight'?1:-1))); showGuideAt(disp[kcur]);
+    } else if(ev.key==='Home'){ ev.preventDefault(); kcur=0; showGuideAt(disp[kcur]); }
+    else if(ev.key==='End'){ ev.preventDefault(); kcur=disp.length-1; showGuideAt(disp[kcur]); }
+    else if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); selectFromGraph(disp[kcur].date); }
+  };
+  svg.onfocus=()=>{ kcur=Math.max(0,Math.min(disp.length-1,kcur)); showGuideAt(disp[kcur]); };
+  svg.onblur=hideGuide;
 }
 
 /* ============================================================
@@ -238,11 +256,12 @@ function renderCalendar(){
         weekPnl+=rec.pnl; weekDays++;
         const k=rec.pnl>0?'win':rec.pnl<0?'loss':'';
         const wr=rec.trades?(100*rec.wins/rec.trades).toFixed(0):'0';
-        weekCells.push(`<div class="cell ${k}${selc}${note}" data-date="${key}"><span class="dnum">${da}</span>
+        const lbl=`${MON[mo]} ${da}: ${rec.trades} trade${rec.trades===1?'':'s'}, ${usd(rec.pnl)}`;
+        weekCells.push(`<div class="cell ${k}${selc}${note}" data-date="${key}" tabindex="0" role="button" aria-label="${lbl}"><span class="dnum">${da}</span>
           <div class="pnl ${cls(rec.pnl)}">${usd(rec.pnl)}</div>
           <div class="meta">${rec.trades} tr · ${wr}%</div></div>`);
       } else {
-        weekCells.push(`<div class="cell${selc}${note}" data-date="${key}"><span class="dnum">${da}</span></div>`);
+        weekCells.push(`<div class="cell${selc}${note}" data-date="${key}" tabindex="0" role="button" aria-label="${MON[mo]} ${da}: no trades"><span class="dnum">${da}</span></div>`);
       }
       cur.setDate(cur.getDate()+1);
     }
