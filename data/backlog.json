@@ -321,18 +321,6 @@
       "doneNote": null
     },
     {
-      "id": "R19",
-      "title": "Discussion & planning: adopt a build step (dev-only tooling)",
-      "category": "REVIEW / AUDIT",
-      "priority": "P2",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "Discussion/planning from the design-pillars review (the no-build pillar is now soft — docs/architecture.md#design-pillars). Decide whether to adopt a build step, on the EXPLICIT basis that no-runtime-dependencies stays a HARD rule (the shipped app ships zero third-party/runtime deps) while build-time/dev tooling is the open question. COVER: (1) what a build would buy — a lint/format/typecheck pipeline and especially Playwright RENDER/visual tests (the current coverage gap), CSS minify/dead-code, native hashed-filename cache-busting (retiring build-manifest), and auto-generated hashed/nonce CSP (retiring style-src 'unsafe-inline'); (2) the cost — it reverses the deploy contract (output dir, source != committed artifact, repo root no longer = web root; ripples through CH28/A18), a new failure surface + a Cloudflare Pages build command, and a SUPPLY-CHAIN surface (package.json + lockfile + transitive dev deps that run at build time can inject into shipped assets — relevant to the privacy/security ethos); (3) the spectrum — zero-dep hand-rolled Node build vs dev-dep tooling (esbuild/postcss/eslint/playwright) vs the ruled-out runtime-framework option; (4) sequencing — the ESM migration is now DONE (A20: native ES modules, no build/deps), which is the prerequisite IF a bundler is ever adopted; the styling refactor and the targeted-update refactor remain zero-build/zero-dep and should still land regardless. A build is now justified mainly by the test/lint pipeline (esp. the Playwright render/visual-test coverage gap) — note that A20 already ships native ESM, so a bundler would only ADD tooling, not unlock module syntax. Done when: a written recommendation (adopt vs stay; if adopt, which tier + how it changes the deploy contract) + concrete next-step backlog items exist.",
-      "doneNote": null
-    },
-    {
       "id": "S22",
       "title": "Guardrail: admin-endpoint security must not depend on the fail-open rate limiter",
       "category": "SECURITY",
@@ -343,6 +331,30 @@
       "partial": false,
       "prompt": "From the R1 audit. rateLimited() (functions/_lib/http.js ~19-30) returns false (ALLOW) whenever STATUS_KV is unbound and is best-effort/non-atomic; it is the only throttle on /api/status, /api/config, and /api/admin-key (token issuance, 20/60s). This is the correct trade-off (don't lock the admin out; endpoints sit behind Access + constant-time token/key compare), so it is defense-in-depth only. Guardrail: never let an endpoint's security DEPEND on rateLimited() — auth (Access JWT + constant-time compare) is the real control; reject any future endpoint that relies on the limiter as primary protection, and keep STATUS_KV bound in prod so the throttle is actually active. Adjacent: A17 (KV low-write), S11 (webhook signature).",
       "doneNote": null
+    },
+    {
+      "completedDate": null,
+      "partial": false,
+      "doneNote": null,
+      "id": "A24",
+      "title": "Adopt Tier B: shipped-output build (deferred — gated on a concrete trigger)",
+      "category": "ARCHITECTURE / DUPLICATION",
+      "priority": "P3",
+      "effort": "large",
+      "status": "open",
+      "prompt": "DEFERRED per the R19 decision (docs/build-step-decision.md). Tier A (dev-only tooling — ESLint/Prettier/Playwright in CI, committed files stay the deploy artifact) shipped; this is the heavier Tier B that emits the SHIPPED output (bundler + minify + content-hashed filenames + nonce/hash CSP). Do NOT start until a concrete trigger fires: (1) dropping `style-src 'unsafe-inline'` (S18) becomes a priority — nonce/hash CSP is Tier B's only unique payoff, and note script-src is already 'self' with no inline allowance so the residual risk is CSS-injection only; OR (2) module count / CSS size becomes a MEASURED perf problem (native ESM + HTTP/2 + edge caching make this unlikely soon). When triggered: the ONLY Pages-compatible shape is the public/ output-dir split from A18, migrated all-at-once across the full coupled-path map (the /app//assets//data absolute refs, _redirects, _headers, robots/sitemap + canonicals, build-includes/build-manifest/bump-version path prefixes), with a Pages build command + SKIP of the old no-build assumptions. Re-confirm no-runtime-deps stays hard (build deps must not ship at runtime). Done when: either the trigger is met and the output-dir build + CSP-nonce migration lands with the coupled-path set updated in lockstep and all surfaces verified, or this is explicitly re-affirmed as deferred."
+    },
+    {
+      "completedDate": null,
+      "partial": false,
+      "doneNote": null,
+      "id": "A25",
+      "title": "(guardrail) Dev tooling stays dev-only — never alters shipped bytes",
+      "category": "ARCHITECTURE / DUPLICATION",
+      "priority": "P2",
+      "effort": "ongoing",
+      "status": "guardrail",
+      "prompt": "Guardrail from the R19 Tier A adoption (docs/build-step-decision.md). The project now has devDependencies (ESLint/Prettier/Playwright) + a lockfile, but the SHIPPED app must stay dependency-free and build-stepless: tooling runs only locally/CI and must NEVER alter the committed/served files. Keep node_modules + playwright-report + test-results gitignored; keep the CI drift gate (git clean after install/test) so a tool that writes into the tree fails the build; never add a runtime/import dependency to app/*.js, assets/*.js, or functions/* on an npm package. Set SKIP_DEPENDENCY_INSTALL=1 on the Cloudflare Pages project so devDeps never execute at deploy. Reject any change that makes the shipped output depend on the build tooling (that is Tier B / A24, which is deferred)."
     }
   ],
   "howToDrive": [

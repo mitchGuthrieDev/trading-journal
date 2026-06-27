@@ -18,10 +18,13 @@ leaves the browser.** It deploys to Cloudflare Pages as static files plus
 ## Hard constraints (do not break these)
 
 - **No runtime dependencies** *(hard)*. The shipped app loads no framework and no
-  third-party/runtime libraries — keep the *shipped output* dependency-free. NOTE:
-  "no build" is no longer an absolute rule — whether to add build-*time* tooling
-  (bundler / linters / tests) is an open decision (backlog **R19**); see the
-  design pillars in [`docs/architecture.md`](docs/architecture.md#design-pillars).
+  third-party/runtime libraries — keep the *shipped output* dependency-free. Build-*time*/dev
+  tooling is now decided (**R19**): ESLint + Prettier + Playwright live in `devDependencies`
+  that run locally/CI and **must never alter the shipped/committed files** (guardrail **A25**;
+  CI's drift gate enforces it). A shipped-output build (bundler/minify/nonce-CSP) stays
+  **deferred** (**A24**). See
+  [`docs/build-step-decision.md`](docs/build-step-decision.md) and the design pillars in
+  [`docs/architecture.md`](docs/architecture.md#design-pillars).
 - **Must be served over http(s).** The app `fetch()`es `/data/*.json`, so opening
   files from disk breaks it. Use a static server.
 - **App scripts are native ES modules** (A20) — *(hard: no build, no runtime deps;
@@ -48,19 +51,27 @@ leaves the browser.** It deploys to Cloudflare Pages as static files plus
 # Serve locally (any static server works)
 python3 -m http.server 8000      # → http://localhost:8000/app/app.html
 
-# Tests (these are the CI suite — run before pushing)
-node scripts/test-adapters.mjs   # platform CSV adapters
-node scripts/test-auth.mjs       # admin-token + Stripe-webhook signature
-node scripts/test-version.mjs    # version-bump logic
-node scripts/test-flags.mjs      # feature-flag default drift (data.js vs config.js)
+# Dev tooling (R19 Tier A — devDependencies only; NEVER ships). One-time:
+npm ci                           # install pinned devDeps from package-lock.json
+
+# Tests / lint (the CI suite — run before pushing)
+npm test                         # = test:unit + lint
+npm run test:unit                # the 5 node suites: adapters / auth / version / flags / tax
+npm run lint                     # ESLint (flat config)
+npm run typecheck                # tsc --checkJs over the JSDoc-typed modules (CH33; opt-in via // @ts-check)
+npm run test:e2e                 # Playwright render tests (boots every surface; starts its own server)
+npm run format                   # Prettier (NOT yet applied repo-wide — see CH32)
+# (the node suites still run standalone too, e.g. `node scripts/test-adapters.mjs`)
 
 # Build steps (idempotent; commit their output)
 node scripts/build-includes.mjs  # regenerate app/{app,demo,staging}.html + info-page nav/footer from partials/
 node scripts/build-manifest.mjs  # regenerate data/manifest.json content hashes (cache-busting)
 ```
 
-CI (`.github/workflows/ci.yml`) runs all four tests, then re-runs both build
-scripts and **fails if the result differs from what's committed**. So:
+CI (`.github/workflows/ci.yml`) runs `npm ci` → lint → typecheck → the unit/logic
+tests → the Playwright render tests, then re-runs both build scripts and **fails if
+the result differs from what's committed** (which also proves the dev tooling never wrote into
+the shipped/committed files). So:
 
 - **After editing any `partials/*` →** run `build-includes.mjs` and commit the
   regenerated `app/*.html` / info pages.
@@ -132,6 +143,7 @@ scripts and **fails if the result differs from what's committed**. So:
   adapters.js           platform CSV adapters + format auto-detection + fills matcher
   store.js              IndexedDB persistence (trades, journal, meta, trademeta)
   entitlements.js       storage-tier resolver (scaffold; not currently loaded)
+  types.js              shared JSDoc @typedefs (dev-only types; never loaded at runtime — CH33)
 /data/                  reference data, fetched at runtime (each carries schemaVersion)
   brokers.json          broker commission tiers
   exchange-fees.json    CME exchange/clearing/NFA fees + micro set
@@ -152,8 +164,11 @@ scripts and **fails if the result differs from what's committed**. So:
   build-includes.mjs    assembles info pages + the three app surfaces from partials/
   build-manifest.mjs    regenerates data/manifest.json content hashes
   bump-version.mjs      two-track version bump from a merge commit (run by CI)
-  test-*.{cjs,mjs}      the CI test suite (adapters / auth / version / flags)
+  test-*.mjs            the CI test suite (adapters / auth / version / flags / tax)
 /assets/                banner.svg, favicon.svg, page scripts (changelog.js, util.js, …)
+/e2e/                   Playwright render/E2E specs (dev-only — R19 Tier A)
+package.json            dev-only tooling manifest — devDependencies ONLY (the shipped app has none)
+eslint.config.mjs       ESLint flat config  ·  .prettierrc.json  Prettier  ·  jsconfig.json  tsc --checkJs  ·  playwright.config.mjs  e2e
 LICENSE                 proprietary — all rights reserved
 ```
 

@@ -1,9 +1,12 @@
-"use strict";
+'use strict';
 /* ============================================================
    Entitlements — which storage tier the current user gets.
 
-   This is a SCAFFOLD. Today every user is on the "local" tier:
-   data lives in IndexedDB via Store (app/store.js). Accounts and
+   This is a SCAFFOLD and is INTENTIONALLY UNLOADED — no page imports it
+   (it's not in partials/app-scripts.html / main.js). It's kept as the seam
+   for the planned A4/A16 CloudStore tier; it must stay lint/typecheck-clean
+   so it doesn't bit-rot before it's wired (CH35). Today every user is on the
+   "local" tier: data lives in IndexedDB via Store (app/store.js). Accounts and
    payments are NOT implemented in the app yet.
 
    The planned tiers (see functions/README.md):
@@ -28,5 +31,5 @@ export const Entitlements = {
   // Both tiers use local Store today; "cloud" will gain a CloudStore later.
   storeFor(/* tier */) {
     return Store;
-  }
+  },
 };

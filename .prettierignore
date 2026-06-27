@@ -1,0 +1,20 @@
+# The code has been Prettier-formatted repo-wide (CH32); `npm run format` keeps it that way.
+# The entries below are the deliberately-UNformatted surfaces: generated/bespoke HTML, JSON
+# data, hand-authored prose (markdown), and CI YAML — don't reflow those.
+node_modules
+package-lock.json
+playwright-report
+test-results
+dist
+build
+
+# Generated HTML (build-includes) + hand-tuned bespoke markup — don't auto-format
+**/*.html
+
+# Reference + generated data (curated / hashed); never reflow JSON data files
+data/
+
+# Hand-authored prose + workflow YAML — leave their formatting alone (CH32 is about
+# code consistency, not reflowing docs/tables or CI YAML)
+**/*.md
+.github/
