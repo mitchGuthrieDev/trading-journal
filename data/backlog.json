@@ -279,11 +279,10 @@
       "category": "REVIEW / AUDIT",
       "priority": "P2",
       "effort": "medium",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-27",
       "partial": false,
-      "prompt": "Design review (mostly thinking + a written recommendation; minimal code) of how per-DAY and per-TRADE data fit together. Today the calendar \"day notes\" is a bare comment box, while Manage data has richer per-trade notes + screenshots — inconsistent and not streamlined. Also the Manage-data \"Day notes\" list shows just \"note\" for every entry (uninformative — should preview the text/date). Propose a cleaner unified model for per-day vs per-trade notes/attachments and how each surfaces in the UI; capture the recommendation and add concrete follow-up backlog items. Done when: a written recommendation exists for streamlining per-day vs per-trade notes (incl. fixing the \"note\"-only day-notes list), with next-step items added to the backlog.",
-      "doneNote": null
+      "doneNote": "Design review of how per-DAY and per-TRADE notes fit together. FINDINGS: per-day notes (JOURNAL store, {date,text,updated}) are plain text only, captured in a bare textarea under the calendar; per-trade notes (TRADEMETA store, {id,tags,note,shots,updated}) are rich — tags + note + downscaled screenshots — captured in a modal editor in Manage data. The asymmetry is backwards: the DAY is the natural home for a chart screenshot / morning plan / 'tilted' tag, yet only trades can hold them. Two storage shapes + two capture surfaces mean any future notes feature (search, export, tag filter) must be built twice. The 'note'-only Day-notes list in Manage data is ALREADY fixed — verified in-browser it previews date + full text (newest first); the only bare literal 'note' left is the compact per-trade presence chip (metaChips), which is intentional. RECOMMENDATION: one annotation shape {tags,text,shots}, two scopes (day|trade). Low-risk path = extend the JOURNAL record to {date,text,tags,shots,updated} (old {date,text} records read fine, fields default empty; additive export), reuse the trade editor's tag input + screenshot downscale pipeline, and replace the bare calendar textarea with a shared annotation editor (quick textarea that expands to full editor). Keep the CH11 capture-the-date autosave and the SHOT downscale pipeline. Spun off F16 (unify: give day notes tags + screenshots), CH19 (extract a shared annotation-editor component), CH20 (Manage-data Day-notes rows open/edit + consistent note·img·tag markers). No app code shipped — R3 is review-only."
     },
     {
       "id": "R4",
@@ -1073,6 +1072,18 @@
       "doneNote": "Added the metrics traders expect to Advanced Statistics, all from existing data: Avg Winner / Avg Loser ($) + Payoff Ratio (avg win ÷ |avg loss|) under Edge & Distribution; Max Drawdown now shows $ AND peak-relative % AND duration (trades peak→trough); Profit Concentration (% of net profit from the top 5 winners); Sortino (downside-deviation Sharpe) beside the daily Sharpe; and Largest Win/Loss Streak in $ beside the Max Consecutive counts. compute() (core.js) gained maxDDpct/maxDDdur/concPct/sortino/maxWinStk/maxLossStk; renderAdv() (render.js) surfaces them keeping the R5 .avg value-group layout (verified all rows share one right edge, 2 flex children each, no console errors on demo). Definitions panel updated with entries for payoff/avg win-loss, profit concentration, Sortino vs Sharpe, streak $, and the DD %/duration caveat."
     },
     {
+      "id": "F16",
+      "title": "Unify day & trade notes — give day notes tags + screenshots",
+      "category": "FEATURES",
+      "priority": "P2",
+      "effort": "medium",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the R3 design review of per-day vs per-trade notes. Today per-DAY notes (JOURNAL store) are plain text only, while per-TRADE notes (TRADEMETA) carry tags + note + screenshots — backwards, since the day is the natural home for a chart screenshot, morning plan, or an emotional-state tag. Make day notes first-class: extend the JOURNAL record to {date,text,tags:[],shots:[],updated} and reuse the per-trade editor's tag input and screenshot downscale/encode pipeline (SHOT_MAX_DIM/JPEG) verbatim. Replace the bare textarea under the calendar with a quick-capture textarea that expands to the full annotation editor (text + tags + add-image). Keep the CH11 capture-the-date autosave so a late debounce/blur can't write to the wrong day. Export: include the new fields (additive — verify old {date,text} backups still import, with tags/shots defaulting empty). Surface day screenshots/tags consistently (calendar dot could distinguish text vs image; Manage-data Day-notes list shows the same note·N img·tags markers as the trades table). Done when: a day note can carry tags + a screenshot, captured from the calendar, persisted, exported/imported, and surfaced consistently with trade notes.",
+      "doneNote": null
+    },
+    {
       "id": "CH18",
       "title": "Advanced Stats cleanup — trim redundancy + rework Best/Worst Weekday",
       "category": "CHORE / REFACTOR",
@@ -1082,6 +1093,30 @@
       "completedDate": "2026-06-27",
       "partial": false,
       "doneNote": "Trimmed Advanced Stats redundancy and reworked the weekday rows. CUT: 'Total Commissions' (duplicated the Break-even panel's Commissions line) and the entire 'Account Information' section (First/Last Trade Date restated the scope range); folded the one useful value, Active Days, into the Trading Patterns subhead so the module no longer ends on plain metadata. REWORKED Best/Worst Weekday: core.js now ranks active weekdays by per-trade AVERAGE PnL (avg=pnl/n), not total — so the demo 'Worst Weekday' reads +$47.22/trade · Thu instead of a misleading +$14.9k total. The raw count is shown alongside (· Mon · 289). Definitions/caveats updated for the new average basis and thin-sample warning. Kept the R5 .avg value-group layout (verified consistent)."
+    },
+    {
+      "id": "CH19",
+      "title": "Extract a shared annotation-editor component (day + trade notes)",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the R3 design review. Once day notes gain tags + screenshots (F16), the tags/text/screenshots capture+save logic is duplicated between the per-trade editor (renderTradeEditor / dmCaptureEdit / the SHOT downscale pipeline in datamanager.js) and the new per-day editor. Factor it into one shared component — e.g. renderAnnotationEditor(scope, key) with scope in {day,trade} — so both paths render and persist from a single function, and the screenshot pipeline lives in one place. Pairs with / depends on F16. Done when: day and trade annotation editors render from one shared component with no duplicated capture/save/downscale code, behaviour unchanged.",
+      "doneNote": null
+    },
+    {
+      "id": "CH20",
+      "title": "Manage-data Day-notes rows: open/edit + consistent markers",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the R3 design review. The Manage-data 'Day notes' list already previews date + text, but each row is delete-only — you can't open or edit a day note from there (only from the calendar) — and it doesn't show the note·N img·tags markers the trades table uses. Make each Day-notes row open the day editor and show the same markers, so the day-notes and trades lists are visually and behaviourally consistent. Best done after F16/CH19 so it reuses the shared annotation editor. Done when: a Day-notes row opens the day editor for that date and shows consistent markers.",
+      "doneNote": null
     }
   ],
   "howToDrive": [
