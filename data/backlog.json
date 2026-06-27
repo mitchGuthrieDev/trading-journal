@@ -333,18 +333,6 @@
       "doneNote": null
     },
     {
-      "id": "A21",
-      "title": "Move dynamic styling out of inline style= into CSS classes + custom properties",
-      "category": "ARCHITECTURE / DUPLICATION",
-      "priority": "P3",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "From the design-pillars review. Move styling out of inline style= strings and into the stylesheet: define behavior in CSS (classes + custom properties) and have JS feed only the dynamic VALUE via the CSSOM, e.g. .cmbf{width:var(--w);background:var(--c)} + el.style.setProperty('--w', w+'%'). TARGETS: the runtime data-driven style= injections in app/render.js (curve gradient stops / end-labels / legend swatches), app/widgets.js (card-modal bars + splits), the admin backlog bars (assets/admin.js), and the ~23 static style= attributes in the HTML; plus the inline <style> blocks in index.html/admin.html where practical. NO build, NO deps (pure CSS + CSSOM). WATCH SPECIFICITY: an inline style beats selectors, so moving a value to a class/attr can let a stylesheet rule override it — verify each visual; and SVG presentation attributes (fill/x/width) are NOT inline styles — do not convert those. This also pre-clears the path to later drop style-src 'unsafe-inline' (separate, currently shelved). VERIFY charts/bars/legend render identically across app/demo/staging + month/all-time scope + the export report. Done when: dynamic styling is driven by classes + custom properties via the CSSOM (no runtime data-driven style= strings remain in the chart/bar renderers), with no visual regressions.",
-      "doneNote": null
-    },
-    {
       "id": "A22",
       "title": "Targeted DOM updates on interactive surfaces (retire wholesale innerHTML re-render)",
       "category": "ARCHITECTURE / DUPLICATION",
