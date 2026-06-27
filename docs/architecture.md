@@ -61,12 +61,21 @@ reference data.
 
 ## Repository layout & the deploy contract
 
-**There is no build step, so the repo root *is* the Cloudflare Pages web root —
-a file's path *is* its public URL.** Pages serves the committed tree as-is
-(`build-manifest.mjs` is only a "recommended build command" that regenerates a
-file in place; the deploy works without it). This one fact makes the folder
-layout simultaneously the **URL structure** and the **deploy contract**, and it's
-why the root is deliberately flat rather than split into `src/`+`public/`.
+> **Updated by ADR-001 / A26.** There is now a Vite build: `npm run build` bundles the site into
+> **`dist/`**, and Cloudflare Pages serves `dist/` (build command `npm run build`, output dir
+> `dist`). **URLs are preserved 1:1** — source files were not moved, so a file's source path still
+> mirrors its public URL, and the coupled-path table below still holds for any *future* move. What
+> changed is only the deploy mechanism: Pages builds + serves an output dir instead of serving the
+> committed tree as-is. The pre-Vite text below is kept because the couplings it documents remain
+> accurate.
+
+**The repo root is the *source* root, and (preserving URLs) a file's path still maps to its public
+URL.** Vite fingerprints the JS/CSS it bundles and rewrites the HTML references; the verbatim-static
+set (`data/*.json`, `_headers`, `_redirects`, `robots.txt`, `sitemap.xml`, `assets/og-image.png`) is
+copied into `dist/` by `scripts/copy-static.mjs`. `functions/`, `scripts/`, `partials/`, and tooling
+stay at the root, unserved. The folder layout still doubles as the **URL structure** and the
+**deploy contract**; the root is deliberately flat (no `src/`+`public/` source reorg — A26 reversed
+the contract via a build *output* dir, `dist/`, not by moving sources).
 
 **Pinned at the deploy root** (Cloudflare Pages requires it — these cannot move):
 

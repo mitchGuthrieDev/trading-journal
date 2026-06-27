@@ -13,6 +13,10 @@
 #   (which 'unsafe-inline' is NOT required for) or utility classes; once no inline style remains,
 #   tighten this to style-src 'self'. Note script-src already omits 'unsafe-inline', so an injected
 #   style cannot execute script — this is defense-in-depth (CSS-exfiltration hardening), not a hole.
+#   ADR-001/A26: the Vite build is now in place, but the vanilla /app/ surface still has inline
+#   styles; dropping 'unsafe-inline' rides with the Svelte migration (A27), where scoped component
+#   CSS + CSSOM remove the inline usages naturally instead of as throwaway refactoring on code about
+#   to be rewritten. So style-src 'unsafe-inline' STAYS until A27. (S18 remains the tracking item.)
 # - No external origins are needed: every fetch is same-origin (/api/*, /data/*, /app/),
 #   and per-trade screenshots are data: URLs (hence img-src 'self' data:). No 'unsafe-eval'.
 # - When Stripe checkout lands it redirects (full navigation), so no CSP change is needed;

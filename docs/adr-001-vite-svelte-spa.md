@@ -47,9 +47,12 @@ direction.
 
 - **Vite** is the build tool and dev server (multi-page build — the marketing site stays
   static-rendered; only the `/app/` surface becomes a framework app).
-- **Svelte** is the UI framework, chosen for its compile-away / minimal-runtime model, which fits
-  the "keep it lean and optimized" goal far better than a heavier runtime. The complex-UI backlog
-  items (R11/R12/R13/F23) are the concrete driver.
+- **Svelte 5** (runes API — `$state`/`$derived`/`$effect`/`$props`) is the UI framework, chosen
+  for its compile-away / minimal-runtime model, which fits the "keep it lean and optimized" goal
+  far better than a heavier runtime. **Decision: Svelte 5, runes-first** — new components use runes
+  (not the legacy `export let` / reactive-`$:` syntax), so the codebase starts on the current,
+  long-term API rather than migrating later. The complex-UI backlog items (R11/R12/R13/F23) are the
+  concrete driver.
 - **Staging is the proving ground.** Svelte lands on `app/staging.html` first; prod + demo stay
   vanilla until staging proves out, then migrate (consistent with the existing CH16 staging→prod
   model).
@@ -111,33 +114,58 @@ first**, then Svelte on staging, then outward.
 
 ADR written; pillars re-ranked; backlog items spawned (A26–A29); R19 doc + A24/A25 annotated.
 
-### Phase 1 — Vite build infrastructure + deploy-contract reversal *(A26)*
+### Phase 1 — Vite build infrastructure + deploy-contract reversal *(A26)* — **IMPLEMENTED**
 
 Code stays vanilla; this phase is pure infrastructure so the scary part is isolated from logic risk.
+What actually shipped (and where it differs from the pre-Vite A18 sketch):
 
-- Add `vite` (+ multi-page config listing every HTML entry: the marketing pages **and**
-  `app/{app,demo,staging}.html`).
-- Execute the **`public/` output-dir split** from A18: browser-served files move under the build's
-  source tree → emitted to the Pages output dir; `functions/`, `scripts/`, `partials/`, and tooling
-  stay at the repo root.
-- Update the **full coupled-path map in lockstep** (per A18): absolute `/app/`, `/assets/`, `/data/`
-  references; `_redirects`; `_headers` (incl. the new hash/nonce CSP); `robots.txt`; `sitemap.xml` +
-  page canonicals; and the path prefixes in `build-includes.mjs`, `build-manifest.mjs`,
-  `bump-version.mjs`.
-- Cloudflare Pages: set the **build command** (`vite build`) and **output directory**; **remove
-  `SKIP_DEPENDENCY_INSTALL=1`** (the build now needs devDeps installed at deploy) — note this
-  reverses the A25 deploy posture.
-- CSP: move to hash/nonce and **drop `style-src 'unsafe-inline'`** (closes S18).
-- Reference data (`data/*.json`) stays static, runtime-fetched, cache-busted — `build-manifest.mjs`
-  is retained (a rate change still means "edit JSON, rebuild manifest, no app rebuild"); Vite handles
-  hashing of *app* assets.
-- **Gate:** all unit suites + Playwright e2e green on every surface; build-script idempotency holds.
+- **Vite multi-page build** (`vite.config.mjs`, `vite@8.1.0` pinned): all nine HTML entries — the
+  marketing pages **and** `app/{app,demo,staging}.html` — bundled to **`dist/`** (the Pages output
+  dir). Vite fingerprints the JS/CSS it bundles and rewrites the references in the HTML.
+- **Deploy-contract reversal via `dist/`, not a literal `public/` source dir.** A18 was written
+  pre-Vite and guessed at a "`public/` output-dir split"; the Vite-native equivalent is "source at
+  root → build to `dist/` → Pages serves `dist/`." `functions/`, `scripts/`, `partials/`, and tooling
+  stay at the repo root (unserved). **No source files were moved** — so the `build-manifest` /
+  `bump-version` path assumptions and the README image refs are untouched.
+- **URLs are preserved 1:1**, which is the key de-risker: because every entry keeps its path and the
+  output mirrors it, the coupled-path map from A18 (absolute `/app//assets//data` refs, canonicals,
+  `og:image`, `sitemap.xml`, `robots.txt`, `_redirects`) **did not need editing** — those references
+  keep resolving against the identical URL structure. Only the *deploy mechanism* changed.
+- **Verbatim-static files** Vite doesn't bundle (`data/*.json`, `_headers`, `_redirects`,
+  `robots.txt`, `sitemap.xml`, `assets/og-image.png`) are copied into `dist/` by
+  **`scripts/copy-static.mjs`**, wired into `npm run build`. `data/*.json` stays runtime-fetched +
+  cache-busted by `build-manifest.mjs` (retained — a rate change is still "edit JSON, rebuild
+  manifest, no app rebuild").
+- **CSP `style-src 'unsafe-inline'` was *not* dropped in this phase — deferred to A27** (see note
+  below). The build itself unlocks the tightening, but the vanilla `/app/` surface still carries
+  inline styles that the Svelte rewrite removes naturally; doing it now would be throwaway work.
+- **`dist/` is gitignored**; the CI drift gate (`build-includes` + `build-manifest` committed) still
+  proves the build-time tooling didn't leave committed sources stale. Playwright now builds and
+  serves `dist/` so it tests exactly what Pages serves.
+- **Gate (met):** `npm test` (lint/typecheck/format/unit) green; `npm run test:e2e` green on every
+  surface against the built `dist/`; `npm run build` emits a complete `dist/`; no committed-file drift.
+
+#### Cloudflare Pages settings (manual — dashboard, not in-repo)
+
+These must be set on the Pages project for the new build to deploy (they are the only steps not
+captured by the repo changes):
+
+- **Build command:** `npm run build`
+- **Build output directory:** `dist`
+- **Unset `SKIP_DEPENDENCY_INSTALL`** (it was `1` under R19 so devDeps never ran at deploy; the build
+  now needs them) — this reverses the A25 deploy posture. `.node-version` pins Node 22 for the build.
+- `functions/` continues to be picked up from the repo root automatically.
 
 ### Phase 2 — Svelte on the staging surface *(A27)*
 
 - Add `svelte` + `@sveltejs/vite-plugin-svelte`.
 - Rewrite the **staging view layer** as Svelte components; mount into `app/staging.html`.
 - Import the pure-logic core **verbatim** (A29). Prod + demo stay vanilla.
+- **CSP tightening (S18) starts here.** Svelte's scoped component CSS + CSSOM (`setProperty`)
+  eliminate the inline `style="…"` usages on the staging surface as a side effect of the rewrite.
+  Dropping `style-src 'unsafe-inline'` *globally* needs every surface de-inlined (prod/demo via
+  Phase 4, plus moving the marketing pages' inline `<style>` into linked CSS), so the final
+  `style-src 'self'` flip lands when the last inline style is gone — S18 stays the tracking item.
 - **Gate:** staging reaches feature parity with the vanilla app; e2e green; isolated-IndexedDB +
   staging key-gate behavior unchanged.
 
