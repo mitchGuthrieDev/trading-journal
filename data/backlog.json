@@ -1098,11 +1098,10 @@
       "category": "FIXES",
       "priority": "P3",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-27",
       "partial": false,
-      "prompt": "Selecting a day/point on the performance graph draws an unwanted blue box around the whole graph. That comes from the `.curve:focus-visible{outline:2px solid var(--accent)}` rule (app/app.css:202). Remove the selection outline on the graph WITHOUT breaking keyboard accessibility: confirm whether it appears on mouse-click vs keyboard (clicking shouldn't trigger :focus-visible in most browsers, so check what's actually focusing/outlining the .curve element on day-select), then constrain the outline to genuine keyboard focus or drop it in favour of the existing on-curve day marker. Verify on the staging graph. Done when: clicking a day no longer outlines the graph and keyboard users still get a visible focus cue.",
-      "doneNote": null
+      "doneNote": "Clicking a day focuses the curve SVG (tabindex=0), which painted the UA focus ring around the whole graph. Added .curve:focus{outline:none} before the existing .curve:focus-visible accent rule, so mouse-click focus shows no box while keyboard focus keeps a 2px accent ring (ordering makes :focus-visible win when both match). Verified in-browser: mouse click → outline none, real Tab focus → solid 2px ring."
     },
     {
       "id": "L7",
@@ -1122,11 +1121,10 @@
       "category": "FIXES",
       "priority": "P2",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-27",
       "partial": false,
-      "prompt": "On initial load (before document.body gets the `loaded` class) the Save-layout button (#ws_save, partials/app-topbar.html) and the layout-template dropdown are visible, even though the load-state CSS (app/app.css:50-56) already hides the other topbar controls (#exportBtn/#manageBtn/#purgeBtn/#filterbar/#cards/#setuphead). FIRST reproduce and confirm the layout controls really are visible pre-load, then add them to the `body:not(.loaded){display:none}` set. Done when: the Save-layout button and layout dropdown only appear once the main dashboard has loaded.",
-      "doneNote": null
+      "doneNote": "Added #wsbar (the Save-layout button + workspace-template dropdown) to the body:not(.loaded){display:none} set in app.css, so the workspace controls only appear once the dashboard loads, matching #exportBtn/#manageBtn/#filterbar/#cards. Verified #wsbar is display:none pre-load and visible after."
     },
     {
       "id": "B23",
@@ -1134,11 +1132,10 @@
       "category": "FIXES",
       "priority": "P2",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-27",
       "partial": false,
-      "prompt": "The demo is a 1:1 mirror of prod with data-mutating actions disabled (the demo `dis`/disabled pattern, commit fe909ba). The Save-layout control (#ws_save, partials/app-topbar.html) persists layout templates to localStorage, so it should be disabled in demo too. Fold #ws_save into the same demo-disable logic that greys out the other mutating controls. Done when: in demo the Save-layout button renders disabled and can't write templates. (Pairs with B22.)",
-      "doneNote": null
+      "doneNote": "Disabled #ws_save in demo (PAGE_MODE==='demo') in initWidgets and made its click handler a no-op there — Save layout persists templates to localStorage and the demo is a 1:1 mirror with mutating actions disabled. Loading templates / '— Default —' still work. Verified disabled on demo, enabled on the app."
     },
     {
       "id": "CH21",
@@ -1146,11 +1143,10 @@
       "category": "CHORE / REFACTOR",
       "priority": "P3",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-27",
       "partial": false,
-      "prompt": "On the admin page the backlog status filter (#bk_fstatus, assets/admin.js) defaults to 'all'. Default it to 'open' on load (set the select's initial value and render the list with it) so the most actionable view shows first; 'all'/'done'/'guardrail' stay selectable. Leave the per-category counts reflecting full totals (they already ignore the active filter). Done when: the admin backlog opens filtered to open items by default.",
-      "doneNote": null
+      "doneNote": "The admin backlog now opens filtered to status=open (the actionable view) by default — set in loadBacklog after the options populate, only while the filter is at its initial 'All'; All/done/guardrail stay selectable and the per-category counts still reflect full totals. Verified the select defaults to 'open' and the list shows only open items."
     },
     {
       "id": "R9",
