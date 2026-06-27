@@ -1053,11 +1053,10 @@
       "category": "FEATURES",
       "priority": "P2",
       "effort": "large",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-27",
       "partial": false,
-      "prompt": "From the R3 design review of per-day vs per-trade notes. Today per-DAY notes (JOURNAL store) are plain text only, while per-TRADE notes (TRADEMETA) carry tags + note + screenshots — backwards, since the day is the natural home for a chart screenshot, morning plan, or an emotional-state tag. Make day notes first-class: extend the JOURNAL record to {date,text,tags:[],shots:[],updated} and reuse the per-trade editor's tag input and screenshot downscale/encode pipeline (SHOT_MAX_DIM/JPEG) verbatim. Replace the bare textarea under the calendar with a quick-capture textarea that expands to the full annotation editor (text + tags + add-image). Keep the CH11 capture-the-date autosave so a late debounce/blur can't write to the wrong day. Export: include the new fields (additive — verify old {date,text} backups still import, with tags/shots defaulting empty). Surface day screenshots/tags consistently (calendar dot could distinguish text vs image; Manage-data Day-notes list shows the same note·N img·tags markers as the trades table). Done when: a day note can carry tags + a screenshot, captured from the calendar, persisted, exported/imported, and surfaced consistently with trade notes. BUNDLED (per user request): when a calendar day is selected, also show that day's intraday trades as a list UNDER the notes block — essentially the Manage-data trades table (#dm_trades / the row renderer in app/datamanager.js) filtered to the selected date, with the same columns and per-trade markers. BEFORE implementing, review and DOCUMENT proper data handling and surface decision questions to the user for sign-off: where the day's trades come from (filter baseTrades()/TRADES by date vs a Store query), demo vs Store behaviour, how it should interact with the active filter bar + month scope, whether the list is read-only or shares the dm_trades edit/delete affordances, and reuse-vs-duplicate of the dm_trades row renderer. Done when: the existing notes-unification scope ships AND a selected day shows its trades list below the notes, after the data-handling decisions are confirmed.",
-      "doneNote": null
+      "doneNote": "Day notes are now first-class annotations: the JOURNAL record carries {text,tags[],shots[]} (additive — legacy {date,text} backups still import), and the calendar notes block is a quick-capture textarea that expands (<details>) to a tags + screenshots editor reusing the trade editor's pipeline. Autosave keeps a captured-snapshot (CH11) so a debounced/blur save lands on the right day after switching days. A selected day also shows a read-only intraday trades list under the notes, sourced from baseTrades() (respects the active filter bar + scope, per the agreed data-handling decisions) and rendered via the shared trade-row cells. Verified end-to-end (19 checks): rich notes persist + restore, screenshots round-trip, list respects filters, legacy import works; no console errors."
     },
     {
       "id": "CH18",
@@ -1076,11 +1075,10 @@
       "category": "CHORE / REFACTOR",
       "priority": "P3",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-27",
       "partial": false,
-      "prompt": "From the R3 design review. Once day notes gain tags + screenshots (F16), the tags/text/screenshots capture+save logic is duplicated between the per-trade editor (renderTradeEditor / dmCaptureEdit / the SHOT downscale pipeline in datamanager.js) and the new per-day editor. Factor it into one shared component — e.g. renderAnnotationEditor(scope, key) with scope in {day,trade} — so both paths render and persist from a single function, and the screenshot pipeline lives in one place. Pairs with / depends on F16. Done when: day and trade annotation editors render from one shared component with no duplicated capture/save/downscale code, behaviour unchanged.",
-      "doneNote": null
+      "doneNote": "Extracted a shared annotation editor in datamanager.js (annTagsField / annTextField / annShotsField / annCapture / annAddShot) used by BOTH the per-trade editor and the per-day editor; the screenshot downscale/encode + Store.validShot pipeline now lives in one place. dmCaptureEdit/dmAddShot are thin wrappers so existing callers are unchanged; DM_EDIT note→text internally, mapped to `note` only at the Store boundary."
     },
     {
       "id": "CH20",
@@ -1088,11 +1086,10 @@
       "category": "CHORE / REFACTOR",
       "priority": "P3",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-27",
       "partial": false,
-      "prompt": "From the R3 design review. The Manage-data 'Day notes' list already previews date + text, but each row is delete-only — you can't open or edit a day note from there (only from the calendar) — and it doesn't show the note·N img·tags markers the trades table uses. Make each Day-notes row open the day editor and show the same markers, so the day-notes and trades lists are visually and behaviourally consistent. Best done after F16/CH19 so it reuses the shared annotation editor. Done when: a Day-notes row opens the day editor for that date and shows consistent markers.",
-      "doneNote": null
+      "doneNote": "Manage-data Day-notes rows now show the same tag/image markers as trades (journalChips) and gain an 'Open' button (dmOpenDay) that closes the modal, jumps the calendar to that date, selects it, and scrolls to the notes — reusing the shared editor. Verified the row markers + Open-selects-day."
     },
     {
       "id": "B21",
@@ -1156,11 +1153,10 @@
       "category": "REVIEW / AUDIT",
       "priority": "P3",
       "effort": "small",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-27",
       "partial": false,
-      "prompt": "Review whether the admin Reference Data section and its 'bump cache version' button still earn their place (#bumpref -> POST /api/config {bumpRefData:true}, surfaced as refDataVersion / #refstate, assets/admin.js). Trace what actually consumes refDataVersion, whether bumping it produces any user-visible effect today, and recommend keep / simplify / remove. Done when: a written recommendation exists (with any follow-up items) and the button's role is either documented or removed.",
-      "doneNote": null
+      "doneNote": "Reviewed the admin Reference Data section + 'bump cache version' button. FINDING: nothing consumed refDataVersion — it only wrote a KV timestamp displayed in admin; real reference-data cache-busting is per-file hashes in data/manifest.json. A prior item had already honest-labeled it as a no-op. DECISION: remove it. Dropped the button + section (admin.html / assets/admin.js) and the refDataVersion/bumpRefData handling from functions/api/config.js. No follow-ups needed."
     },
     {
       "id": "F17",
@@ -1168,11 +1164,10 @@
       "category": "FEATURES",
       "priority": "P3",
       "effort": "medium",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-27",
       "partial": false,
-      "prompt": "The admin page already drives feature flags via [data-flag] checkboxes saved to /api/config (`flags`; #saveflags in assets/admin.js, applied on load to every [data-flag] element). Add flags for capabilities worth gating: add the matching [data-flag] toggles in admin.html AND actually hook each flag into the app so it gates the corresponding behaviour end-to-end (read the flag at runtime, default off/safe). Done when: new flags exist, persist via /api/config, and demonstrably toggle real app behaviour.",
-      "doneNote": null
+      "doneNote": "The app now fetches /api/config at boot (loadFlags, non-blocking) and gates real behaviour on flags, with app-side defaults mirroring config.js DEFAULTS.flags so behaviour is unchanged offline/static/pre-deploy. Wired showBetaAdapters (manual upload picker), maintenanceBanner (top-of-app banner), and a new betaRibbon flag ('Beta' header badge); new flags are allow-listed in DEFAULTS.flags and exposed as admin toggles. Verified both ways: defaults preserve current behaviour; flags from /api/config toggle the banner, ribbon, and beta-adapter picker."
     },
     {
       "id": "R10",
