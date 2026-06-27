@@ -100,7 +100,7 @@ function renderCurve(m){
 
   let vals=[0];
   for(const p of disp) for(const s of series) vals.push(p[s.key]);
-  let min=Math.min(...vals), max=Math.max(...vals); if(min===max){min-=1;max+=1;}
+  const vmm=minMax(vals); let min=vmm.lo, max=vmm.hi; if(min===max){min-=1;max+=1;}   // running min/max (B27)
   // expand the domain out to nice round tick bounds so the plot is framed cleanly
   const yticks=niceTicks(min,max,5);
   min=Math.min(min,yticks[0]); max=Math.max(max,yticks[yticks.length-1]);
@@ -358,6 +358,19 @@ function renderAdv(m, c=costModel(m)){
 /* ============================================================
    Rendering — break-even / cost budget
    ============================================================ */
+// Per-symbol commission rows + Total, single-sourced for the dashboard cost panel AND the export
+// report so the two can't drift (CH23 — the report had lost the "Cts" column). `report` switches
+// the report-style numeric cells (class="num") + plain "*" flag vs the dashboard's styled flag.
+function commSymRows(c, report){
+  const nc = report ? ' class="num"' : '';
+  const flag = s => s.known ? '' : (report ? ' *' : ' <span class="flag">*</span>');
+  const body = c.bySym.map(s =>
+    `<tr><td>${esc(s.root)}${flag(s)}</td><td${nc}>${s.count}</td><td${nc}>${s.qty}</td>`
+    + `<td${nc}>${money(s.rate)}</td><td${nc}>${money(s.rate*2)}</td><td${nc}>${money(s.total)}</td></tr>`).join('');
+  const total = `<tr class="tot"><td>Total</td><td${nc}>${c.n}</td><td${nc}>${c.contracts}</td>`
+    + `<td></td><td></td><td${nc}>${money(c.totalComm)}</td></tr>`;
+  return body + total;
+}
 function renderCalc(m, c=costModel(m)){
   const tbl=document.getElementById('c_comm_table'),
         head=document.getElementById('c_head'),
@@ -368,13 +381,10 @@ function renderCalc(m, c=costModel(m)){
 
   cap.innerHTML=`Broker: <b>${esc(BROKERS[c.broker].name)}</b> &nbsp;·&nbsp; Feed: ${esc(feedName())} &nbsp;·&nbsp; Platform $${esc(c.platform)}/mo`;
 
-  const body=c.bySym.map(s=>
-    `<tr><td>${esc(s.root)}${s.known?'':' <span class="flag">*</span>'}</td>
-      <td>${s.count}</td><td>${s.qty}</td><td>${money(s.rate)}</td><td>${money(s.rate*2)}</td><td>${money(s.total)}</td></tr>`).join('');
   const anyUnknown=c.bySym.some(s=>!s.known);
   const commHtml=
     `<table class="commtab"><thead><tr><th>Symbol</th><th>Trades</th><th>Cts</th><th>$/side</th><th>$/RT</th><th>Commission</th></tr></thead>
-     <tbody>${body}<tr class="tot"><td>Total</td><td>${c.n}</td><td>${c.contracts}</td><td></td><td></td><td>${money(c.totalComm)}</td></tr></tbody></table>`
+     <tbody>${commSymRows(c,false)}</tbody></table>`
     + (anyUnknown?`<div class="cnote"><span class="flag">*</span> No published exchange fee on file — priced with a fallback estimate. Add the symbol to <code>data/exchange-fees.json</code> for an exact figure.</div>`:'');
   // F6 (CH16): the per-symbol table lives in a collapsible subsection nested under the
   // "Commissions (all-in)" line below, so the standalone table here is empty.
