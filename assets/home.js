@@ -1,6 +1,7 @@
+(function(){   // B32: wrap in an IIFE (no global leakage) to match admin.js/changelog.js
   // Header border on scroll
   var hdr=document.getElementById('hdr');
-  window.addEventListener('scroll',function(){
+  if(hdr) window.addEventListener('scroll',function(){
     hdr.classList.toggle('scrolled',window.scrollY>8);
   },{passive:true});
 
@@ -75,3 +76,4 @@
       })
       .catch(ping);
   })();
+})();

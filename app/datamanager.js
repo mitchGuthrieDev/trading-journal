@@ -69,9 +69,9 @@ async function renderDataManager(){
   // Saved filters (shared section — all surfaces; empty on demo, which has no Store)
   if($('dm_filters')) $('dm_filters').innerHTML = SAVED_FILTERS.length
     ? SAVED_FILTERS.map(s=>`<div class="dmrow"><span class="dmnote">${esc(s.name)}</span>
-        <button class="dmdel alt" data-filterapply="${s.id}" title="Apply this filter">Apply</button>
-        <button class="dmdel" data-filterrename="${s.id}" title="Rename">Rename</button>
-        <button class="dmdel" data-filterdel="${s.id}" title="Delete">Delete</button></div>`).join('')
+        <button class="dmdel alt" data-filterapply="${esc(s.id)}" title="Apply this filter">Apply</button>
+        <button class="dmdel" data-filterrename="${esc(s.id)}" title="Rename">Rename</button>
+        <button class="dmdel" data-filterdel="${esc(s.id)}" title="Delete">Delete</button></div>`).join('')
     : '<div class="dmempty">No saved filters yet — set filters and click “Save filter”.</div>';
 }
 
@@ -208,6 +208,7 @@ async function dmOpenTradeEditor(id){
 function dmCaptureEdit(){ annCapture(DM_EDIT,'dm'); }   // thin wrapper (callers unchanged)
 function dmAddShot(file){ if(DM_EDIT) annAddShot(DM_EDIT, file, 'dm', msg=>{ DM_EDIT._msg=msg; renderTradeEditor(); }); }
 async function dmSaveEdit(){
+  if(PAGE_MODE==='demo') return;   // defense-in-depth: demo is in-memory, never persists (B31)
   if(!DM_EDIT) return;
   dmCaptureEdit();
   await Store.saveTradeMeta(DM_EDIT.id, { tags:DM_EDIT.tags, note:DM_EDIT.text, shots:DM_EDIT.shots });
@@ -216,6 +217,7 @@ async function dmSaveEdit(){
   DM_EDIT._msg='Saved'; await renderDataManager();
 }
 async function dmClearEdit(){
+  if(PAGE_MODE==='demo') return;   // B31
   if(!DM_EDIT) return;
   if(!confirm('Remove all tags, note and screenshots for this trade?')) return;
   await Store.deleteTradeMeta(DM_EDIT.id);
@@ -225,12 +227,14 @@ async function dmClearEdit(){
 }
 
 async function dmDeleteTrade(id){
+  if(PAGE_MODE==='demo') return;   // B31
   await Store.deleteTrade(id);
   await reloadFromStore();
   await renderDataManager();
   emit('trade:deleted', { id });
 }
 async function dmDeleteNote(date){
+  if(PAGE_MODE==='demo') return;   // B31
   await Store.deleteJournal(date);
   JOURNAL_DATES=await Store.journalDates();
   if(METRICS_ALL){ renderCalendar(); }
@@ -244,6 +248,7 @@ async function dmExport(){
   }catch(e){ console.error('backup export failed', e); alert('Could not create the backup file.'); }
 }
 async function dmImport(file){
+  if(PAGE_MODE==='demo') return;   // B31
   let data; try{ data=JSON.parse(await file.text()); }
   catch(_){ alert('That file is not valid JSON.'); return; }
   if(!data || (!Array.isArray(data.trades) && !Array.isArray(data.journal))){
