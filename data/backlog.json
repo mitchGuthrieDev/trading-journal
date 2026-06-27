@@ -1175,11 +1175,10 @@
       "category": "REVIEW / AUDIT",
       "priority": "P3",
       "effort": "medium",
-      "status": "open",
-      "completedDate": null,
+      "status": "done",
+      "completedDate": "2026-06-27",
       "partial": false,
-      "prompt": "Audit README.md against the current codebase and flag anything stale or inaccurate (architecture, the surface/versioning model CH12/CH16, build scripts, file layout). Then analyse whether it can be condensed, clarified, and better structured WITHOUT losing the context Claude relies on to work in this repo (classic-script load order, surface classification + two-track versioning, build-includes/build-manifest, donePolicy, etc.). Done when: a written assessment exists and the README is updated to be accurate and tighter while preserving all Claude-relevant context.",
-      "doneNote": null
+      "doneNote": "Audited README.md against the current codebase and corrected the staleness that had accumulated (load order omitting widgets.js; /api/config described as carrying refDataVersion/platform versions after R9 removed them; the ?k= staging-token fallback removed by S19; app/staging.js → widgets.js after the CH16 rename; 'three stores' → four incl. trademeta; six → seven Manage-data sections incl. Saved filters; day notes now rich {text,tags,shots} + a per-day trades list; Advanced Stats metric list F15/CH18; web-grid + saved filters promoted, so roadmap 'shipped' not 'in trial'; homepage pricing Free + donation, not a '$49/mo online app'). Filled genuine Claude-context gaps: the full scripts/test suite + bump-version, and the key one — that build-includes ALSO assembles app/{app,demo,staging}.html from partials/app-*.html via <!--IF mode=…--> conditionals. Tightened by condensing the verbose admin Cloudflare-Access setup (detail lives in functions/README.md). Net result: accurate, with the surface-build + versioning + load-order context Claude relies on intact. README is a no-bump file."
     },
     {
       "id": "R11",
