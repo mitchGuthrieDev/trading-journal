@@ -1290,6 +1290,61 @@
       "completedDate": "2026-06-27",
       "partial": false,
       "doneNote": "Documented the build-stepless layout contract. Added a 'Repository layout & the deploy contract' section to docs/architecture.md (after Design pillars; registered in the Contents list): no build step -> the repo root IS the Cloudflare Pages web root -> a file's path IS its public URL. Lists what Pages pins at the deploy root (functions/, _headers, _redirects, robots.txt, sitemap.xml, favicon, and the /-serving pages) and a coupled-path table that must change in lockstep if any browser-served file moves: the ~23 /app/ + ~19 /assets/ absolute refs and /data//api fetches, _redirects, _headers (CSP connect-src), robots/sitemap + page canonicals (CH5/CH6), build-includes.mjs (['.', 'app'] scan + partials/), build-manifest.mjs (data/* hashing + filename excludes), and bump-version.mjs (prod-shipping path classifier). States: do NOT reorganize into src/+public/ with a bundler (violates the no-build pillar); the only Pages-compatible reorg is a public/ output-dir split. CLAUDE.md's Repo layout section gained a blockquote summary + link to the new section (refs guardrail A18). Docs only; no code/build impact."
+    },
+    {
+      "id": "S20",
+      "title": "Sanitize the meta store on backup restore (savedFilters id + arbitrary keys)",
+      "category": "SECURITY",
+      "priority": "P2",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "Hardened backup restore (app/store.js importAll). The meta store was restored verbatim; now allow-lists meta keys (savedFilters, setup) and validates the savedFilters shape via cleanSavedFilters — id coerced to [A-Za-z0-9] (<=32 chars), name + filter fields (from/to/symbol/side/session/tag) stripped of [<>&\"'], dows filtered to ints 0-6, and empty-id entries + unknown keys dropped — plus esc(s.id) added at the two render sinks (app/data.js f_saved <option>, app/datamanager.js data-filter* buttons) as defense-in-depth. Closes the backup-driven attribute-injection class S7 fixed but missed on the meta path (the strict CSP already blocked the inline-script path). Verified the sanitizer against a crafted payload: id '><img src=x onerror=alert(1)> -> imgsrcxonerroralert1, markup stripped from name/f, dows [1,'x',9,3] -> [1,3], unknown keys + empty-id dropped. node --check + full test suite green."
+    },
+    {
+      "id": "CH29",
+      "title": "Single-source the remaining view-layer cost/metric math (winRate, bePer, curve costModel)",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "Single-sourced the remaining view-layer cost/metric math (continues CH23/CH11). Added winRate to compute()'s return (was inlined as (m.n?100*m.wins/m.n:0) in render.js renderCards, export.js headline, widgets.js win modal); added bePer to costModel()'s return (was duplicated in render.js renderCalc + export.js); and threaded the shared cost model c from renderDash into renderCurve -> dailySeries (which had been recomputing costModel(m) every render, bypassing the CH11 share). Pure refactor, no output change. Verified headless in Chromium: the demo dashboard renders Win Rate 58.0% (892W/647L = 57.96%), break-even $2.03/trade, all 5 headline cards, zero NaN/undefined/JS errors."
+    },
+    {
+      "id": "A19",
+      "title": "Add a state-tax-model drift test (core.js TAXMODEL fallback vs state-tax.json)",
+      "category": "ARCHITECTURE / DUPLICATION",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "Added scripts/test-tax.mjs (wired into CI as 'State-tax model default drift test') asserting the app/core.js TAXMODEL fallback literal {fedOrdinary,ltcg,ltcgWeight,ordinaryWeight} equals data/state-tax.json model — mirroring A14's test-flags.mjs guard and closing the one duplicated client default the flag test didn't cover (the literal is the offline/pre-deploy fallback overlaid by Object.assign on fetch). 6/6 passing; fails if the literal and JSON diverge."
+    },
+    {
+      "id": "B31",
+      "title": "(demo) Defense-in-depth: runtime-guard the data-manager mutation handlers",
+      "category": "FIXES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "Demo defense-in-depth: added early if(PAGE_MODE==='demo') return; guards to the data-manager mutation handlers in app/datamanager.js (dmSaveEdit, dmClearEdit, dmDeleteTrade, dmDeleteNote, dmImport), so the demo lock-down no longer relies solely on the buttons rendering disabled — demo trades are in-memory, so bypassing disabled via devtools would otherwise operate on the real IndexedDB. dmExport is read-only and left unguarded. node --check + tests green."
+    },
+    {
+      "id": "B32",
+      "title": "Harden remaining unguarded DOM handlers (boot init + home.js) — B12 class",
+      "category": "FIXES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "Hardened the remaining unguarded boot-time DOM handlers (B12 class). Routed the direct document.getElementById('f_reset'/'c_feed'/'c_tv').addEventListener calls in app/data.js initFilters/initSetup through the null-safe on() helper (consistent with the adjacent on('f_save') and bind() usage), so a missing id can no longer throw and abort the rest of boot(). Wrapped assets/home.js in an IIFE (no global leakage, matching admin.js/changelog.js) and guarded the #hdr scroll handler with if(hdr). node --check green; demo/app boot clean, homepage unaffected."
     }
   ]
 }
