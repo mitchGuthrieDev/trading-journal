@@ -29,6 +29,9 @@ jobs:
       - name: Feature-flag default drift test
         run: node scripts/test-flags.mjs
 
+      - name: State-tax model default drift test
+        run: node scripts/test-tax.mjs
+
       - name: Regenerate partials + data manifest
         run: |
           node scripts/build-includes.mjs

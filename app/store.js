@@ -255,9 +255,31 @@
         }
         await done(store);
       }
+      // S20: the meta store used to be restored verbatim — but savedFilters ids/names flow into
+      // HTML attributes (data.js f_saved <option>, datamanager data-filter*), so a crafted backup
+      // could break out of an attribute. Allow-list meta keys and validate the savedFilters shape
+      // at the boundary (coerce id to a safe charset, strip markup from name, whitelist filter
+      // fields); unknown keys are dropped.
+      const FILTER_FIELDS = ['from', 'to', 'symbol', 'side', 'session', 'tag'];
+      const cleanSavedFilters = a => (Array.isArray(a) ? a : []).map(s => {
+        if (!s || typeof s !== 'object') return null;
+        const id = String(s.id == null ? '' : s.id).replace(/[^A-Za-z0-9]/g, '').slice(0, 32);
+        if (!id) return null;
+        const name = String(s.name == null ? '' : s.name).replace(/[<>&"']/g, '').trim().slice(0, 80);
+        const src = (s.f && typeof s.f === 'object') ? s.f : {};
+        const f = {};
+        for (const k of FILTER_FIELDS) f[k] = String(src[k] == null ? '' : src[k]).replace(/[<>&"']/g, '').slice(0, 64);
+        f.dows = Array.isArray(src.dows) ? src.dows.map(Number).filter(d => Number.isInteger(d) && d >= 0 && d <= 6) : [];
+        return { id, name, f };
+      }).filter(Boolean);
       if (Array.isArray(data.meta) && data.meta.length) {
         const store = await tx(META, 'readwrite');
-        for (const mm of data.meta) { if (mm && mm.key != null) store.put({ key: mm.key, value: mm.value }); }
+        for (const mm of data.meta) {
+          if (!mm || mm.key == null) continue;
+          if (mm.key === 'savedFilters') store.put({ key: 'savedFilters', value: cleanSavedFilters(mm.value) });
+          else if (mm.key === 'setup' && mm.value && typeof mm.value === 'object') store.put({ key: 'setup', value: mm.value });
+          // unknown meta keys are dropped (allow-list)
+        }
         await done(store);
       }
       if (Array.isArray(data.trademeta) && data.trademeta.length) {

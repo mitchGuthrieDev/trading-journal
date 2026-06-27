@@ -184,7 +184,7 @@ const CARD_VIEWS={
           {label:'Gross',value:m.net},{label:'− Commissions',value:-c.totalComm},
           {label:'− Subscriptions',value:-c.fixedPeriod},{label:'Net (pre-tax)',value:c.netPreTax},
           {label:'− 1256 tax',value:-c.tax},{label:'Take-home',value:c.afterTax}])) }),
-  win:(m)=>({ title:'Win Rate', sub:`${(m.n?100*m.wins/m.n:0).toFixed(1)}% · ${m.n} trades`,
+  win:(m)=>({ title:'Win Rate', sub:`${m.winRate.toFixed(1)}% · ${m.n} trades`,
     html: cmSplit([{value:m.wins,color:'var(--green)',label:'Wins'},{value:m.losses,color:'var(--red)',label:'Losses'},{value:m.scratch,color:'var(--faint)',label:'Break-even'}])
       + cmStats([['Wins',m.wins],['Losses',m.losses],['Break-even',m.scratch]])
       + cmChart('PnL by weekday', cmBars(cmDow(m.trades)))

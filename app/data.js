@@ -229,7 +229,7 @@ function initFilters(){
     b.classList.toggle('on'); onFiltersChanged(); });
   const bind=(id,key)=>{ const el=document.getElementById(id); if(el) el.addEventListener('change',e=>{ FILTERS[key]=e.target.value; onFiltersChanged(); }); };
   bind('f_from','from'); bind('f_to','to'); bind('f_symbol','symbol'); bind('f_side','side'); bind('f_session','session'); bind('f_tag','tag');
-  document.getElementById('f_reset').addEventListener('click',resetFilters);
+  on('f_reset','click',resetFilters);   // null-safe like the sibling on()/bind() calls (B12/B32)
   // saved filters (shared — all surfaces; f_save is disabled on demo, which has no Store)
   on('f_save','click',saveCurrentFilter);
   on('f_saved','change',e=>{ const s=SAVED_FILTERS.find(x=>x.id===e.target.value); if(s) applyFilterObj(s.f); });
@@ -246,7 +246,7 @@ async function persistSavedFilters(){ if(Store.available()){ try{ await Store.se
 function currentFilterObj(){ return { from:FILTERS.from, to:FILTERS.to, symbol:FILTERS.symbol, side:FILTERS.side, session:FILTERS.session, tag:FILTERS.tag, dows:[...FILTERS.dows] }; }
 function syncSavedFilterSelect(){
   const sel=$('f_saved'); if(!sel) return; const cur=sel.value;
-  sel.innerHTML='<option value="">— Saved filters —</option>'+SAVED_FILTERS.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  sel.innerHTML='<option value="">— Saved filters —</option>'+SAVED_FILTERS.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
   sel.value=SAVED_FILTERS.some(s=>s.id===cur)?cur:'';
 }
 function applyFilterObj(f){
@@ -502,13 +502,13 @@ function initSetup(){
   bSel.addEventListener('change',()=>{ populateFeeds(bSel.value||'AMP'); updateGate(); recalc(); persistSetup(); });
 
   populateFeeds('AMP');
-  document.getElementById('c_feed').addEventListener('change',()=>{ updateGate(); recalc(); persistSetup(); });
+  on('c_feed','change',()=>{ updateGate(); recalc(); persistSetup(); });   // B32: null-safe
 
   const sSel=document.getElementById('c_state_sel');
   sSel.innerHTML='<option value="">— Select state —</option>'
     +STATES.slice().sort((a,b)=>a[2]<b[2]?-1:1).map(([a,r,n])=>`<option value="${a}" data-rate="${r}">${n}</option>`).join('');
   sSel.addEventListener('change',()=>{ updateGate(); recalc(); persistSetup(); });
 
-  document.getElementById('c_tv').addEventListener('input',()=>{ recalc(); persistSetup(); });
+  on('c_tv','input',()=>{ recalc(); persistSetup(); });   // B32: null-safe
   updateGate();
 }

@@ -11,7 +11,7 @@
 function exportReport(){
   if(!METRICS_ALL || !METRICS_ALL.n){ alert('Load data before exporting a report.'); return; }
   const m=activeMetrics(), c=costModel(m);
-  const bePer = c.n>0 ? (c.totalComm+c.fixedPeriod)/c.n : 0;
+  const bePer = c.bePer;
   const gen=new Date();
   const range = (m.firstDate==='—') ? '—' : `${m.firstDate} → ${m.lastDate}`;
 
@@ -26,7 +26,7 @@ function exportReport(){
     ['Net P&L (pre-tax)', money(c.netPreTax), cls(c.netPreTax)],
     ['Take-home (post-tax)', money(c.afterTax), cls(c.afterTax)],
     ['Gross P&L', money(c.gross), cls(c.gross)],
-    ['Win rate', (m.n?100*m.wins/m.n:0).toFixed(1)+'%', ''],
+    ['Win rate', m.winRate.toFixed(1)+'%', ''],
     ['Profit factor', c.pf===Infinity?'∞':c.pf.toFixed(2), ''],
     ['Max drawdown', money(-m.maxDD), 'neg'],
     ['Trades', String(m.n), ''],
