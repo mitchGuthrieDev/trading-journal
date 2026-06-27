@@ -37,12 +37,14 @@ const STAGING_ONLY = new Set(['app/staging.html']);
 const PROD_ONLY = new Set(['index.html', 'site.css', 'howto.html', 'roadmap.html', 'legal.html', 'changelog.html']);
 
 /* A file shared across the app surfaces (main + demo + staging). Shared app JS/CSS, the app+demo
-   shells, partials, assets, tokens, and reference data — but NOT versions.json/backlog.json. */
+   shells, partials, assets, tokens, and reference data — but NOT versions.json or the admin-only
+   backlog.json / backlog_archive.json. */
+const NON_SHIPPING_DATA = new Set(['data/versions.json', 'data/backlog.json', 'data/backlog_archive.json']);
 export function isProdShipping(f) {
   if (f === 'app/app.html' || f === 'app/demo.html' || f === 'app/app.css' || f === 'tokens.css') return true;
   if (/^app\/[^/]+\.js$/.test(f)) return true;   // shared app modules (all app JS ships to every surface)
   if (/^partials\//.test(f) || /^assets\//.test(f)) return true;
-  if (/^data\//.test(f) && f !== 'data/versions.json' && f !== 'data/backlog.json') return true;
+  if (/^data\//.test(f) && !NON_SHIPPING_DATA.has(f)) return true;
   return false;
 }
 
@@ -53,7 +55,7 @@ export function classifySurfaces(files) {
     if (isProdShipping(f)) { prod = true; staging = true; }      // shared app code → both
     else if (STAGING_ONLY.has(f)) { staging = true; }            // staging-only → staging
     else if (PROD_ONLY.has(f)) { prod = true; }                  // homepage/info pages → prod only
-    // anything else (admin.html, README, .github, scripts, functions, versions/backlog json) → no bump
+    // anything else (admin.html, README, .github, scripts, functions, versions/backlog/backlog_archive json) → no bump
   }
   return { prod, staging };
 }

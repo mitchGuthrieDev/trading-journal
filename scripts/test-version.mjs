@@ -20,7 +20,7 @@ ok('app/widgets.js IS prod (promoted from staging, CH16)', isProdShipping('app/w
 ok('app/staging.html is NOT prod', !isProdShipping('app/staging.html'));
 ok('app+demo shells + css + tokens are prod', ['app/app.html','app/demo.html','app/app.css','tokens.css'].every(isProdShipping));
 ok('partials + assets + data are prod', isProdShipping('partials/app-dash.html') && isProdShipping('assets/util.js') && isProdShipping('data/brokers.json'));
-ok('versions/backlog json are NOT prod', !isProdShipping('data/versions.json') && !isProdShipping('data/backlog.json'));
+ok('versions/backlog/backlog_archive json are NOT prod', !isProdShipping('data/versions.json') && !isProdShipping('data/backlog.json') && !isProdShipping('data/backlog_archive.json'));
 ok('info pages / readme / ci are NOT prod', !isProdShipping('index.html') && !isProdShipping('README.md') && !isProdShipping('.github/workflows/ci.yml'));
 
 console.log('\nSurface selection:');
@@ -28,7 +28,7 @@ ok('shared code → both tracks', (()=>{const s=classifySurfaces(['app/render.js
 ok('staging-only → staging alone', (()=>{const s=classifySurfaces(['app/staging.html']);return !s.prod&&s.staging;})());
 ok('homepage/info pages → prod only (B16)', (()=>{const s=classifySurfaces(['index.html']);return s.prod&&!s.staging;})());
 ok('site.css + an info page → prod only', (()=>{const s=classifySurfaces(['site.css','howto.html']);return s.prod&&!s.staging;})());
-ok('admin.html / README / backlog → neither', (()=>{const s=classifySurfaces(['admin.html','README.md','data/backlog.json']);return !s.prod&&!s.staging;})());
+ok('admin.html / README / backlog(+archive) → neither', (()=>{const s=classifySurfaces(['admin.html','README.md','data/backlog.json','data/backlog_archive.json']);return !s.prod&&!s.staging;})());
 ok('mixed (shared + staging) → both', (()=>{const s=classifySurfaces(['app/staging.html','app/core.js']);return s.prod&&s.staging;})());
 ok('mixed (homepage + staging-only) → both', (()=>{const s=classifySurfaces(['index.html','app/staging.html']);return s.prod&&s.staging;})());
 

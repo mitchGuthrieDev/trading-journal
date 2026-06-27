@@ -149,9 +149,19 @@
   function loadBacklog(){
     var counts=document.getElementById('bk_counts'), total=document.getElementById('bk_total'),
         bmsg=document.getElementById('bk_msg');
-    fetch('/data/backlog.json',{cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }).then(function(b){
+    // The active backlog (open + guardrail) lives in backlog.json; completed (done) items were
+    // moved to backlog_archive.json to keep the active file lean. Fetch BOTH and merge the item
+    // lists so the panel still shows done items (filterable via Status). The archive is fail-soft:
+    // if it's missing (e.g. an older deploy), the panel still renders the active backlog.
+    Promise.all([
+      fetch('/data/backlog.json',{cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }),
+      fetch('/data/backlog_archive.json',{cache:'no-store'}).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; })
+    ]).then(function(res){
+      var b=res[0], arch=res[1];
       bkData=b;
-      var items=b.items||[], cats=b.categories||[];
+      var archItems=(arch&&arch.items)||[];
+      var items=(b.items||[]).concat(archItems), cats=b.categories||[];
+      b.items=items;   // bkRenderList() reads bkData.items — render from the merged list
       var tDone=0, tOpen=0, tGuard=0;
       // per-category counts (prompt/doneNote intentionally NOT rendered)
       counts.innerHTML=cats.map(function(c){

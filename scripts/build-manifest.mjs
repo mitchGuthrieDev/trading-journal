@@ -23,10 +23,11 @@ import { dirname, join } from 'node:path';
 const dataDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'data');
 const MANIFEST = 'manifest.json';
 // Only the reference-data files the app fetches with `?v=<hash>` need a manifest entry.
-// backlog.json (admin-only), versions.json (CH12 — bumped on every merge, fetched
-// no-store), and changelog.json (F13 — curated release notes fetched directly by the
-// changelog page) are excluded so the manifest doesn't churn on every content edit.
-const EXCLUDE = new Set([MANIFEST, 'backlog.json', 'versions.json', 'changelog.json']);
+// backlog.json + backlog_archive.json (admin-only), versions.json (CH12 — bumped on
+// every merge, fetched no-store), and changelog.json (F13 — curated release notes
+// fetched directly by the changelog page) are excluded so the manifest doesn't churn
+// on every content edit.
+const EXCLUDE = new Set([MANIFEST, 'backlog.json', 'backlog_archive.json', 'versions.json', 'changelog.json']);
 
 const names = (await readdir(dataDir))
   .filter(n => n.endsWith('.json') && !EXCLUDE.has(n))
