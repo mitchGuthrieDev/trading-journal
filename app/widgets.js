@@ -128,14 +128,14 @@ function cmBars(rows){   // rows: {label, value, color?, display?}
   return '<div class="cmbars">'+rows.map(r=>{
     const w=Math.round(100*Math.abs(r.value)/max), col=r.color||cmColor(r.value);
     return `<div class="cmbar"><span class="cmbl">${esc(r.label)}</span>`
-      +`<span class="cmbt"><span class="cmbf" style="width:${w}%;background:${col}"></span></span>`
+      +`<span class="cmbt"><span class="cmbf" data-w="${w}" data-c="${col}"></span></span>`
       +`<span class="cmbv">${r.display!=null?r.display:usd(r.value)}</span></div>`;
   }).join('')+'</div>';
 }
 function cmSplit(segs){   // proportional stacked bar; segs: {value,color,label}
   const tot=Math.max(1, segs.reduce((a,s)=>a+s.value,0));
   return '<div class="cmsplit">'+segs.filter(s=>s.value>0).map(s=>
-    `<span style="width:${(100*s.value/tot).toFixed(2)}%;background:${s.color}" title="${esc(s.label)}: ${s.value}">${s.value}</span>`).join('')+'</div>';
+    `<span class="cmseg" data-w="${(100*s.value/tot).toFixed(2)}" data-c="${s.color}" title="${esc(s.label)}: ${s.value}">${s.value}</span>`).join('')+'</div>';
 }
 function cmCurve(curve, marks){
   const W=620,H=150,pad=8;
@@ -208,7 +208,10 @@ function openCardModal(key){
   const v=view(m, costModel(m));
   document.getElementById('cm_title').textContent=v.title;
   document.getElementById('cm_sub').textContent=v.sub||'';
-  document.getElementById('cm_body').innerHTML=v.html;
+  const body=document.getElementById('cm_body');
+  body.innerHTML=v.html;
+  // A21: feed data-driven bar width/colour via custom properties (CSSOM), not inline style=
+  body.querySelectorAll('[data-w]').forEach(el=>{ el.style.setProperty('--w', el.dataset.w+'%'); if(el.dataset.c) el.style.setProperty('--c', el.dataset.c); });
   ov.classList.add('open'); document.body.style.overflow='hidden';
   modalOpened(ov);
   logAction('Opened '+v.title+' details');

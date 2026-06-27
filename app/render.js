@@ -126,8 +126,8 @@ function renderCurve(m, c=costModel(m)){
   const areaPts=disp.map(p=>xOf(p)+','+yPx(p[prim.key])).join(' L ');
   const x0=xOf(disp[0]), xN=xOf(disp[disp.length-1]);
   const defs=`<defs><linearGradient id="cgrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" style="stop-color:${prim.color};stop-opacity:.26"/>
-      <stop offset="1" style="stop-color:${prim.color};stop-opacity:0"/></linearGradient></defs>`;
+      <stop offset="0" stop-color="${prim.color}" stop-opacity=".26"/>
+      <stop offset="1" stop-color="${prim.color}" stop-opacity="0"/></linearGradient></defs>`;
   const area=`<path d="M${areaPts} L ${xN},${H-padB} L ${x0},${H-padB} Z" fill="url(#cgrad)"/>`;
 
   // drawdown band only when focused on gross alone (keeps multi-overlay views clean)
@@ -141,7 +141,7 @@ function renderCurve(m, c=costModel(m)){
   const endDots=series.map(s=>{ const last=disp[disp.length-1];
     return `<circle cx="${xN}" cy="${yPx(last[s.key])}" r="3.2" fill="${s.color}"/>`;}).join('');
   const endLabels=series.map(s=>{ const last=disp[disp.length-1];
-    return `<text x="${W-padR}" y="${yPx(last[s.key])-7}" text-anchor="end" style="fill:${s.color};font-weight:600">${usd(last[s.key])}</text>`;}).join('');
+    return `<text x="${W-padR}" y="${yPx(last[s.key])-7}" text-anchor="end" class="endlab" data-c="${s.color}" font-weight="600">${usd(last[s.key])}</text>`;}).join('');
 
   // selected-date marker
   let sel='';
@@ -179,6 +179,9 @@ function renderCurve(m, c=costModel(m)){
   svg.innerHTML=defs+grid+area+band
     +`<line class="zero" x1="${padL}" x2="${W-padR}" y1="${zeroY}" y2="${zeroY}"/>`
     +lines+endDots+noteDots+endLabels+sel+axis;
+  // A21: end-label colour via a custom property (CSSOM), not an inline style — and a class so it
+  // beats the blanket `.curve text{fill:var(--dim)}` rule that a bare fill= attribute would lose to.
+  svg.querySelectorAll('text.endlab').forEach(el=>el.style.setProperty('--c', el.dataset.c));
 
   // hover guide
   const g=document.createElementNS(SVGNS,'g'); g.style.display='none';
@@ -195,7 +198,8 @@ function renderCurve(m, c=costModel(m)){
     series.forEach((s,i)=>{ dots[i].setAttribute('cx',x); dots[i].setAttribute('cy',yPx(best[s.key])); });
     tip.style.display='block'; tip.style.left=(x/W*r.width)+'px'; tip.style.top='4px';
     tip.innerHTML=`<div class="td">${best.date}</div>`+series.map(s=>
-      `<div class="tr"><span class="sw" style="background:${s.color}"></span>${s.label} <b>${usd(best[s.key])}</b></div>`).join('');
+      `<div class="tr"><span class="sw" data-c="${s.color}"></span>${s.label} <b>${usd(best[s.key])}</b></div>`).join('');
+    tip.querySelectorAll('.sw').forEach(el=>el.style.setProperty('--c', el.dataset.c));   // A21: CSSOM, not inline style
   }
   const hideGuide=()=>{ g.style.display='none'; tip.style.display='none'; };
   const nearestTo=mx=>{ let best=disp[0], bd=1e9; for(const p of disp){ const d=Math.abs(xOf(p)-mx); if(d<bd){bd=d;best=p;} } return best; };

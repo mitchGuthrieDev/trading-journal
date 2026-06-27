@@ -174,8 +174,10 @@
         return '<div class="bkcount"><div class="bk-cat">'+esc(c)+'</div>'
           +'<div class="bk-nums"><span class="bk-done">'+done+'</span><span class="bk-of">/ '+tot+' done</span>'
           +'<span class="bk-rem">'+open+' left'+(guard?(' · '+guard+' guard'):'')+'</span></div>'
-          +'<div class="bkbar"><i style="width:'+pct+'%"></i></div></div>';
+          +'<div class="bkbar"><i data-w="'+pct+'"></i></div></div>';
       }).join('');
+      // A21: bar width via a custom property (CSSOM), not an inline style=
+      Array.prototype.forEach.call(counts.querySelectorAll('.bkbar i'),function(el){ el.style.setProperty('--w', el.dataset.w+'%'); });
       var grand=tDone+tOpen;
       total.innerHTML='Overall: <b>'+tDone+'</b> done · <b>'+tOpen+'</b> remaining'
         +(tGuard?(' · '+tGuard+' guardrail'):'')+' · <b>'+(grand?Math.round(100*tDone/grand):0)+'%</b> complete ('+items.length+' items)';
