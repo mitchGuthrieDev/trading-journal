@@ -79,9 +79,9 @@ every function/state it calls is already defined. No bundler, no build step.
 The activity terminal, session pill, and workspace templates live in
 `app/widgets.js` (loaded on every app page since CH16). Shared code never names a
 widget symbol — instead `core.js` exposes a tiny event bus (`emit`/`onEvent` over
-an `EventTarget`), and shared actions fire events (`app:ready`, `data:imported`,
-`note:saved`, `trade:deleted`, `backup:created`, `data:erased`) that
-`widgets.js` subscribes to. The bus stays a no-op when a page has no subscriber,
+an `EventTarget`), and shared actions fire events (`app:ready`, `data:loaded`,
+`data:imported`, `note:saved`, `trade:deleted`, `backup:created`, `data:erased`)
+that `widgets.js` subscribes to. The bus stays a no-op when a page has no subscriber,
 so the decoupling holds even as surfaces diverge.
 
 ## Shared chrome: tokens + partials (no bundler)
