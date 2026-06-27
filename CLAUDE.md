@@ -143,6 +143,7 @@ the shipped/committed files). So:
   adapters.js           platform CSV adapters + format auto-detection + fills matcher
   store.js              IndexedDB persistence (trades, journal, meta, trademeta)
   entitlements.js       storage-tier resolver (scaffold; not currently loaded)
+  types.js              shared JSDoc @typedefs (dev-only types; never loaded at runtime — CH33)
 /data/                  reference data, fetched at runtime (each carries schemaVersion)
   brokers.json          broker commission tiers
   exchange-fees.json    CME exchange/clearing/NFA fees + micro set
@@ -163,8 +164,11 @@ the shipped/committed files). So:
   build-includes.mjs    assembles info pages + the three app surfaces from partials/
   build-manifest.mjs    regenerates data/manifest.json content hashes
   bump-version.mjs      two-track version bump from a merge commit (run by CI)
-  test-*.{cjs,mjs}      the CI test suite (adapters / auth / version / flags)
+  test-*.mjs            the CI test suite (adapters / auth / version / flags / tax)
 /assets/                banner.svg, favicon.svg, page scripts (changelog.js, util.js, …)
+/e2e/                   Playwright render/E2E specs (dev-only — R19 Tier A)
+package.json            dev-only tooling manifest — devDependencies ONLY (the shipped app has none)
+eslint.config.mjs       ESLint flat config  ·  .prettierrc.json  Prettier  ·  jsconfig.json  tsc --checkJs  ·  playwright.config.mjs  e2e
 LICENSE                 proprietary — all rights reserved
 ```
 
