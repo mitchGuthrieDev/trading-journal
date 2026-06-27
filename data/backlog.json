@@ -6,7 +6,7 @@
   "updated": "2026-06-27",
   "note": "Committed source of truth for the engineering backlog (replaces the retired .claude/backlog.md). The admin panel shows category/effort/status only; prompt + doneNote stay here.",
   "commitConvention": "Conventional-commit titles (enables CH12 automated versioning): when committing, and ESPECIALLY when titling a PR / squash-merge, lead the title with a conventional-commit type so the version bump can be derived automatically — `feat:` (new capability → minor), `fix:` (bug fix → patch), `chore:`/`refactor:`/`docs:`/`style:`/`test:`/`perf:` (→ patch), and append `!` (e.g. `feat!:`) or a `BREAKING CHANGE:` footer for a breaking change (→ major). Scope it when useful, e.g. `feat(staging): …`. Untyped/legacy titles default to a patch bump. Keep the existing Co-Authored-By and Claude-Session trailers on the commit body.",
-  "donePolicy": "When an item's status is set to `done`, delete its `prompt` field and keep only the `doneNote` — the doneNote is the shipped record of what was actually done, so the original prompt is redundant and only bloats this file (the admin backlog panel never renders done-item prompts anyway). Keep `prompt` on `open` and `guardrail` items, since those are still the actionable spec. Applies retroactively: a done item should never carry a prompt.",
+  "donePolicy": "When an item's status is set to `done`, delete its `prompt` field and keep only the `doneNote` — the doneNote is the shipped record of what was actually done, so the original prompt is redundant and only bloats this file (the admin backlog panel never renders done-item prompts anyway). Keep `prompt` on `open` and `guardrail` items, since those are still the actionable spec. Applies retroactively: a done item should never carry a prompt. RECURRING ITEMS: an item with `recurring: true` (e.g. R1 repo audit, CH16 staging→prod promotion) is a perpetual driver — NEVER set its status to done, set completedDate, or strip its prompt; it stays open across every run and its prompt leads with a RECURRING/REPEATABLE marker. Each run ships its output as new items, not by closing the recurring item.",
   "categories": [
     "SECURITY",
     "ARCHITECTURE / DUPLICATION",
@@ -259,7 +259,8 @@
       "status": "open",
       "completedDate": null,
       "partial": false,
-      "prompt": "Read-only audit (NO code edits) of the current repo: architecture, code quality, duplicated code, and security posture — accounting for everything shipped since the first audit (symbol sanitization, `_headers` CSP, `tokens.css` + nav/footer partials, the `app.js` → 7-script split, screenshot downscaling). Give concrete, prioritized findings, and append any new actions to this backlog in the same format. Done when: a written, prioritized audit is delivered and new follow-ups are added to the backlog.",
+      "recurring": true,
+      "prompt": "RECURRING — leave this item OPEN; never mark it done, set completedDate, or strip this prompt. Each run is a fresh full audit (this is the Nth, not a one-shot); the findings ship as NEW backlog items, and R1 itself stays open for the next pass. Read-only audit (NO code edits) of the current repo: architecture, code quality, duplicated code, and security posture — accounting for everything shipped since the first audit (symbol sanitization, `_headers` CSP, `tokens.css` + nav/footer partials, the `app.js` → 7-script split, screenshot downscaling). Give concrete, prioritized findings, and append any new actions to this backlog in the same format. Done when: a written, prioritized audit is delivered and new follow-ups are added to the backlog.",
       "doneNote": null
     },
     {
