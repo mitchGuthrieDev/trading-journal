@@ -30,6 +30,10 @@ export function applyFlags(){
     if(on && !banner.textContent) banner.textContent='Blotterbook is undergoing maintenance — your local data is safe; some features may be briefly unavailable.';
   }
   const ribbon=document.getElementById('betaRibbon'); if(ribbon) ribbon.hidden=!flag('betaRibbon');
+  // B39: the platform picker is built once at boot from the DEFAULT flags (before /api/config
+  // resolves), so a server-set showBetaAdapters=false wouldn't take effect. Rebuild it here now
+  // that the live flags are in — initPlatformSelects() preserves the current selection.
+  initPlatformSelects();
 }
 
 /* ============================================================
@@ -139,7 +143,12 @@ export function platformOptionsHtml(){
 }
 export function initPlatformSelects(){
   const html=platformOptionsHtml();
-  ['c_platform','dm_platform'].forEach(id=>{ const el=$(id); if(el) el.innerHTML=html; });
+  // B39: preserve the current selection across a rebuild (this can be re-run after the async
+  // flag fetch). If the selected platform is no longer offered (e.g. a beta one once
+  // showBetaAdapters flips off), it falls back to Auto-detect.
+  ['c_platform','dm_platform'].forEach(id=>{ const el=$(id); if(!el) return;
+    const cur=el.value; el.innerHTML=html;
+    if(cur && [...el.options].some(o=>o.value===cur)) el.value=cur; });
 }
 
 /* ============================================================
@@ -354,9 +363,9 @@ export function renderDayBody(){
 // decision: respect filters/scope). Reuses tradeCells() so markers/formatting match the trades table.
 export function renderDayTrades(date){
   const box=document.getElementById('j_trades'); if(!box) return;
-  if(!date || typeof baseTrades!=='function'){ box.innerHTML=''; return; }
+  if(!date){ box.innerHTML=''; return; }
   const list=baseTrades().filter(t=>t.date===date);
-  if(!list.length){ box.innerHTML=`<div class="jtnone">No trades on this day${(typeof filtersActive==='function'&&filtersActive())?' (with the active filters)':''}.</div>`; return; }
+  if(!list.length){ box.innerHTML=`<div class="jtnone">No trades on this day${filtersActive()?' (with the active filters)':''}.</div>`; return; }
   const net=list.reduce((a,t)=>a+t.pnl,0);
   box.innerHTML=`<div class="jthead">Trades · ${list.length} · <span class="${cls(net)}">${usd(net)}</span></div>`
     +`<table class="commtab jttab"><thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th class="num">P&amp;L</th></tr></thead><tbody>`

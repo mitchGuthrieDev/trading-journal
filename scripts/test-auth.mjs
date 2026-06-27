@@ -2,6 +2,7 @@
    signature verification (S13). Run: node scripts/test-auth.mjs
    Uses only Node built-ins; auth.js relies on WebCrypto (global in Node 18+). */
 import { issueToken, verifyToken, verifyStripeSignature } from '../functions/_lib/auth.js';
+import { onRequest as adminKeyOnRequest } from '../functions/api/admin-key.js';
 import { createHmac } from 'node:crypto';
 
 let pass = 0, fail = 0;
@@ -36,6 +37,17 @@ ok('missing secret fails', !(await verifyStripeSignature(BODY, stripeHeader(SECR
 // multiple v1s (Stripe rotates secrets): the matching one anywhere in the list passes
 ok('matches one of several v1s', await verifyStripeSignature(BODY,
   `t=${now},v1=deadbeef,v1=${createHmac('sha256', SECRET).update(`${now}.${BODY}`).digest('hex')}`, SECRET));
+
+console.log('\nadmin-key ?check debug gate (S21):');
+{
+  const call = (url, env) => adminKeyOnRequest({ request: new Request(url), env });
+  // No ADMIN_DEBUG → the diagnostic endpoint must look like it doesn't exist (404), so an
+  // anonymous caller can't fingerprint the Access/infra config even if it's left reachable.
+  ok('?check is 404 when ADMIN_DEBUG unset', (await call('https://x/api/admin-key?check', {})).status === 404);
+  ok('?check is not 404 when ADMIN_DEBUG=1', (await call('https://x/api/admin-key?check', { ADMIN_DEBUG: '1' })).status === 200);
+  // A normal (non-?check) request still requires authentication regardless of ADMIN_DEBUG.
+  ok('normal request without an Access assertion is 401', (await call('https://x/api/admin-key', {})).status === 401);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -155,21 +155,30 @@ export function renderCurve(m, c=costModel(m)){
       if(sp) sel+=series.map(s=>`<circle cx="${x}" cy="${yPx(sp[s.key])}" r="3.5" fill="${s.color}"/>`).join('');
     }
   }
-  // day-note indicators: a small blue dot on the curve at each date that has a note (CH16)
+  // day-note indicators: a small blue dot on the curve at each date that has a note (CH16).
+  // B37: precompute an exact date→point map (first occurrence wins, matching the old disp.find)
+  // plus a date-ascending [ms,point] list, so placing N note dots is ~O(N log P) — exact match
+  // is O(1) and the no-trade-day interpolation binary-searches the bracketing interval — instead
+  // of the previous O(N×P) (a disp.find + a nested interpolation scan per note).
   let noteDots='';
   if(state.JOURNAL_DATES && state.JOURNAL_DATES.size){
+    const ptByDate=new Map();
+    for(const p of disp) if(!ptByDate.has(p.date)) ptByDate.set(p.date, p);   // first match wins (the origin point for firstDate)
+    const sorted=disp.map(p=>({ms:new Date(p.date+'T00:00:00').getTime(), p}));   // disp is date-ascending
+    const lastIx=sorted.length-1;
     for(const nd of state.JOURNAL_DATES){
       const t=new Date(nd+'T00:00:00').getTime();
       if(t<d0ms || t>d1ms) continue;
-      const sp=disp.find(p=>p.date===nd);
       let val;
-      if(sp){ val=sp[prim.key]; }
-      else { // no trade that day → put the dot on the carried/interpolated equity line
-        let prev=null;
-        for(const p of disp){ const pms=new Date(p.date+'T00:00:00').getTime();
-          if(pms>t){ if(prev){ const pp=new Date(prev.date+'T00:00:00').getTime(); const f=(t-pp)/((pms-pp)||1); val=prev[prim.key]+(p[prim.key]-prev[prim.key])*f; } else val=p[prim.key]; break; }
-          prev=p; val=p[prim.key];
-        }
+      const exact=ptByDate.get(nd);
+      if(exact){ val=exact[prim.key]; }
+      else if(t<=sorted[0].ms){ val=sorted[0].p[prim.key]; }
+      else if(t>=sorted[lastIx].ms){ val=sorted[lastIx].p[prim.key]; }
+      else { // no trade that day → interpolate along the carried equity line between bracketing points
+        let lo=0, hi=lastIx;
+        while(hi-lo>1){ const mid=(lo+hi)>>1; if(sorted[mid].ms<=t) lo=mid; else hi=mid; }
+        const a=sorted[lo], b=sorted[hi]; const f=(t-a.ms)/((b.ms-a.ms)||1);
+        val=a.p[prim.key]+(b.p[prim.key]-a.p[prim.key])*f;
       }
       noteDots+=`<circle class="notedot" cx="${xMs(t)}" cy="${yPx(val||0)}" r="3" fill="var(--accent)" stroke="var(--bg)" stroke-width="1"><title>Note · ${nd}</title></circle>`;
     }
@@ -462,7 +471,7 @@ export function renderDash(){
   renderCards(m,c); renderAdv(m); renderCalc(m,c);
   renderCurve(m,c);
   // F16: keep the selected day's intraday trades list in sync with the active filters/scope
-  if(state.selectedDate && typeof renderDayTrades==='function') renderDayTrades(state.selectedDate);
+  if(state.selectedDate) renderDayTrades(state.selectedDate);
   document.getElementById('scopenote').textContent =
     state.SCOPE==='all' ? `all ${state.METRICS_ALL.n} trades` : `${MON[state.calMonth]} ${state.calYear}`;
 }

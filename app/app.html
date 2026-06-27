@@ -165,7 +165,9 @@
         </div>
         <div class="curvewrap">
           <svg class="curve" id="curve" preserveAspectRatio="none"></svg>
-          <div class="curvetip" id="curvetip"></div>
+          <!-- B33: aria-live so keyboard nav across the curve announces each date's values (the
+               aria-label promises "read each day's value"); showGuideAt() writes them here. -->
+          <div class="curvetip" id="curvetip" role="status" aria-live="polite"></div>
         </div>
       </div>
     </section>

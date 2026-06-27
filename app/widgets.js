@@ -208,7 +208,7 @@ export const CARD_VIEWS={
 };
 export function openCardModal(key){
   const ov=document.getElementById('cardModal'); if(!ov) return;
-  const m=(typeof activeMetrics==='function' && state.METRICS_ALL)?activeMetrics():state.METRICS_ALL;
+  const m=state.METRICS_ALL?activeMetrics():state.METRICS_ALL;
   if(!m || !m.n) return;
   const view=CARD_VIEWS[key]; if(!view) return;
   const v=view(m, costModel(m));
@@ -218,13 +218,13 @@ export function openCardModal(key){
   body.innerHTML=v.html;
   // A21: feed data-driven bar width/colour via custom properties (CSSOM), not inline style=
   body.querySelectorAll('[data-w]').forEach(el=>{ el.style.setProperty('--w', el.dataset.w+'%'); if(el.dataset.c) el.style.setProperty('--c', el.dataset.c); });
-  ov.classList.add('open'); document.body.style.overflow='hidden';
-  modalOpened(ov);
+  ov.classList.add('open');
+  modalOpened(ov);   // B36: scroll lock handled here
   logAction('Opened '+v.title+' details');
 }
 export function closeCardModal(){ const ov=document.getElementById('cardModal');
   if(!ov || !ov.classList.contains('open')) return;
-  ov.classList.remove('open'); document.body.style.overflow=''; modalClosed(ov); }
+  ov.classList.remove('open'); modalClosed(ov); }
 
 /* Subscribe to shared app-action events → terminal log lines (all surfaces, CH16). */
 onEvent('app:ready',     initWidgets);

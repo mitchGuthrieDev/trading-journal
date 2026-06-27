@@ -17,12 +17,12 @@ export function openDataManager(){
   const demo = PAGE_MODE==='demo';
   if(!demo && !Store.available()){ alert('Local storage is not available in this browser.'); return; }
   const ov=$('dataModal'); if(!ov) return;
-  ov.classList.add('open'); document.body.style.overflow='hidden';
-  modalOpened(ov);   // aria-hidden + focus trap/restore (B9)
+  ov.classList.add('open');
+  modalOpened(ov);   // aria-hidden + focus trap/restore (B9) + body-scroll lock (B36)
   if(!demo) resetStage('manage');   // platform select returns to "Auto-detect" each time it's opened
   renderDataManager();
 }
-export function closeDataManager(){ const ov=$('dataModal'); if(!ov||!ov.classList.contains('open')) return; ov.classList.remove('open'); document.body.style.overflow=''; modalClosed(ov); }
+export function closeDataManager(){ const ov=$('dataModal'); if(!ov||!ov.classList.contains('open')) return; ov.classList.remove('open'); modalClosed(ov); }
 
 export async function renderDataManager(){
   // each section renders independently so one failure can't blank the rest
@@ -106,12 +106,10 @@ export function tradeCells(t){
    select it, and scroll the notes block into view. */
 export function dmOpenDay(date){
   closeDataManager();
-  if(typeof selectFromGraph==='function' && state.METRICS_ALL){ selectFromGraph(date); }
+  if(state.METRICS_ALL){ selectFromGraph(date); }
   else { state.selectedDate=date;   // fallback: sync the calendar to the date's month so the highlight is visible (CH25)
     const [yy,mm]=date.split('-').map(Number); state.calYear=yy; state.calMonth=mm-1;
-    if(typeof renderCalendar==='function') renderCalendar();
-    if(typeof renderDash==='function') renderDash();
-    if(typeof updateJournalEditor==='function') updateJournalEditor(); }
+    renderCalendar(); renderDash(); updateJournalEditor(); }
   const j=$('journal'); if(j) j.scrollIntoView({block:'center'});
 }
 
@@ -235,6 +233,10 @@ export async function dmDeleteTrade(id){
   if(PAGE_MODE==='demo') return;   // B31
   await Store.deleteTrade(id);
   await reloadFromStore();
+  // B38: deleting the last trade leaves reloadFromStore()→resetApp() with an empty, hidden
+  // dashboard — don't leave the Data-manager modal sitting over it with a stale editor. Close
+  // it (and clear any open per-trade editor) instead of re-rendering an empty modal.
+  if(!state.TRADES.length){ state.DM_EDIT=null; closeDataManager(); emit('trade:deleted', { id }); return; }
   await renderDataManager();
   emit('trade:deleted', { id });
 }

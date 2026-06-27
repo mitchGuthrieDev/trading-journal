@@ -1,9 +1,9 @@
 "use strict";
 import { $, STAGING_PAGE } from './core.js';
 import { Store } from './store.js';
-/* Blotterbook app · ui — collapsible/drag-to-reorder panels + file-download/setup-label helpers
-   Loaded in order: core → render → data → ui → export → datamanager → widgets → main. Split from the former single app.js (classic
-   scripts share one global scope, so cross-file functions/state resolve at runtime).
+/* Blotterbook app · ui — collapsible/drag-to-reorder panels, file-download/setup-label helpers,
+   and the shared modal a11y + ref-counted body-scroll-lock helpers. A native ES module (A20):
+   imports what it needs, exports what others use.
    (The activity terminal, session pill, and workspace templates live in widgets.js, loaded on every app page since CH16.) */
 
 /* ============================================================
@@ -84,9 +84,16 @@ export function modalFocusables(root){
   return [...root.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
     .filter(el=>el.offsetParent!==null);   // visible only
 }
+// B36: body-scroll lock shared by every modal, ref-counted so stacked modals can't clobber each
+// other's overflow — lock on the FIRST open, unlock only when the LAST closes. The per-element
+// `_scrollLocked` flag makes a double open/close on one modal idempotent (no over/under-count).
+let _scrollLocks=0;
+function lockScroll(ov){ if(ov._scrollLocked) return; ov._scrollLocked=true; if(_scrollLocks++===0) document.body.style.overflow='hidden'; }
+function unlockScroll(ov){ if(!ov._scrollLocked) return; ov._scrollLocked=false; if(--_scrollLocks<=0){ _scrollLocks=0; document.body.style.overflow=''; } }
 export function modalOpened(ov){
   if(!ov) return;
   ov.setAttribute('aria-hidden','false');
+  lockScroll(ov);   // B36: ref-counted body-scroll lock (no longer set ad-hoc per modal)
   ov._prevFocus=document.activeElement;
   const f=modalFocusables(ov);
   if(f[0]) f[0].focus();
@@ -102,6 +109,7 @@ export function modalOpened(ov){
 export function modalClosed(ov){
   if(!ov) return;
   ov.setAttribute('aria-hidden','true');
+  unlockScroll(ov);   // B36: release the ref-counted body-scroll lock
   if(ov._trap){ ov.removeEventListener('keydown',ov._trap); ov._trap=null; }
   if(ov._prevFocus && ov._prevFocus.focus) ov._prevFocus.focus();
   ov._prevFocus=null;

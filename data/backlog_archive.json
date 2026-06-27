@@ -1389,6 +1389,116 @@
       "completedDate": "2026-06-27",
       "partial": false,
       "doneNote": "**Shipped:** the app and info-page scripts now run as native ES modules (`<script type=\"module\">`) with explicit import/export — no shared global scope, no fixed load order, and NO build step or dependencies added. `partials/app-scripts.html` collapsed from 11 ordered classic `<script>`s to a single module entry `<script type=\"module\" src=\"main.js\">` (main.js imports the rest; `widgets.js` is a side-effect import so its event-bus subscriptions register before boot() emits app:ready). Each module exports what others use and imports what it needs. Reassignable cross-module state (TRADES, METRICS_ALL, SCOPE, calYear/calMonth, selectedDate, JOURNAL_DATES, TRADE_META, DEMO_MODE, PENDING, FILE_CTX, SAVED_FILTERS, STAGING_DATA_READY, DM_SEARCH, DM_EDIT) moved to a shared `app/state.js` object (`state.X`) since ESM import bindings are read-only; the const objects FILTERS/curveSel stay plain exports. `assets/util.js` is now a module imported by both the app and the info pages (changelog/admin), exposing `esc`/`platformLabel`/`versionsReady` (replacing `window.__versionsReady`); the DOM helper `on` moved into core.js. `app/adapters.js` became a real ESM module (named + default export); its Node test was renamed `scripts/test-adapters.cjs` → `.mjs` (import instead of require, since CI Node 20 cannot require ESM) with `.github/workflows/ci.yml` + CLAUDE.md updated. The unloaded `app/entitlements.js` scaffold was converted too. Verified headlessly: app/demo/staging + index/changelog/admin all boot with ZERO console/page errors, and demo/staging interactions (stat-card detail modals, calendar day selection, data manager, per-trade tag editor → persisted to Store and reloaded, export-report modal, scope/overlay toggles, workspace reset) all run clean; full test suite green (adapters 72, auth 13, version 28, flags 5, tax 6) and the build-includes/build-manifest drift gate is clean."
+    },
+    {
+      "id": "B33",
+      "title": "(a11y) Announce equity-curve keyboard values via an aria-live tooltip",
+      "category": "FIXES",
+      "priority": "P2",
+      "effort": "trivial",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "**Shipped:** #curvetip (partials/app-dash.html) now carries `role=\"status\"` + `aria-live=\"polite\"`, so the equity curve's keyboard nav (arrow/Home/End) announces each date's series values via the tooltip showGuideAt() already populates — matching the curve's aria-label promise. Rebuilt includes; verified headlessly that arrowing the focused curve fills #curvetip."
+    },
+    {
+      "id": "A23",
+      "title": "Remove dead `typeof X===’function’` guards left over from the classic-script era",
+      "category": "ARCHITECTURE / DUPLICATION",
+      "priority": "P2",
+      "effort": "trivial",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "**Shipped:** removed the dead `typeof <importedSymbol>===\"function\"` guards left from the classic-script era (always true under ESM) at 8 sites — datamanager.js dmOpenDay (selectFromGraph/renderCalendar/renderDash/updateJournalEditor), render.js renderDash (renderDayTrades), data.js renderDayTrades (baseTrades + filtersActive), widgets.js openCardModal (activeMetrics) — keeping each real secondary condition. The legitimate host-global checks in store.js (typeof document/indexedDB) are untouched. All surfaces boot with zero console errors."
+    },
+    {
+      "id": "CH30",
+      "title": "Clear post-A20 comment drift in core.js orientation block + util.js header",
+      "category": "COMMENTS / READABILITY",
+      "priority": "P2",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "**Shipped:** rewrote the core.js header + orientation block to describe the A20 ESM model (single `<script type=module src=main.js>` entry, explicit import/export, the state.js shared-state object, correct `state.DEMO_MODE` attribution) and refreshed the stale 'classic scripts / one global scope' headers in ui.js and export.js plus the assets/util.js header (now 'an ES module imported by the app + info pages') and its `app/staging.js`→`app/widgets.js` reference. (render/data/datamanager/widgets headers were already corrected during the A20 conversion.)"
+    },
+    {
+      "id": "B34",
+      "title": "Dedupe + persist in ONE transaction in Store.addTrades",
+      "category": "FIXES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "**Shipped:** Store.addTrades now reads existing keys AND writes all puts inside ONE readwrite transaction (puts issued synchronously in getAllKeys().onsuccess, no await between), closing the stale-snapshot window the prior separate readonly+readwrite split left, while preserving B6's no-await-mid-transaction invariant. Adapter tests green; staging seed + CSV import verified in-browser."
+    },
+    {
+      "id": "B35",
+      "title": "importAll must not mutate the caller’s backup objects",
+      "category": "FIXES",
+      "priority": "P3",
+      "effort": "trivial",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "**Shipped:** Store.importAll pushes a sanitized COPY (`{...t, root:cleanSym(t.root)}`) instead of mutating the caller's parsed backup objects in place, so a caller can still reuse the original backup graph."
+    },
+    {
+      "id": "B36",
+      "title": "Centralize modal body-scroll locking with an open-count (no clobber)",
+      "category": "FIXES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "**Shipped:** body-scroll locking is centralized in ui.js modalOpened/modalClosed via a ref-counted helper (per-element `_scrollLocked` flag → lock on first open, unlock only on last close); removed the ad-hoc `document.body.style.overflow` writes in datamanager.js, widgets.js, and export.js. Verified open/close of the data-manager and card modals restores body overflow exactly."
+    },
+    {
+      "id": "B37",
+      "title": "Make equity-curve note-dot placement linear, not O(notes×points)",
+      "category": "FIXES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "**Shipped:** renderCurve note-dot placement precomputes an exact date→point Map (first-occurrence-wins, matching the old disp.find) + a date-ascending [ms,point] list and binary-searches the bracketing interval for no-trade note days — ~O(N log P) instead of the prior O(N×P) find + nested interpolation scan; visual output unchanged. Verified a note dot renders after saving a day note."
+    },
+    {
+      "id": "B38",
+      "title": "Deleting the last trade leaves the Data-manager modal over a reset app",
+      "category": "FIXES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "**Shipped:** dmDeleteTrade now closes the Data-manager modal and clears state.DM_EDIT when deleting the final trade empties the store (reloadFromStore→resetApp hides the dashboard), instead of leaving the modal open over a reset app with a stale editor."
+    },
+    {
+      "id": "B39",
+      "title": "Refresh the platform picker after the async feature-flag fetch",
+      "category": "FIXES",
+      "priority": "P3",
+      "effort": "trivial",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "**Shipped:** applyFlags() now re-runs initPlatformSelects() after the async /api/config fetch so a server-set showBetaAdapters=false actually removes beta adapters from the manual picker; initPlatformSelects() also now preserves the current selection across the rebuild (falling back to Auto-detect if the selected platform is no longer offered)."
+    },
+    {
+      "id": "S21",
+      "title": "Guardrail+test: /api/admin-key?check must stay 404 unless ADMIN_DEBUG=1",
+      "category": "SECURITY",
+      "priority": "P3",
+      "effort": "trivial",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "**Shipped:** added scripts/test-auth.mjs assertions that GET /api/admin-key?check returns 404 when ADMIN_DEBUG is unset (200 when ADMIN_DEBUG=1, and a normal no-assertion request is 401), plus a GUARDRAIL comment at the endpoint that ADMIN_DEBUG must stay unset in production. The ?check branch was already gated behind ADMIN_DEBUG; this locks the behaviour into the CI test suite."
     }
   ]
 }

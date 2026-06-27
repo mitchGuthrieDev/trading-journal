@@ -1,6 +1,7 @@
 "use strict";
-/* Shared tiny utilities, loaded as a classic global script before any page's own scripts.
-   Single source for HTML escaping across the app, the info pages, and the admin panel (A7). */
+/* Shared tiny utilities — a native ES module (A20) imported by both the app modules and the
+   info-page scripts (changelog/admin). Single source for HTML escaping across the app, the info
+   pages, and the admin panel (A7). */
 
 /* CH14: a real module export, not a global. Starts as a resolved promise so every importer
    can `await versionsReady` even on pages with no badge; the badge IIFE reassigns it below. */
@@ -33,7 +34,7 @@ export function platformLabel(prod){
 /* CH12 — populate the version badge(s) at runtime from data/versions.json, so all surfaces
    read one source of truth without a rebuild. The baked `.ver` literal stays as the offline
    fallback. Two tracks: staging page → `staging`, app + demo → `prod`. Reassigns the exported
-   versionsReady promise so app/staging.js can read the badge after it's set. */
+   versionsReady promise so app/widgets.js can read the badge after it's set. */
 (function(){
   if (typeof document === 'undefined') return;
   const badges = document.querySelectorAll('.ver');

@@ -25,6 +25,8 @@ export async function onRequest(context) {
   // is gated behind ADMIN_DEBUG and OFF by default — set ADMIN_DEBUG=1 only while
   // diagnosing setup, so anonymous callers can't fingerprint the infra (S12). Kept ahead
   // of the auth checks on purpose so it can still diagnose an absent/invalid assertion.
+  // GUARDRAIL (S21): ADMIN_DEBUG must stay unset (never '1') in PRODUCTION — scripts/test-auth.mjs
+  // asserts ?check returns 404 whenever ADMIN_DEBUG is unset.
   if (new URL(request.url).searchParams.has('check')) {
     if (env.ADMIN_DEBUG !== '1') return json({ error: 'not_found' }, 404);
     return json({

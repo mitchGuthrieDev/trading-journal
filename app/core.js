@@ -1,7 +1,7 @@
 "use strict";
-/* Blotterbook app · core — globals, DOM helpers, metrics, formatting, broker/cost model, reference-data loading
-   Loaded in order: core → render → data → ui → export → datamanager → widgets → main. Split from the former single app.js (classic
-   scripts share one global scope, so cross-file functions/state resolve at runtime). */
+/* Blotterbook app · core — DOM helpers, metrics, formatting, broker/cost model, reference-data
+   loading, and the app event bus. A native ES module (A20): everything it shares is `export`ed and
+   imported explicitly by the other modules — no shared global scope, no load-order dependence. */
 
 export const SVGNS='http://www.w3.org/2000/svg';
 export const pad2 = n => String(n).padStart(2,'0');
@@ -21,32 +21,40 @@ export const PAGE_MODE = (document.body && document.body.dataset.mode) || '';
 export const STAGING_PAGE = PAGE_MODE === 'staging';
 
 /* ------------------------------------------------------------------
-   Orientation — how the split scripts fit together (read this first)
+   Orientation — how the modules fit together (read this first)
 
-   Load order (plain <script>s sharing ONE global scope — not ES modules):
-     core         this file: state, DOM helpers, metrics, formatting, cost model, refdata
+   Native ES modules (A20). partials/app-scripts.html is a single entry —
+   <script type="module" src="main.js"> — and main.js imports the rest. Each module
+   `export`s what others use and `import`s what it needs: no shared global scope and
+   no fixed load order. Module scripts are deferred, so boot() (main.js) runs after
+   the DOM is parsed; widgets.js is a side-effect import in main.js so its event
+   subscriptions register before boot() emits app:ready.
+
+     core         this file: DOM helpers, metrics, formatting, cost model, refdata, event bus
      render       cards, equity curve, calendar, advanced stats, break-even +
                   the scope/filter/render driver
      data         CSV import, demo data, filters, day-notes journal, session, setup
-     ui           collapsible/drag panels, staging flair, file download
+     ui           collapsible/drag panels, file download, modal a11y + scroll-lock helpers
      export       performance report
      datamanager  Manage-data modal + per-trade editor
      widgets      activity terminal, session pill, workspace templates, card-detail modals (CH16)
-     main         DOM event wiring + boot() — runs LAST, so everything it calls exists
+     main         the ES-module entry: DOM event wiring + boot()
 
    Mode flags (derived from document.body[data-mode] above):
-     STAGING_PAGE  marks the staging sandbox. Its former feature set (web-grid dashboard,
-                   note dots, saved filters, activity terminal, session pill, workspace
-                   templates) was promoted to all surfaces (CH16); this flag now gates only
-                   the staging ENVIRONMENT — the isolated DB, the one-time
-                   sample seeding, and the F5 "open on the initial state" landing flow.
-     DEMO_MODE     (declared in render.js) true while the demo's in-memory dataset is
-                   loaded; suppresses ALL persistence (nothing is written to IndexedDB).
+     STAGING_PAGE     marks the staging sandbox. Its former feature set (web-grid dashboard,
+                      note dots, saved filters, activity terminal, session pill, workspace
+                      templates) was promoted to all surfaces (CH16); this flag now gates only
+                      the staging ENVIRONMENT — the isolated DB, the one-time sample seeding,
+                      and the F5 "open on the initial state" landing flow.
+     state.DEMO_MODE  true while the demo's in-memory dataset is loaded; suppresses ALL
+                      persistence (nothing is written to IndexedDB).
 
-   Shared mutable state (globals, mostly first assigned in render.js / data.js):
-     TRADES, METRICS_ALL, FILTERS, SCOPE, calYear/calMonth, selectedDate,
-     JOURNAL_DATES, TRADE_META, SAVED_FILTERS. Persistence is ALWAYS via Store
-     (store.js) — never call indexedDB directly from app/render code.
+   Shared mutable cross-module state lives on the `state` object (state.js), accessed as
+   state.X — e.g. state.TRADES, state.METRICS_ALL, state.SCOPE, state.calYear/calMonth,
+   state.selectedDate, state.JOURNAL_DATES, state.TRADE_META, state.SAVED_FILTERS — because an
+   ESM import binding is read-only. The const objects FILTERS/curveSel (render.js) are plain
+   exports (only their properties mutate). Persistence is ALWAYS via Store (store.js) — never
+   call indexedDB directly from app/render code.
    ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------

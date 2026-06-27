@@ -98,23 +98,30 @@ export const Store = {
   tradeId,
 
   async addTrades(trades) {
-    // Read every existing id up front (one request), then issue all puts in a single
-    // synchronous loop. The previous version awaited a get() per trade inside one
-    // readwrite transaction; on a large import the transaction would auto-commit while a
-    // get() promise was still settling, throwing TransactionInactiveError on the next put
-    // (B6). With no awaits between puts the transaction stays live to completion. The id
-    // Set also dedupes rows repeated within the same batch.
-    const ro = await tx(TRADES, 'readonly');
-    const existing = new Set(await reqP(ro.getAllKeys()));
-    let added = 0, duplicate = 0;
+    // Read existing ids AND write all puts inside ONE readwrite transaction (B34). Splitting
+    // the key snapshot into a separate readonly tx (the prior shape) left a window where a
+    // concurrent writer could make the dedupe check stale; doing both in one tx closes it.
+    // The puts are issued synchronously inside getAllKeys().onsuccess — NO await between the
+    // key read and the puts — so the transaction stays live to completion instead of
+    // auto-committing mid-flight (B6: an await inside a tx lets it commit and the next put
+    // throws TransactionInactiveError). The id Set also dedupes rows repeated within a batch.
     const store = await tx(TRADES, 'readwrite');
-    for (const t of trades) {
-      const id = tradeId(t);
-      if (existing.has(id)) { duplicate++; continue; }
-      existing.add(id);
-      store.put({ id, ...t });
-      added++;
-    }
+    let added = 0, duplicate = 0;
+    await new Promise((resolve, reject) => {
+      const kr = store.getAllKeys();
+      kr.onerror = () => reject(kr.error);
+      kr.onsuccess = () => {
+        const existing = new Set(kr.result);
+        for (const t of trades) {
+          const id = tradeId(t);
+          if (existing.has(id)) { duplicate++; continue; }
+          existing.add(id);
+          store.put({ id, ...t });
+          added++;
+        }
+        resolve();
+      };
+    });
     await done(store);
     const total = await this.tradeCount();
     return { added, duplicate, total };
@@ -238,8 +245,8 @@ export const Store = {
       const clean = [];
       for (const t of data.trades) {
         if (!t || !validDate(t.date) || !Number.isFinite(+t.pnl)) continue;
-        if (t.root != null) t.root = cleanSym(t.root);
-        clean.push(t);
+        // B35: don't mutate the caller's backup object — push a sanitized COPY.
+        clean.push(t.root != null ? { ...t, root: cleanSym(t.root) } : { ...t });
       }
       const r = await this.addTrades(clean);
       added = r.added; dup = r.duplicate;

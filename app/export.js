@@ -5,8 +5,7 @@ import { activeMetrics, commSymRows, scopeLabel } from './render.js';
 import { stateLabel, downloadFile, modalOpened, modalClosed } from './ui.js';
 import { esc } from '../assets/util.js';
 /* Blotterbook app · export — performance report export (print → PDF)
-   Loaded in order: core → render → data → ui → export → datamanager → widgets → main. Split from the former single app.js (classic
-   scripts share one global scope, so cross-file functions/state resolve at runtime). */
+   A native ES module (A20): imports what it needs, exports what others use. */
 
 /* ============================================================
    Export — stylized, condensed performance report (print → PDF)
@@ -202,15 +201,14 @@ export function openExportReportModal(docNoBar, parts){
   const sel=document.getElementById('exp_format'); if(sel) sel.value='';
   const dl=document.getElementById('exp_download'); if(dl) dl.disabled=true;
   const msg=document.getElementById('exp_msg'); if(msg){ msg.textContent=''; msg.className='parsestatus'; }
-  ov.classList.add('open'); document.body.style.overflow='hidden';
+  ov.classList.add('open');
   if(!EXPORT_WIRED){ wireExportModal(); EXPORT_WIRED=true; }
-  modalOpened(ov);   // aria-hidden + focus trap/restore (B9)
+  modalOpened(ov);   // aria-hidden + focus trap/restore (B9) + body-scroll lock (B36)
 }
 export function closeExportReportModal(){
   const ov=document.getElementById('exportModal'); if(!ov||!ov.classList.contains('open')) return;
   ov.classList.remove('open');
-  document.body.style.overflow='';
-  modalClosed(ov);
+  modalClosed(ov);   // B36: scroll unlock handled here
 }
 export function wireExportModal(){
   const sel=document.getElementById('exp_format'),
