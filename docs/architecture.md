@@ -367,8 +367,11 @@ level and lets the changelog record "shipped to prod in v`X`".
 **Gate layers a feature can hide behind** — promote each that applies:
 
 - **JS in a staging-only file** → move the logic into the relevant shared
-  `app/*.js` module, or load the file on every page via
-  `partials/app-scripts.html` (as `app/widgets.js` now is).
+  `app/*.js` module and `import` it where used. Since A20 the app loads via a
+  single ESM entry (`partials/app-scripts.html` is just
+  `<script type="module" src="main.js">`), so a module that must run on every
+  surface is `import`ed from `main.js` (a side-effect import, as `widgets.js`
+  is) rather than added as another `<script>` tag.
 - **JS in a shared module behind `if(!STAGING_PAGE) return` / `if(STAGING_PAGE)`**
   → remove the runtime guard so the code runs on every surface.
 - **HTML inline in `app/staging.html`** → move the markup into the right
