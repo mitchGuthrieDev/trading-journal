@@ -384,18 +384,6 @@
       "doneNote": "Reviewed the Advanced Statistics module and shipped the contained UI fix. UI: wrapped every stat value in a single `.avg` flex group (app/render.js + app/app.css) so rows with a secondary value (Long/Short PnL, Best/Worst Day, Best/Worst Weekday, Avg Hold) no longer strand the MAIN figure in the middle of the row — all 21 rows now right-align at the same edge (verified in-browser). WEEKDAY CALC documented in core.js: bestDow/worstDow bucket each trade by local weekday and pick the active weekday with the highest/lowest TOTAL PnL; noted the caveat that total (not per-trade) PnL skews toward heavily-traded weekdays and is noisy on small samples (the demo's 'worst weekday' is still +$14.9k), so it marginally earns its place — flagged for normalization/replacement. WRITTEN REVIEW delivered (cut/add/rationale); spun off the larger work: F15 (add avg-winner/loser, payoff ratio, max-DD % + duration, profit concentration, optional Sortino/streak-$) and CH18 (trim redundant Total Commissions + Account Information rows; normalize or replace Best/Worst Weekday)."
     },
     {
-      "id": "R6",
-      "title": "Feasibility: let users choose where local data is saved",
-      "category": "REVIEW / AUDIT",
-      "priority": "P3",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "Explore the feasibility of letting users choose WHERE their data is saved locally. We're browser-based (data lives in IndexedDB today), so survey the realistic options and tradeoffs: the File System Access API (showSaveFilePicker / directory handles — Chromium-only, permission prompts, persistence), the Origin Private File System (OPFS), or keeping IndexedDB + explicit export/import to a user-chosen file. Note browser support, UX, and privacy implications. Deliver a written recommendation (or a clear 'blocked by browser APIs / not worth it' conclusion) + any follow-up items. Done when: a written feasibility assessment with a recommended direction exists.",
-      "doneNote": null
-    },
-    {
       "id": "R7",
       "title": "Decide what business information the site needs",
       "category": "REVIEW / AUDIT",
@@ -405,18 +393,6 @@
       "completedDate": null,
       "partial": false,
       "prompt": "Discuss and decide what BUSINESS information needs to be added to the site — e.g. company/entity name, a business contact/address, terms of service (vs the current disclaimers), a fuller privacy policy, refund/billing terms once payments launch, and any required regulatory wording. Produce a checklist of what's needed and where it lives (legal page, footer, dedicated pages), flagging anything that's a prerequisite for monetization. Done when: a written checklist of required business info + placement exists, with must-haves-before-launch flagged.",
-      "doneNote": null
-    },
-    {
-      "id": "R8",
-      "title": "Decide: serve the backlog via an admin-gated function vs a static file",
-      "category": "REVIEW / AUDIT",
-      "priority": "P3",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "`data/backlog.json` is currently a static file, so it's publicly readable (prompts included) even though the admin UI hides prompt text. Weigh moving it behind an admin-gated Pages Function (e.g. `/api/backlog` with Access + admin-key) vs leaving it static — pros/cons of each (public-repo exposure, simplicity, caching, a future write path, whether public prompts actually matter). Make a recommendation. Done when: a written pros/cons + recommendation exists (plus a follow-up item if we decide to move it).",
       "doneNote": null
     },
     {
