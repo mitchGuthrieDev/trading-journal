@@ -29,7 +29,8 @@ export async function onRequest(context) {
       const hdr = request.headers.get('x-admin-key');
       const m = (request.headers.get('Cookie') || '').match(/(?:^|;\s*)bb_staging=([^;]+)/);
       const cookieKey = m ? decodeURIComponent(m[1]) : null;
-      const provided = hdr || cookieKey || url.searchParams.get('k');
+      // S19: only the header or the path-scoped cookie — no ?k= query fallback (token-in-URL leak).
+      const provided = hdr || cookieKey;
       if (!(await isAdminAuthorized(request, env, provided))) return block();
     } else if (env.ALLOW_PRESENCE_AUTH !== '1') {
       // Fail closed (S12): no credential configured ⇒ we can't gate the sandbox, so block

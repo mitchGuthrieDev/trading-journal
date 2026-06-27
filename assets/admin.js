@@ -104,8 +104,9 @@
     var sm=document.getElementById('stagemsg');
     var url='/app/staging.html';
     if(key){
+      // S19: carry the staging token ONLY in the path-scoped cookie — never in the URL (?k=),
+      // which would leak it into history, referrers, and access logs. _middleware reads the cookie.
       document.cookie='bb_staging='+encodeURIComponent(key)+';path=/app/;SameSite=Lax;Secure;max-age=3600';
-      url+='?k='+encodeURIComponent(key);
       sm.textContent=''; sm.className='amsg';
     } else {
       sm.textContent='No admin token in the key field yet — it’s issued via Access on load. Wait for the “Authenticated…” note, then retry.';
