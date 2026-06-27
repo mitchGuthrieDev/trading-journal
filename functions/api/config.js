@@ -43,7 +43,13 @@ export async function onRequest(context) {
     if (!kv) return json({ error: 'STATUS_KV namespace is not bound' }, 500);
     let body; try { body = await request.json(); } catch (_) { return json({ error: 'invalid JSON body' }, 400); }
     const cur = await read(kv);
-    if (body && body.flags && typeof body.flags === 'object') cur.flags = { ...cur.flags, ...body.flags };
+    // S19: allow-list flag keys to the declared schema (DEFAULTS.flags) and coerce to boolean, so a
+    // client can't write arbitrary keys or oversized values into the world-readable config record.
+    if (body && body.flags && typeof body.flags === 'object') {
+      for (const k of Object.keys(DEFAULTS.flags)) {
+        if (k in body.flags) cur.flags[k] = !!body.flags[k];
+      }
+    }
     // versions are no longer writable (automated); any versions field in the body is ignored.
     if (body && body.bumpRefData) cur.refDataVersion = new Date().toISOString();
     cur.updatedAt = new Date().toISOString();

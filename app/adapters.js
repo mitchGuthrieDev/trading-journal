@@ -53,15 +53,46 @@
     return s || '?';
   }
 
-  // tolerant number: "$1,234.50" → 1234.5, "(123.45)" → -123.45
+  // tolerant number: "$1,234.50" → 1234.5, "(123.45)" → -123.45, EU "1.234,50" → 1234.5
   function num(x) {
     if (x == null) return NaN;
     let s = String(x).trim();
     if (!s) return NaN;
-    let neg = /^\(.*\)$/.test(s);
-    s = s.replace(/[()$,\s]/g, '');
+    const neg = /^\(.*\)$/.test(s);                       // accounting-style negatives
+    s = s.replace(/[()$\s]/g, '');                   // strip parens, $, and any whitespace (incl. NBSP)
+    // Decide thousands vs decimal separators, supporting BOTH US (1,234.50) and EU (1.234,50):
+    const hasDot = s.indexOf('.') >= 0, hasComma = s.indexOf(',') >= 0;
+    if (hasDot && hasComma) {
+      // the right-most separator is the decimal point; the other groups thousands
+      if (s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g, '').replace(',', '.');
+      else s = s.replace(/,/g, '');
+    } else if (hasComma) {
+      // only commas: a lone comma with !=3 trailing digits is a decimal ("12,34"); else thousands ("1,234")
+      const parts = s.split(',');
+      s = (parts.length === 2 && parts[1].length !== 3) ? parts[0] + '.' + parts[1] : s.replace(/,/g, '');
+    } else if (hasDot) {
+      // only dots: if more than one, the last is the decimal point and the rest group thousands
+      const i = s.lastIndexOf('.');
+      if (s.indexOf('.') !== i) s = s.slice(0, i).replace(/\./g, '') + '.' + s.slice(i + 1);
+    }
+    s = s.replace(/[^0-9.\-]/g, '');                      // drop any stray currency letters/symbols
     const v = parseFloat(s);
-    return isNaN(v) ? NaN : (neg ? -v : v);
+    return isNaN(v) ? NaN : (neg ? -Math.abs(v) : v);
+  }
+
+  // Date-order hint for slash dates, decided ONCE per file by parse() (see detectDateOrder).
+  // 'mdy' | 'dmy' force a column-wide interpretation; 'auto' falls back to the per-value heuristic
+  // (used by standalone normTime callers/tests). This prevents one file from mixing M/D/Y and D/M/Y
+  // rows just because only some days happen to exceed 12.
+  let DATE_ORDER = 'auto';
+  function detectDateOrder(text) {
+    const re = /\b(\d{1,2})\/(\d{1,2})\/\d{2,4}\b/g; let m, dayFirst = false, monthFirst = false;
+    while ((m = re.exec(text))) { const a = +m[1], b = +m[2];
+      if (a > 12 && b <= 12) dayFirst = true;          // field-1 can't be a month → D/M/Y
+      else if (b > 12 && a <= 12) monthFirst = true;   // field-2 can't be a month → M/D/Y
+    }
+    // If a file shows both, it's genuinely inconsistent — leave it to the per-row heuristic.
+    return (dayFirst && !monthFirst) ? 'dmy' : (monthFirst && !dayFirst) ? 'mdy' : 'auto';
   }
 
   // Normalize any timestamp to canonical "YYYY-MM-DD HH:MM:SS".
@@ -74,9 +105,12 @@
     if (m) { let h = +(m[4] || 0); const ap = (m[7] || '').toUpperCase();
       if (ap === 'PM' && h < 12) h += 12; if (ap === 'AM' && h === 12) h = 0;
       const Y = m[3].length === 2 ? '20' + m[3] : m[3];
-      // Default to US M/D/Y; if the first field can't be a month (>12) but the second can, treat as D/M/Y.
-      let mo = +m[1], day = +m[2];
-      if (mo > 12 && day <= 12) { const t = mo; mo = day; day = t; }
+      // Whole-file order wins when parse() detected one (DATE_ORDER); otherwise default to US M/D/Y
+      // and only swap when the first field can't be a month (>12) but the second can.
+      let mo, day;
+      if (DATE_ORDER === 'dmy') { day = +m[1]; mo = +m[2]; }
+      else { mo = +m[1]; day = +m[2];
+        if (DATE_ORDER === 'auto' && mo > 12 && day <= 12) { const t = mo; mo = day; day = t; } }
       return `${Y}-${pad2(mo)}-${pad2(day)} ${pad2(h)}:${pad2(m[5] || 0)}:${pad2(m[6] || 0)}`;
     }
     const d = new Date(s);
@@ -109,14 +143,23 @@
      (exitPrice − entryPrice) × qty × pointValue(root). Output carries hold time. */
   function pairFills(fills) {
     const bySym = new Map();
-    for (const f of fills) {
-      if (!f || !f.symbol || !f.side || !(f.qty > 0) || isNaN(f.price)) continue;
+    // Timestamps are second-resolution, so same-second fills can't be ordered by time alone — FIFO
+    // must keep their true execution order. Detect whether the export is newest-first and, if so,
+    // invert the row-index tiebreak so same-second fills still resolve in execution order (B25).
+    let desc = false;
+    for (let i = 1; i < fills.length; i++) {
+      const a = fills[i - 1], b = fills[i];
+      if (a && b && a.time && b.time && a.time !== b.time) { desc = a.time > b.time; break; }
+    }
+    fills.forEach((f, i) => {
+      if (!f || !f.symbol || !f.side || !(f.qty > 0) || isNaN(f.price)) return;
+      f._seq = desc ? (fills.length - i) : i;   // stable, execution-order tiebreak within a second
       if (!bySym.has(f.symbol)) bySym.set(f.symbol, []);
       bySym.get(f.symbol).push(f);
-    }
+    });
     const trades = [];
     for (const [sym, arr] of bySym) {
-      arr.sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
+      arr.sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : (a._seq - b._seq));
       const root = rootSym(sym), pv = pointValue(root);
       const open = []; // FIFO lots: { dir:1|-1, qty, price, time }
       for (const f of arr) {
@@ -394,7 +437,7 @@
       if (hr < 0) throw new Error('no "Exec Time / Symbol" trade-history section found');
       const head = lc(rows[hr]); const ix = finder(head);
       const cT = ix('exec time'), cSide = ix('side'), cSym = ix('symbol');
-      const cQty = ix('qty'), cPx = ix('price'), cPos = ix('pos effect');
+      const cQty = ix('qty'), cPx = ix('price');
       if (cT < 0 || cSide < 0 || cSym < 0 || cPx < 0) throw new Error('missing Exec Time / Side / Symbol / Price');
       const ncol = rows[hr].length;
       const fills = [];
@@ -433,6 +476,7 @@
     if (!text || !text.trim()) return { ok: false, error: 'The file is empty.' };
     let rows; try { rows = parseCSV(text); } catch (e) { return { ok: false, error: 'Could not read the file as CSV.' }; }
     if (rows.length < 2) return { ok: false, error: 'The file has no data rows.' };
+    DATE_ORDER = detectDateOrder(text);   // decide M/D/Y vs D/M/Y once for the whole file (B26)
 
     let adapter, detected = detect(text);
     if (platformId) { adapter = byId(platformId); if (!adapter) return { ok: false, error: 'Unknown platform "' + platformId + '".' }; }
@@ -452,7 +496,7 @@
   }
 
   const API = {
-    parse, detect, pairFills, pointValue, rootSym, parseCSV, normTime,
+    parse, detect, pairFills, pointValue, rootSym, parseCSV, normTime, num,
     list: () => ADAPTERS.map(a => ({ id: a.id, label: a.label, beta: !!a.beta, kind: a.kind }))
   };
 

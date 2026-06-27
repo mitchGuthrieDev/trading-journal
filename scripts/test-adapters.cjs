@@ -129,6 +129,40 @@ console.log('\nB5 date format:');
 ok('M/D/Y stays US (06/02 → Jun 2)', A.normTime('06/02/2026 09:31:00').slice(0, 10) === '2026-06-02', A.normTime('06/02/2026 09:31:00'));
 ok('D/M/Y detected when day>12 (25/06 → Jun 25)', A.normTime('25/06/2026 09:31:00').slice(0, 10) === '2026-06-25', A.normTime('25/06/2026 09:31:00'));
 
+console.log('\nB24 number locale parsing:');
+ok('US thousands "$1,234.50" → 1234.5', A.num('$1,234.50') === 1234.5, String(A.num('$1,234.50')));
+ok('EU "1.234,50" → 1234.5', A.num('1.234,50') === 1234.5, String(A.num('1.234,50')));
+ok('EU decimal "123,45" → 123.45', A.num('123,45') === 123.45, String(A.num('123,45')));
+ok('US "1,234" stays thousands → 1234', A.num('1,234') === 1234, String(A.num('1,234')));
+ok('accounting "(1.234,50)" → -1234.5', A.num('(1.234,50)') === -1234.5, String(A.num('(1.234,50)')));
+ok('plain "5310.00" → 5310', A.num('5310.00') === 5310, String(A.num('5310.00')));
+ok('EU multi-group "1.234.567,89" → 1234567.89', A.num('1.234.567,89') === 1234567.89, String(A.num('1.234.567,89')));
+
+console.log('\nB26 whole-file date order:');
+// Uniform D/M/Y file: only one row has day>12, but BOTH must parse as D/M/Y, not just that one.
+const dmyFile =
+`Time,Action,Realized PnL (value)
+13/06/2026 10:00:00,"Close long position for symbol MESM2025 at price 5310.00",50.00
+05/03/2026 11:30:00,"Close long position for symbol MESM2025 at price 5320.00",20.00`;
+let rd = A.parse(dmyFile);
+ok('D/M/Y file: day>12 row → Jun 13', rd.ok && rd.trades.some(t => t.date === '2026-06-13'), JSON.stringify(rd.trades && rd.trades.map(t => t.date)));
+ok('D/M/Y file: ambiguous 05/03 → Mar 5 (not May 3)', rd.ok && rd.trades.some(t => t.date === '2026-03-05'), JSON.stringify(rd.trades && rd.trades.map(t => t.date)));
+
+console.log('\nB25 same-second fills (newest-first export):');
+// A newest-first export (later times listed first). The MES entry+exit share one second, and the
+// file lists the exit (sell) before the entry (buy). Other-second rows establish the descending
+// order, so the same-second pair must be reversed back to execution order: buy 5310 → sell 5311 =
+// long +$5. Without the tiebreak FIFO would see sell-first and book a short.
+const sameSec =
+`Symbol,Quantity,BuySell,FillPrice,DateTime
+MESM2025,1,Sell,5311.00,2026-06-02 09:31:00
+MESM2025,1,Buy,5310.00,2026-06-02 09:31:00
+MNQM2025,1,Sell,18000.00,2026-06-02 09:30:00
+MNQM2025,1,Buy,17990.00,2026-06-02 09:29:00`;
+let rss = A.parse(sameSec);
+const mes = (rss.trades || []).find(t => t.root === 'MES');
+ok('same-second newest-first pairs as long +$5', rss.ok && mes && mes.side === 'long' && Math.abs(mes.pnl - 5) < 1e-6, JSON.stringify(rss.trades));
+
 console.log('\nError handling:');
 ok('empty file', !A.parse('').ok);
 ok('garbage', !A.parse('foo,bar,baz\n1,2,3').ok);

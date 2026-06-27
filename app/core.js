@@ -6,6 +6,10 @@
 const SVGNS='http://www.w3.org/2000/svg';
 const pad2 = n => String(n).padStart(2,'0');
 const fmtDate = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+// running min/max — avoids Math.min(...arr)/Math.max(...arr), whose argument spread overflows the
+// call stack on large per-trade arrays (equity curve / pnl list). compute() walks manually for the
+// same reason; this is the shared helper for the chart code (B27).
+function minMax(arr){ let lo=Infinity,hi=-Infinity; for(const v of arr){ if(v<lo)lo=v; if(v>hi)hi=v; } return {lo,hi}; }
 const $ = id => document.getElementById(id);
 /* Page modes (document.body[data-mode]):
      ''        — the main app
@@ -75,11 +79,14 @@ function compute(tr){
   // F15: also track the PEAK-RELATIVE drawdown %, and the drawdown DURATION (trades from the
   // pre-drop peak to the trough). peakIdx remembers which trade set the running peak; when a new
   // deepest drop is found we snapshot the peak value (for %) and the peak→trough span (for duration).
-  let eq=0,peak=0,peakIdx=0,maxDD=0,ddPeakVal=0,ddStart=0,ddEnd=0,best=n?-Infinity:0,worst=n?Infinity:0; const curve=[0];
+  // peakCurveIdx / ddPeakCurveIdx / ddTroughCurveIdx are CURVE indices (curve[0] is the leading 0),
+  // so the drawdown card can mark peak→trough directly off m.curve without re-walking it (CH23).
+  let eq=0,peak=0,peakIdx=0,peakCurveIdx=0,maxDD=0,ddPeakVal=0,ddStart=0,ddEnd=0,ddPeakCurveIdx=0,ddTroughCurveIdx=0,best=n?-Infinity:0,worst=n?Infinity:0; const curve=[0];
   pnls.forEach((p,idx)=>{ eq+=p;
-    if(eq>peak){ peak=eq; peakIdx=idx; }
+    const ci=idx+1;                                          // curve index of this running equity
+    if(eq>peak){ peak=eq; peakIdx=idx; peakCurveIdx=ci; }
     const dd=peak-eq;
-    if(dd>maxDD){ maxDD=dd; ddPeakVal=peak; ddStart=peakIdx; ddEnd=idx; }
+    if(dd>maxDD){ maxDD=dd; ddPeakVal=peak; ddStart=peakIdx; ddEnd=idx; ddPeakCurveIdx=peakCurveIdx; ddTroughCurveIdx=ci; }
     curve.push(eq);
     if(p>best)best=p; if(p<worst)worst=p; });
   const maxDDpct = ddPeakVal>0 ? maxDD/ddPeakVal*100 : 0;   // peak-relative; 0 if peak never went positive
@@ -131,8 +138,7 @@ function compute(tr){
   // tracked which day you traded most/heaviest (the demo "worst" weekday was still a big profit).
   // Averaging makes the two days comparable; the raw total + trade count stay on the object for the
   // UI, and small per-day samples are still noisy (flagged in the Definitions panel).
-  const dow=Array.from({length:7},()=>({pnl:0,n:0}));
-  for(const t of tr){ const wd=new Date(t.date+'T00:00:00').getDay(); dow[wd].pnl+=t.pnl; dow[wd].n++; }
+  const dow=dowBuckets(tr);
   const dowActive=dow.map((d,i)=>({i,...d,avg:d.n?d.pnl/d.n:0})).filter(d=>d.n);
   const bestDow = dowActive.length? dowActive.reduce((a,b)=>b.avg>a.avg?b:a) : null;
   const worstDow= dowActive.length? dowActive.reduce((a,b)=>b.avg<a.avg?b:a) : null;
@@ -142,6 +148,7 @@ function compute(tr){
     days,active,winDays,avgDaily:active?net/active:0,avgTrades:active?n/active:0,
     winDayPct:active?100*winDays/active:0, mcw,mcl,maxWinStk,maxLossStk,
     recovery: maxDD>0 ? net/maxDD : (net>0?Infinity:NaN), sharpe,sortino,
+    ddPeakIdx: maxDD>0?ddPeakCurveIdx:null, ddTroughIdx: maxDD>0?ddTroughCurveIdx:null,
     expectancy,tStd,long,short,bestDow,worstDow,
     bestDay: days.length? days.reduce((a,b)=>b.pnl>a.pnl?b:a) : null,
     worstDay: days.length? days.reduce((a,b)=>b.pnl<a.pnl?b:a) : null,
@@ -149,6 +156,13 @@ function compute(tr){
     firstDate: tr.length? tr[0].date : '—'};
 }
 const DOW_LABEL=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+// Day-of-week buckets (0=Sun..6=Sat), summing PnL + count per weekday. Shared by compute()
+// (Best/Worst Weekday) and the win-rate card modal (cmDow) so the two can't drift (CH23).
+function dowBuckets(trades){
+  const d=Array.from({length:7},()=>({pnl:0,n:0}));
+  for(const t of trades){ const wd=new Date(t.date+'T00:00:00').getDay(); d[wd].pnl+=t.pnl; d[wd].n++; }
+  return d;
+}
 
 /* ============================================================
    Formatting

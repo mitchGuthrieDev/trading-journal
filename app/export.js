@@ -19,10 +19,6 @@ function exportReport(){
   const crow=(l,v,cl='')=>`<tr class="${cl}"><td>${l}</td><td class="num">${v}</td></tr>`;
   const stat=(l,v)=>`<tr><td>${l}</td><td class="num">${v}</td></tr>`;
 
-  const symRows=c.bySym.map(s=>
-    `<tr><td>${esc(s.root)}${s.known?'':' *'}</td><td class="num">${s.count}</td>
-      <td class="num">${money(s.rate)}</td><td class="num">${money(s.rate*2)}</td>
-      <td class="num">${money(s.total)}</td></tr>`).join('');
 
   // Headline figures defined once, then rendered as HTML tiles AND as the plaintext email
   // summary below — so the two can't drift (CH11). [label, value, className].
@@ -155,8 +151,8 @@ function exportReport(){
 
     <h2>Commissions by symbol</h2>
     <table>
-      <thead><tr><th>Symbol</th><th class="num">Trades</th><th class="num">$/side</th><th class="num">$/RT</th><th class="num">Commission</th></tr></thead>
-      <tbody>${symRows}<tr class="tot"><td>Total</td><td class="num">${c.n}</td><td></td><td></td><td class="num">${money(c.totalComm)}</td></tr></tbody>
+      <thead><tr><th>Symbol</th><th class="num">Trades</th><th class="num">Cts</th><th class="num">$/side</th><th class="num">$/RT</th><th class="num">Commission</th></tr></thead>
+      <tbody>${commSymRows(c,true)}</tbody>
     </table>
 
     <div class="foot">
