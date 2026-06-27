@@ -15,7 +15,13 @@ export function json(obj, status = 200, headers = {}) {
    client IP. Best-effort: KV isn't atomic and is eventually consistent, so this throttles
    abuse rather than enforcing an exact quota. Fails OPEN if KV isn't bound (returns false)
    so a missing binding can't lock the admin out. Returns true when the caller is over the
-   limit and should be rejected with 429. */
+   limit and should be rejected with 429.
+
+   GUARDRAIL (S22): because this fails OPEN and is best-effort, an endpoint's security must
+   NEVER depend on it — auth (Cloudflare Access JWT + constant-time token/key compare) is the
+   real control; rate-limiting is only defense-in-depth. Do not add a public/high-traffic
+   endpoint that relies on rateLimited() as its primary protection, and keep STATUS_KV bound
+   in prod so the throttle is actually active (it silently disappears when KV is unbound). */
 export async function rateLimited(env, bucket, request, limit = 30, windowSec = 60) {
   const kv = env.STATUS_KV;
   if (!kv) return false;
