@@ -17,7 +17,7 @@ function renderCards(m, c=costModel(m)){   // c may be passed in to avoid recomp
      <div class="sub">${m.n} trades · gross ${usd(m.net)}</div>
      <div class="sub">take-home ${usd(c.afterTax)} · after 1256 tax</div></div>
    ${co('win','Win Rate')}<div class="k">Win Rate</div>
-     <div class="v">${(m.n?100*m.wins/m.n:0).toFixed(1)}%</div>
+     <div class="v">${m.winRate.toFixed(1)}%</div>
      <div class="sub">${m.wins} W / ${m.losses} L${m.scratch?` / ${m.scratch} BE`:''}</div></div>
    ${co('pf','Profit Factor')}<div class="k">Profit Factor</div>
      <div class="v ${c.pf>=1?'pos':'neg'}">${c.pf===Infinity?'∞':c.pf.toFixed(2)}</div>
@@ -41,13 +41,13 @@ function dateRange(m){
   if(!m || m.firstDate==='—'){ const t=new Date(); return [t,t]; }
   return [new Date(m.firstDate+'T00:00:00'), new Date(m.lastDate+'T00:00:00')];
 }
-function dailySeries(m){
+function dailySeries(m, c=costModel(m)){
   const broker=curBroker(), map=new Map();
   for(const t of m.trades){
     if(!map.has(t.date)) map.set(t.date,{gross:0,comm:0});
     const e=map.get(t.date); e.gross+=t.pnl; e.comm+=rateFor(broker,t.root).rate*2*(t.qty||1);  // per-contract (B4)
   }
-  const c=costModel(m), tEff=c.tEff, fixedMo=c.fixedMo;
+  const tEff=c.tEff, fixedMo=c.fixedMo;
   // Accrue the monthly subscription as each new calendar month is entered (B8), instead of
   // dropping the whole period's subscriptions at day 0. The endpoint still equals
   // costModel.fixedPeriod (fixedMo × distinct months), so totals are unchanged.
@@ -77,7 +77,7 @@ function axMoney(v){ const a=Math.abs(v), s=v<0?'-':'';
   if(a>=1000) return s+'$'+(a/1000).toFixed(a>=10000?0:1)+'k';
   return s+'$'+Math.round(a); }
 
-function renderCurve(m){
+function renderCurve(m, c=costModel(m)){
   const svg=document.getElementById('curve'), tip=document.getElementById('curvetip');
   // Draw at the SVG's real pixel width (viewBox = pixel width) so labels aren't horizontally
   // stretched on a wide grid column (promoted from staging, CH16).
@@ -87,7 +87,7 @@ function renderCurve(m){
 
   const [rd0,rd1]=dateRange(m);
   const d0ms=rd0.getTime(), d1ms=Math.max(rd1.getTime(), d0ms+864e5);
-  const {pts}=dailySeries(m);
+  const {pts}=dailySeries(m, c);
   // Curve starts at the origin; subscriptions accrue month-by-month across pts (B8).
   const disp=[{date:fmtDate(rd0),gross:0,net:0,take:0}, ...pts];
 
@@ -376,7 +376,7 @@ function renderCalc(m, c=costModel(m)){
         rowsEl=document.getElementById('c_rows'),
         cap=document.getElementById('c_cap');
   if(!m || !m.n){ tbl.innerHTML=''; head.innerHTML=''; rowsEl.innerHTML=''; cap.innerHTML=''; return; }
-  const bePer= c.n>0 ? (c.totalComm+c.fixedPeriod)/c.n : 0;
+  const bePer=c.bePer;
 
   cap.innerHTML=`Broker: <b>${esc(BROKERS[c.broker].name)}</b> &nbsp;·&nbsp; Feed: ${esc(feedName())} &nbsp;·&nbsp; Platform $${esc(c.platform)}/mo`;
 
@@ -458,7 +458,7 @@ function renderDash(){
   if(!METRICS_ALL) return;
   const m=activeMetrics(), c=costModel(m);   // compute the cost model once, share it (CH11)
   renderCards(m,c); renderAdv(m); renderCalc(m,c);
-  renderCurve(m);
+  renderCurve(m,c);
   // F16: keep the selected day's intraday trades list in sync with the active filters/scope
   if(selectedDate && typeof renderDayTrades==='function') renderDayTrades(selectedDate);
   document.getElementById('scopenote').textContent =

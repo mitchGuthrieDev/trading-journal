@@ -143,7 +143,7 @@ function compute(tr){
   const dowActive=dow.map((d,i)=>({i,...d,avg:d.n?d.pnl/d.n:0})).filter(d=>d.n);
   const bestDow = dowActive.length? dowActive.reduce((a,b)=>b.avg>a.avg?b:a) : null;
   const worstDow= dowActive.length? dowActive.reduce((a,b)=>b.avg<a.avg?b:a) : null;
-  return {n,trades:tr,wins:wins.length,losses:losses.length,scratch:scratch.length,
+  return {n,winRate:n?100*wins.length/n:0,trades:tr,wins:wins.length,losses:losses.length,scratch:scratch.length,
     net,gp,gl,pf,avgW,avgL,wl,maxDD,maxDDpct,maxDDdur,concPct,curve,pnls,months,
     best, worst,
     days,active,winDays,avgDaily:active?net/active:0,avgTrades:active?n/active:0,
@@ -279,6 +279,6 @@ function costModel(m){
   const pf= gl!==0 ? gp/Math.abs(gl) : (gp>0?Infinity:0);
   const contracts=trades.reduce((a,t)=>a+(t.qty||1),0);
   return {broker,platform,data,fixedMo,totalComm,months,fixedPeriod,gross,netPreTax,tEff,tax,afterTax,
-    pfGP:gp,pfGL:gl,pf,n:trades.length,contracts,
+    pfGP:gp,pfGL:gl,pf,n:trades.length,contracts,bePer:trades.length?(totalComm+fixedPeriod)/trades.length:0,
     bySym:[...bySym.values()].sort((a,b)=>b.total-a.total)};
 }
