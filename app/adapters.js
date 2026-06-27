@@ -33,7 +33,7 @@
     const eol = () => { push(); if (row.some(c => c !== '')) rows.push(row); row = []; }; // drop all-empty lines
     while (i < n) { const c = text[i];
       if (q) { if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; } else field += c; }
-      else { if (c === '"') q = true; else if (c === delim) push(); else if (c === '\n') eol(); else if (c === '\r') {} else field += c; }
+      else { if (c === '"') q = true; else if (c === delim) push(); else if (c === '\n') eol(); else if (c === '\r') { /* skip CR */ } else field += c; }
       i++;
     }
     if (field !== '' || row.length) eol();
@@ -74,7 +74,7 @@
       const i = s.lastIndexOf('.');
       if (s.indexOf('.') !== i) s = s.slice(0, i).replace(/\./g, '') + '.' + s.slice(i + 1);
     }
-    s = s.replace(/[^0-9.\-]/g, '');                      // drop any stray currency letters/symbols
+    s = s.replace(/[^0-9.-]/g, '');                      // drop any stray currency letters/symbols
     const v = parseFloat(s);
     return isNaN(v) ? NaN : (neg ? -Math.abs(v) : v);
   }
@@ -195,7 +195,6 @@
   /* ---------- header utilities ---------- */
   const lc = a => a.map(h => String(h).trim().toLowerCase());
   const finder = head => name => head.findIndex(h => h.includes(name));
-  const hasAll = (head, names) => names.every(n => head.some(h => h.includes(n)));
   const hasAny = (head, names) => names.some(n => head.some(h => h.includes(n)));
   // first row index whose lowercased cells contain every substring in `names`
   function headerRow(rows, names) {
@@ -462,7 +461,7 @@
     if (!rows.length) return null;
     let best = null;
     for (const a of ADAPTERS) {
-      let score = 0; try { score = a.sniff(text, rows) || 0; } catch (_) { score = 0; }
+      let score = 0; try { score = a.sniff(text, rows) || 0; } catch (_) { /* unscorable adapter → leave 0 */ }
       if (score >= 2 && (!best || score > best.score)) best = { id: a.id, label: a.label, beta: !!a.beta, kind: a.kind, score };
     }
     return best;

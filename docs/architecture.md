@@ -35,15 +35,18 @@ Three intentional constraints shape every decision:
 1. **Compute happens locally** — all parsing, metrics, and storage are
    client-side; no trade data leaves the browser.
 2. **No runtime dependencies** *(hard rule)* — the shipped app loads no framework
-   and no third-party/runtime libraries; it's plain JavaScript. Build-*time*
-   tooling is a separate, open question (see the "adopt a build" discussion,
-   **R19**) — "no build" is no longer an absolute, only the *shipped* output must
-   stay dependency-free.
+   and no third-party/runtime libraries; it's plain JavaScript. Build-*time*/dev
+   tooling is separate: **R19 is decided** — dev-only tooling (ESLint, Prettier,
+   Playwright render tests) is adopted and lives in `devDependencies` that run
+   locally/CI and **never alter the shipped bytes**; only the *shipped* output must
+   stay dependency-free. See [build-step-decision.md](build-step-decision.md).
 3. **Deployable as static files with zero runtime deps** — ships to Cloudflare
    Pages as static assets, with `/functions/*` as the thin edge layer for the few
-   things that can't be client-side. No build is *required* to deploy today (the
-   committed files are the artifacts) — a soft convention now under review
-   (**R19**), not a hard pillar like #2.
+   things that can't be client-side. No build is *required* to deploy: the
+   committed files are the artifacts (the dev tooling from #2 does not emit shipped
+   output). A shipped-output build — bundler/minify/hashed names/nonce-CSP, which
+   *would* reverse this — is **deferred** (guardrail **A18**; tracked as **A24**,
+   gated on a concrete trigger). See [build-step-decision.md](build-step-decision.md).
 
 Because the app is split across files (it used to be one `index.html`), it must
 be **served over http(s)** — opening from disk blocks the `fetch()` of the

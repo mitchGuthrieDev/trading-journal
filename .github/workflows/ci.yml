@@ -1,7 +1,9 @@
 name: CI
 
-# Guards the hand-run tooling: the committed HTML must match the partials, the
-# data manifest must match the data files, and the adapter tests must pass.
+# Guards the project: the committed HTML must match the partials, the data manifest must match
+# the data files, the unit/logic tests pass, ESLint is clean, and the Playwright render tests boot
+# every surface with no console errors. Dev-only tooling (R19 Tier A) — the devDependencies run
+# HERE and never alter the shipped static files (the deploy stays dependency-free).
 on:
   push:
     branches: [main]
@@ -16,21 +18,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
-      - name: Adapter tests
-        run: node scripts/test-adapters.mjs
+      - name: Install dev dependencies
+        run: npm ci
 
-      - name: Auth tests (tokens + Stripe signature)
-        run: node scripts/test-auth.mjs
+      - name: Lint
+        run: npm run lint
 
-      - name: Version-bump logic tests
-        run: node scripts/test-version.mjs
+      - name: Unit + logic tests (adapters / auth / version / flags / tax)
+        run: npm run test:unit
 
-      - name: Feature-flag default drift test
-        run: node scripts/test-flags.mjs
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
 
-      - name: State-tax model default drift test
-        run: node scripts/test-tax.mjs
+      - name: Render / e2e tests (boot every surface, zero console errors)
+        run: npm run test:e2e
 
       - name: Regenerate partials + data manifest
         run: |
@@ -39,7 +42,9 @@ jobs:
 
       - name: Fail if generated outputs are not committed
         run: |
-          # Catch both modified tracked files and NEW untracked outputs (CH11).
+          # Catch both modified tracked files and NEW untracked outputs (CH11). Dev-tooling
+          # artifacts (node_modules, playwright-report, test-results) are gitignored, so a clean
+          # tree here also proves the tooling never wrote into the shipped/committed files.
           if ! git diff --quiet || [ -n "$(git status --porcelain)" ]; then
             echo "::error::Generated files are stale or untracked. Run 'node scripts/build-includes.mjs && node scripts/build-manifest.mjs' and commit the result."
             git --no-pager status --short

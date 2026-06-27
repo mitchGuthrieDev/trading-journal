@@ -1510,6 +1510,17 @@
       "completedDate": "2026-06-27",
       "partial": false,
       "doneNote": "**Shipped:** added `data/changelog.json` to the NON_SHIPPING_DATA set in scripts/bump-version.mjs, so isProdShipping() now returns false for it and a curated release-notes commit no longer bumps prod/staging — release notes DOCUMENT a version instead of triggering one (previously the changelog perpetually trailed prod by a release and each notes edit fired another). Updated the surrounding comments and added test-version.mjs coverage: changelog.json is not prod-shipping; a changelog-only changeset bumps neither track; a changelog + a real prod-shipping change (app/core.js) still bumps both; and computeBump on a changelog-only docs commit yields no bump with bumped* flags false. Full version-bump suite green (32). (changelog.json was already excluded from build-manifest.mjs, so cache-busting is unaffected.)"
+    },
+    {
+      "id": "R19",
+      "title": "Discussion & planning: adopt a build step (dev-only tooling)",
+      "category": "REVIEW / AUDIT",
+      "priority": "P2",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "**Decided + shipped Tier A** (docs/build-step-decision.md). Resolution: no-RUNTIME-deps stays HARD; adopt DEV-ONLY build-time tooling now and DEFER a shipped-output build. A 'build' splits into Tier A (tests/lint/format that never touch shipped bytes — keeps the deploy contract) and Tier B (bundler/minify/hashed names/nonce-CSP that reverses it); Tier A delivers ~80% of the value (esp. the render-test gap) for ~10% of the cost. SHIPPED: package.json (private) + lockfile with devDependencies only (eslint+@eslint/js+globals flat config, prettier, @playwright/test pinned to the pre-installed chromium); committed Playwright render/E2E tests (every surface boots with zero console errors + interaction/persistence smoke — closes the render-test gap); ESLint clean (fixed 4 real findings in adapters.js); Prettier wired but repo-wide reformat deferred (CH32) to avoid a destructive diff; CI runs npm ci → lint → unit tests → Playwright → the drift gate (which also proves tooling never writes into shipped files); node_modules/playwright-report/test-results gitignored. DEFERRED/FILED: A24 (Tier B shipped-output build, gated on the S18 'drop unsafe-inline' trigger or a measured perf problem), A25 (guardrail: dev tooling stays dev-only), CH32 (Prettier repo-wide reformat). NOTE for ops: set SKIP_DEPENDENCY_INSTALL=1 on Cloudflare Pages so devDeps never run at deploy."
     }
   ]
 }

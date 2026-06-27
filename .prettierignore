@@ -1,0 +1,15 @@
+# Prettier is available via `npm run format`, but the repo is NOT yet formatted —
+# a repo-wide reformat is a deliberate, separately-reviewed change (see backlog).
+# Until then, ignore generated + hand-tuned artifacts so an accidental run stays scoped.
+node_modules
+package-lock.json
+playwright-report
+test-results
+dist
+build
+
+# Generated HTML (build-includes) + hand-tuned bespoke markup — don't auto-format
+**/*.html
+
+# Reference + generated data (curated / hashed); never reflow JSON data files
+data/
