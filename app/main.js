@@ -92,7 +92,9 @@ if($('dataModal')){
     const ed=e.target.closest('button[data-edit]'); if(ed){ dmOpenTradeEditor(ed.dataset.edit); return; }
     const b=e.target.closest('button[data-trade]'); if(b) dmDeleteTrade(b.dataset.trade);
   });
-  on('dm_notes','click',e=>{ const b=e.target.closest('button[data-note]');
+  on('dm_notes','click',e=>{
+    const op=e.target.closest('button[data-dayopen]'); if(op){ dmOpenDay(op.dataset.dayopen); return; }   // CH20
+    const b=e.target.closest('button[data-note]');
     if(b && confirm('Delete the note for '+b.dataset.note+'?')) dmDeleteNote(b.dataset.note); });
   // saved-filter controls (shared — all surfaces; Save is disabled on demo)
   on('dm_filters','click',e=>{

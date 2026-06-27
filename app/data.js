@@ -257,10 +257,8 @@ async function selectDay(d){
 function deselectDay(){
   if(!selectedDate) return;
   // Flush any unsaved note before clearing the day (B18): a keyboard/synthetic deselect can
-  // fire without a prior textarea blur, so cancel the pending debounce and persist now.
-  clearTimeout(jSaveTimer);
-  if(!DEMO_MODE && Store.available()){ const ta=document.getElementById('j_text'), d=selectedDate;
-    if(ta) Store.saveJournal(d, ta.value); }
+  // fire without a prior blur, so cancel the pending debounce and persist now.
+  flushDayNow();
   selectedDate=null;
   document.querySelectorAll('#cal .cell.selday').forEach(c=>c.classList.remove('selday'));
   updateJournalEditor();
@@ -283,40 +281,88 @@ function selectFromGraph(d){
   renderDash();             // re-renders the curve marker + cards, respecting scope
   updateJournalEditor();
 }
+/* ---- per-day annotation editor (F16: text + tags + screenshots, sharing the annotation editor
+   from datamanager.js) + a read-only intraday trades list for the selected day. ---- */
+let DAY_EDIT=null;   // { date, text, tags:[], shots:[] }
+
+// Snapshot the live inputs + DAY_EDIT so a debounced/blur save lands on the RIGHT day even after
+// the user switches days (CH11 — persist the captured snapshot, never live state).
+function daySnapshot(){
+  if(!DAY_EDIT) return null;
+  annCapture(DAY_EDIT,'j');
+  return { date:DAY_EDIT.date, text:DAY_EDIT.text||'', tags:DAY_EDIT.tags.slice(), shots:DAY_EDIT.shots.slice() };
+}
+async function persistDay(snap){
+  if(!snap || snap.date==null || DEMO_MODE || !Store.available()) return;
+  await Store.saveJournal(snap.date, { text:snap.text, tags:snap.tags, shots:snap.shots });
+  JOURNAL_DATES=await Store.journalDates();
+  const nonEmpty = (snap.text||'').trim() || snap.tags.length || snap.shots.length;
+  if(snap.date===selectedDate){ const st=document.getElementById('j_stat'); if(st) st.textContent = nonEmpty?'saved':''; }
+  const cell=document.querySelector(`#cal .cell[data-date="${snap.date}"]`);
+  if(cell) cell.classList.toggle('hasnote', JOURNAL_DATES.has(snap.date));
+  emit('note:saved', { date: snap.date });
+  if(METRICS_ALL) renderCurve(activeMetrics());   // refresh note dots on the graph (CH16)
+}
+function flushDayNow(){ clearTimeout(jSaveTimer); const s=daySnapshot(); if(s) persistDay(s); }
+function scheduleDaySave(){ clearTimeout(jSaveTimer); const s=daySnapshot(); jSaveTimer=setTimeout(()=>persistDay(s),500); }
+
+function renderDayBody(){
+  const body=document.getElementById('j_body'); if(!body) return;
+  if(!DAY_EDIT){ body.innerHTML=''; return; }
+  const nT=DAY_EDIT.tags.length, nS=DAY_EDIT.shots.length, has=nT||nS;
+  const sum='Tags &amp; screenshots'+(has?' · '+[nT?nT+' tag'+(nT===1?'':'s'):'', nS?nS+' img':''].filter(Boolean).join(' · '):'');
+  body.innerHTML =
+    annTextField(DAY_EDIT,{prefix:'j',placeholder:'Write notes for this day…'})
+    + `<details class="jmore"${has?' open':''}><summary>${sum}</summary>`
+    + annTagsField(DAY_EDIT,{prefix:'j',placeholder:'breakout day, fomc, calm'})
+    + annShotsField(DAY_EDIT,{prefix:'j'})
+    + `</details>`;
+}
+// read-only list of the selected day's intraday trades, honoring the active filter bar (R3/F16
+// decision: respect filters/scope). Reuses tradeCells() so markers/formatting match the trades table.
+function renderDayTrades(date){
+  const box=document.getElementById('j_trades'); if(!box) return;
+  if(!date || typeof baseTrades!=='function'){ box.innerHTML=''; return; }
+  const list=baseTrades().filter(t=>t.date===date);
+  if(!list.length){ box.innerHTML=`<div class="jtnone">No trades on this day${(typeof filtersActive==='function'&&filtersActive())?' (with the active filters)':''}.</div>`; return; }
+  const net=list.reduce((a,t)=>a+t.pnl,0);
+  box.innerHTML=`<div class="jthead">Trades · ${list.length} · <span class="${cls(net)}">${usd(net)}</span></div>`
+    +`<table class="commtab jttab"><thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th class="num">P&amp;L</th></tr></thead><tbody>`
+    + list.map(t=>`<tr><td class="mono">${esc((t.time||'').slice(11,16)||'—')}</td>${tradeCells(t)}</tr>`).join('')
+    + `</tbody></table>`;
+}
+
 async function updateJournalEditor(){
-  const journal=document.getElementById('journal'),
-        ta=document.getElementById('j_text'), label=document.getElementById('j_date'),
-        hint=document.getElementById('j_hint'), stat=document.getElementById('j_stat');
-  if(!ta) return;
+  const journal=document.getElementById('journal'); if(!journal) return;
   // F11: the notes block only appears while a day is actively selected.
-  if(journal) journal.style.display = selectedDate ? '' : 'none';
-  if(!selectedDate){ ta.value=''; ta.disabled=true; stat.textContent=''; return; }
+  journal.style.display = selectedDate ? '' : 'none';
+  const label=document.getElementById('j_date'), hint=document.getElementById('j_hint'),
+        stat=document.getElementById('j_stat'), body=document.getElementById('j_body');
+  if(!selectedDate){ DAY_EDIT=null; if(body) body.innerHTML=''; renderDayTrades(null); if(stat) stat.textContent=''; return; }
+  renderDayTrades(selectedDate);   // read-only intraday list — shown on every surface, incl. demo
   if(DEMO_MODE || !Store.available()){
-    ta.value=''; ta.disabled=true; label.textContent='Day notes'; stat.textContent='';
-    hint.style.display=''; hint.textContent = DEMO_MODE ? 'Day-notes are disabled for the demo dataset.'
-      : 'Local storage is unavailable in this browser, so notes can’t be saved.';
+    DAY_EDIT=null; if(body) body.innerHTML='';
+    if(label) label.textContent='Day notes'; if(stat) stat.textContent='';
+    if(hint){ hint.style.display=''; hint.textContent = DEMO_MODE ? 'Day-notes are disabled for the demo dataset.'
+      : 'Local storage is unavailable in this browser, so notes can’t be saved.'; }
     return;
   }
-  hint.style.display='none'; ta.disabled=false; label.textContent='Notes — '+selectedDate;
-  ta.value=await Store.getJournal(selectedDate);
-  stat.textContent = ta.value ? 'saved' : '';
+  if(hint) hint.style.display='none'; if(label) label.textContent='Notes — '+selectedDate;
+  const d=selectedDate;
+  const rec=await Store.getJournal(d);
+  if(d!==selectedDate) return;   // a newer day was selected during the await (CH11)
+  DAY_EDIT={ date:d, text:rec.text||'', tags:(rec.tags||[]).slice(), shots:(rec.shots||[]).slice() };
+  renderDayBody();
+  if(stat) stat.textContent = (DAY_EDIT.text.trim()||DAY_EDIT.tags.length||DAY_EDIT.shots.length) ? 'saved' : '';
 }
+
+// Delegated wiring (the editor body is re-rendered, so listeners live on the stable #journal).
 function wireJournal(){
-  const ta=document.getElementById('j_text'); if(!ta) return;
-  // Capture the date + text at schedule time (CH11): the debounce/blur can fire after the
-  // user has switched days, so binding to live selectedDate/ta.value would write the notes
-  // to the wrong date. Save to the captured `d` instead.
-  const save=async(d, v)=>{ if(d==null||DEMO_MODE||!Store.available()) return;
-    await Store.saveJournal(d, v);
-    JOURNAL_DATES=await Store.journalDates();
-    if(d===selectedDate) document.getElementById('j_stat').textContent = v.trim()?'saved':'';  // only if still viewing it
-    const cell=document.querySelector(`#cal .cell[data-date="${d}"]`);
-    if(cell) cell.classList.toggle('hasnote', JOURNAL_DATES.has(d));
-    emit('note:saved', { date: d });
-    if(METRICS_ALL) renderCurve(activeMetrics());   // refresh note dots on the graph (CH16)
-  };
-  ta.addEventListener('input',()=>{ clearTimeout(jSaveTimer); const d=selectedDate, v=ta.value; jSaveTimer=setTimeout(()=>save(d,v),500); });
-  ta.addEventListener('blur',()=>{ clearTimeout(jSaveTimer); save(selectedDate, ta.value); });
+  const journal=document.getElementById('journal'); if(!journal) return;
+  journal.addEventListener('input', e=>{ if(DAY_EDIT && (e.target.id==='j_note'||e.target.id==='j_tags')) scheduleDaySave(); });
+  journal.addEventListener('blur', e=>{ if(e.target.id==='j_note'||e.target.id==='j_tags') flushDayNow(); }, true);
+  journal.addEventListener('change', e=>{ if(e.target.id==='j_shotinput' && DAY_EDIT){ const f=e.target.files[0]; if(f) annAddShot(DAY_EDIT, f, 'j', ()=>{ renderDayBody(); flushDayNow(); }); e.target.value=''; } });
+  journal.addEventListener('click', e=>{ const rm=e.target.closest('[data-rmshot]'); if(rm && DAY_EDIT){ annCapture(DAY_EDIT,'j'); DAY_EDIT.shots.splice(+rm.dataset.rmshot,1); renderDayBody(); flushDayNow(); } });
 }
 
 /* ============================================================

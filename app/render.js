@@ -460,6 +460,8 @@ function renderDash(){
   const m=activeMetrics(), c=costModel(m);   // compute the cost model once, share it (CH11)
   renderCards(m,c); renderAdv(m); renderCalc(m,c);
   renderCurve(m);
+  // F16: keep the selected day's intraday trades list in sync with the active filters/scope
+  if(selectedDate && typeof renderDayTrades==='function') renderDayTrades(selectedDate);
   document.getElementById('scopenote').textContent =
     SCOPE==='all' ? `all ${METRICS_ALL.n} trades` : `${MON[calMonth]} ${calYear}`;
 }

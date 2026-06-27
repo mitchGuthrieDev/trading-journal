@@ -132,18 +132,24 @@
       return reqP(store.count());
     },
 
-    async saveJournal(date, text) {
+    // F16: a day note is now a rich annotation { text, tags[], shots[] } (was text-only). Accepts a
+    // bare string (legacy callers) or the record object; deletes the row when fully empty.
+    async saveJournal(date, rec) {
       const store = await tx(JOURNAL, 'readwrite');
-      const clean = (text || '').trim();
-      if (clean) store.put({ date, text: clean, updated: Date.now() });
+      const r = (typeof rec === 'string') ? { text: rec } : (rec || {});
+      const text = (r.text || '').trim();
+      const tags = Array.isArray(r.tags) ? r.tags.filter(Boolean) : [];
+      const shots = Array.isArray(r.shots) ? r.shots.filter(s => this.validShot(s)) : [];
+      if (text || tags.length || shots.length) store.put({ date, text, tags, shots, updated: Date.now() });
       else store.delete(date);
       return done(store);
     },
 
+    // Always returns the normalized record shape so callers don't branch on legacy {date,text} rows.
     async getJournal(date) {
       const store = await tx(JOURNAL, 'readonly');
       const rec = await reqP(store.get(date));
-      return rec ? rec.text : '';
+      return { text: (rec && rec.text) || '', tags: (rec && rec.tags) || [], shots: (rec && rec.shots) || [] };
     },
 
     async journalDates() {
@@ -238,7 +244,11 @@
       if (Array.isArray(data.journal) && data.journal.length) {
         const store = await tx(JOURNAL, 'readwrite');
         for (const j of data.journal) {
-          if (j && validDate(j.date) && j.text) store.put({ date: j.date, text: String(j.text), updated: j.updated || Date.now() });
+          if (!j || !validDate(j.date)) continue;
+          const text = String(j.text || '').trim();
+          const tags = Array.isArray(j.tags) ? j.tags.map(cleanTag).filter(Boolean) : [];   // F16: restore tags/shots too
+          const shots = cleanShots(j.shots);
+          if (text || tags.length || shots.length) store.put({ date: j.date, text, tags, shots, updated: j.updated || Date.now() });
         }
         await done(store);
       }
