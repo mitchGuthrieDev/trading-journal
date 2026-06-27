@@ -256,10 +256,11 @@
       "category": "REVIEW / AUDIT",
       "priority": "P2",
       "effort": "medium",
-      "status": "done",
-      "completedDate": "2026-06-27",
+      "status": "open",
+      "completedDate": null,
       "partial": false,
-      "doneNote": "Second full read-only repo audit (architecture, code quality, duplication, client + server security), fanned out across four parallel auditors and the top findings hand-verified at file:line. HEADLINE: the codebase is in good shape — escaping is consistently correct (single esc() at every untrusted innerHTML sink; no proven XSS), the server functions/ layer is solid (every state-changing endpoint auth-gated with constant-time compare, admin key never sent to the browser, Access-JWT verified fail-closed, and the Stripe webhook DOES verify signatures with replay protection before provisioning — S11 already correct), and the build/versioning tooling is self-consistent with no partial/built-HTML drift. NET-NEW FINDINGS added to backlog: correctness — B24 (num() strips EU decimal commas → wrong numbers), B25 (same-second fills pair by export order → can flip PnL sign), B26 (per-row D/M/Y detection mixes formats in one file), B27 (Math.min/max spread regression in widgets.js/render.js — the large-dataset stack-overflow compute() deliberately avoids); security — S17 (restore path doesn't validate trade/journal 'date' and those hit unescaped innerHTML sinks in datamanager.js — neutralized only by CSP today), S18 (live screenshot data-URL parity + drop style-src 'unsafe-inline'), S19 (drop ?k= admin-token-in-URL + allow-list/cap config flags before F17/R15); architecture/debt — CH23 (de-duplicate drifted view-layer math: DOW buckets, drawdown walk, commission rows), CH24 (dead code: unused entitlements.js, renderAdv dead param, curveMetrics alias, schwab cPos, stale changelog fallback; unify trade-id accessor), A13 (layout/workspace localStorage bypasses the Store seam — companion to A4). Highest-value to schedule first: B24/B25/B26 (silent number/date corruption) and S17 (restore-path injection). Read-only — no code edited."
+      "prompt": "Read-only audit (NO code edits) of the current repo: architecture, code quality, duplicated code, and security posture — accounting for everything shipped since the first audit (symbol sanitization, `_headers` CSP, `tokens.css` + nav/footer partials, the `app.js` → 7-script split, screenshot downscaling). Give concrete, prioritized findings, and append any new actions to this backlog in the same format. Done when: a written, prioritized audit is delivered and new follow-ups are added to the backlog.",
+      "doneNote": null
     },
     {
       "id": "R2",
