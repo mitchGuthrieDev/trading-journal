@@ -58,6 +58,7 @@ npm ci                           # install pinned devDeps from package-lock.json
 npm test                         # = test:unit + lint
 npm run test:unit                # the 5 node suites: adapters / auth / version / flags / tax
 npm run lint                     # ESLint (flat config)
+npm run typecheck                # tsc --checkJs over the JSDoc-typed modules (CH33; opt-in via // @ts-check)
 npm run test:e2e                 # Playwright render tests (boots every surface; starts its own server)
 npm run format                   # Prettier (NOT yet applied repo-wide — see CH32)
 # (the node suites still run standalone too, e.g. `node scripts/test-adapters.mjs`)
@@ -67,9 +68,9 @@ node scripts/build-includes.mjs  # regenerate app/{app,demo,staging}.html + info
 node scripts/build-manifest.mjs  # regenerate data/manifest.json content hashes (cache-busting)
 ```
 
-CI (`.github/workflows/ci.yml`) runs `npm ci` → lint → the unit/logic tests → the
-Playwright render tests, then re-runs both build scripts and **fails if the result
-differs from what's committed** (which also proves the dev tooling never wrote into
+CI (`.github/workflows/ci.yml`) runs `npm ci` → lint → typecheck → the unit/logic
+tests → the Playwright render tests, then re-runs both build scripts and **fails if
+the result differs from what's committed** (which also proves the dev tooling never wrote into
 the shipped/committed files). So:
 
 - **After editing any `partials/*` →** run `build-includes.mjs` and commit the

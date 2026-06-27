@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 /* Blotterbook app · core — DOM helpers, metrics, formatting, broker/cost model, reference-data
    loading, and the app event bus. A native ES module (A20): everything it shares is `export`ed and
@@ -80,7 +81,7 @@ export function emit(name, detail) {
   BUS.dispatchEvent(new CustomEvent(name, { detail }));
 }
 export function onEvent(name, fn) {
-  BUS.addEventListener(name, e => fn(e.detail));
+  BUS.addEventListener(name, e => fn(/** @type {CustomEvent} */ (e).detail));
 }
 
 /* CSV parsing now lives in adapters.js (the imported `Adapters`) — platform-specific
@@ -89,6 +90,7 @@ export function onEvent(name, fn) {
 /* ============================================================
    Metrics
    ============================================================ */
+/** @param {import('./types.js').Trade[]} tr */
 export function compute(tr) {
   const n = tr.length,
     pnls = tr.map(t => t.pnl);
@@ -388,7 +390,7 @@ export async function loadRefData() {
 }
 
 export function curBroker() {
-  const e = document.getElementById('c_broker');
+  const e = /** @type {HTMLSelectElement|null} */ (document.getElementById('c_broker'));
   return e && e.value ? e.value : 'AMP';
 }
 export function rateFor(brokerKey, root) {
@@ -401,21 +403,21 @@ export function rateFor(brokerKey, root) {
 // Empty/NaN → 0 (an empty field shows its "0" placeholder, so it reads as 0, not a typed value);
 // clamp negatives so a typed "-5" can't manufacture a negative cost that inflates net (B13).
 export function numIn(id) {
-  const e = document.getElementById(id);
+  const e = /** @type {HTMLInputElement|null} */ (document.getElementById(id));
   const v = e ? parseFloat(e.value) : NaN;
   return isNaN(v) ? 0 : Math.max(0, v);
 }
 export function feedCost() {
-  const o = document.getElementById('c_feed');
+  const o = /** @type {HTMLSelectElement|null} */ (document.getElementById('c_feed'));
   const x = o && o.selectedOptions[0] ? parseFloat(o.selectedOptions[0].dataset.cost) : NaN;
   return isNaN(x) ? 0 : x;
 }
 export function feedName() {
-  const o = document.getElementById('c_feed');
+  const o = /** @type {HTMLSelectElement|null} */ (document.getElementById('c_feed'));
   return o && o.value ? o.value.split('|')[0] : '—';
 }
 export function stateRate() {
-  const o = document.getElementById('c_state_sel');
+  const o = /** @type {HTMLSelectElement|null} */ (document.getElementById('c_state_sel'));
   const x = o && o.selectedOptions[0] ? parseFloat(o.selectedOptions[0].dataset.rate) : NaN;
   return isNaN(x) ? 0 : x;
 }
@@ -423,6 +425,10 @@ export function blendedRate() {
   return (TAXMODEL.ltcgWeight * TAXMODEL.ltcg) / 100 + (TAXMODEL.ordinaryWeight * TAXMODEL.fedOrdinary) / 100 + stateRate() / 100;
 }
 
+/**
+ * @param {*} m  Active metrics (compute() result) — reads m.trades / m.net / m.months.
+ * @returns {import('./types.js').CostModel}
+ */
 export function costModel(m) {
   const broker = curBroker(),
     platform = numIn('c_tv'),

@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 /* ============================================================
    Platform CSV adapters + format auto-detection
@@ -236,7 +237,9 @@ function pointValue(root) {
      fills: [{ time, symbol, side:'buy'|'sell', qty>0, price[, realized][, commission] }]
      A closing fill realizes PnL against the oldest open lots. PnL uses the fill's
      own `realized` (apportioned by matched qty) when the export provides it, else
-     (exitPrice − entryPrice) × qty × pointValue(root). Output carries hold time. */
+     (exitPrice − entryPrice) × qty × pointValue(root). Output carries hold time.
+     @param {import('./types.js').Fill[]} fills
+     @returns {import('./types.js').Trade[]} */
 function pairFills(fills) {
   const bySym = new Map();
   // Timestamps are second-resolution, so same-second fills can't be ordered by time alone — FIFO
@@ -706,8 +709,10 @@ function detect(text) {
 }
 
 /* Parse an export into normalized trades.
-     platformId optional — when omitted, auto-detect. Returns:
-       { ok, trades, platform, label, beta, kind, detected }  or  { ok:false, error } */
+     platformId optional — when omitted, auto-detect.
+     @param {string} text
+     @param {string} [platformId]
+     @returns {import('./types.js').ParseResult} */
 function parse(text, platformId) {
   if (!text || !text.trim()) return { ok: false, error: 'The file is empty.' };
   let rows;

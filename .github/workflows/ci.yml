@@ -26,6 +26,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Typecheck (JSDoc via tsc --checkJs)
+        run: npm run typecheck
+
       - name: Unit + logic tests (adapters / auth / version / flags / tax)
         run: npm run test:unit
 

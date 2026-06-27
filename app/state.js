@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 /* Blotterbook app · state — shared mutable cross-module application state.
 
@@ -14,6 +15,15 @@
    and module-local lets like APP_FLAGS / DAY_EDIT / jSaveTimer (data.js),
    EXPORT_CUR (export.js). Those are plain `export`s, not state members. */
 
+/**
+ * @type {{
+ *   TRADES: import('./types.js').Trade[], METRICS_ALL: any, SCOPE: 'all'|'month',
+ *   calYear: number|undefined, calMonth: number|undefined, selectedDate: string|null,
+ *   JOURNAL_DATES: Set<string>, TRADE_META: Map<string, any>, DEMO_MODE: boolean,
+ *   PENDING: any, FILE_CTX: string, SAVED_FILTERS: any[], STAGING_DATA_READY: boolean,
+ *   DM_SEARCH: string, DM_EDIT: any
+ * }}
+ */
 export const state = {
   // dataset + derived metrics (render.js / data.js / datamanager.js)
   TRADES: [], // working trade list (already merged/persisted)

@@ -1521,6 +1521,28 @@
       "completedDate": "2026-06-27",
       "partial": false,
       "doneNote": "**Decided + shipped Tier A** (docs/build-step-decision.md). Resolution: no-RUNTIME-deps stays HARD; adopt DEV-ONLY build-time tooling now and DEFER a shipped-output build. A 'build' splits into Tier A (tests/lint/format that never touch shipped bytes — keeps the deploy contract) and Tier B (bundler/minify/hashed names/nonce-CSP that reverses it); Tier A delivers ~80% of the value (esp. the render-test gap) for ~10% of the cost. SHIPPED: package.json (private) + lockfile with devDependencies only (eslint+@eslint/js+globals flat config, prettier, @playwright/test pinned to the pre-installed chromium); committed Playwright render/E2E tests (every surface boots with zero console errors + interaction/persistence smoke — closes the render-test gap); ESLint clean (fixed 4 real findings in adapters.js); Prettier wired but repo-wide reformat deferred (CH32) to avoid a destructive diff; CI runs npm ci → lint → unit tests → Playwright → the drift gate (which also proves tooling never writes into shipped files); node_modules/playwright-report/test-results gitignored. DEFERRED/FILED: A24 (Tier B shipped-output build, gated on the S18 'drop unsafe-inline' trigger or a measured perf problem), A25 (guardrail: dev tooling stays dev-only), CH32 (Prettier repo-wide reformat). NOTE for ops: set SKIP_DEPENDENCY_INSTALL=1 on Cloudflare Pages so devDeps never run at deploy."
+    },
+    {
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "**Shipped:** ran Prettier across the JS/CSS code (`npm run format`) — whitespace/quotes/wrapping only, zero behavior change (35 files). Scoped to CODE: HTML (generated/bespoke), data/*.json, hand-authored markdown, and .github YAML stay hand-formatted (.prettierignore excludes **/*.html, data/, **/*.md, .github/). Verified after: ESLint clean, unit 72/16/32/5/6, Playwright 10/10, build-includes/build-manifest idempotent. `npm run format:check` is clean (could gate CI in a follow-up).",
+      "id": "CH32",
+      "title": "Apply Prettier formatting repo-wide (deliberate, separate diff)",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done"
+    },
+    {
+      "id": "CH33",
+      "title": "Implement JSDoc types + a dev-only typecheck (no TypeScript migration)",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-06-27",
+      "partial": false,
+      "doneNote": "**Shipped:** JSDoc types + a DEV-ONLY typecheck — no TypeScript migration, no runtime/shipped dependency. Added `typescript` devDependency + jsconfig.json (allowJs, noEmit, checkJs:false, DOM+ES2022 lib) + `npm run typecheck` (`tsc -p jsconfig.json`), wired into CI after lint. New app/types.js defines the core data shapes as @typedefs (Trade, Fill, ParseResult, SymCost, CostModel, Setup, Annotation) — referenced cross-module via `import('./types.js').X` in comments (type-only, never emitted/loaded at runtime). Typechecking is OPT-IN per file via a top `// @ts-check`; enabled on the logic core — adapters.js, core.js, store.js, state.js (+types.js): the `state` object is explicitly typed, costModel() is annotated `@returns CostModel` (validates the shape), compute()/pairFills()/parse() are annotated against the typedefs, and ~6 DOM casts were added in core.js. `npm run typecheck` passes (exit 0). DOM-heavy view modules (render/data/datamanager/widgets/main/ui/export) are left for incremental `// @ts-check` opt-in — the typedefs already power editor IntelliSense there. Behavior unchanged (types are comments); ESLint + Prettier + unit + e2e all green."
     }
   ]
 }
