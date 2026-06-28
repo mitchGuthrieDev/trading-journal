@@ -451,18 +451,6 @@
       "partial": false,
       "prompt": "DISCUSSION/ANALYSIS. The repo root holds a lot of files - build/tooling configs (vite.config.mjs, vite-ssg.mjs, eslint.config.mjs, svelte.config.js, playwright.config.mjs, .prettierrc.json, .prettierignore, three tsconfig*.json, .node-version, package.json + lockfile) alongside docs and the source/edge dirs. Survey what could be consolidated or relocated to reduce root clutter vs what MUST stay at root because a tool or the host requires it there (Vite, Cloudflare Pages, ESLint/Prettier/TS/Playwright config discovery, and the deploy-contract rule that functions/ and scripts/ stay at the repo root - see CLAUDE.md / docs/architecture.md). For each movable candidate: where it could go (e.g. a config/ dir, package.json fields, or a merged tsconfig) and the cost/risk (config-discovery breakage, the A26/A30 deploy contract, the build-manifest / bump-version path assumptions). Recommendation plus any spun-off items. Done when: a written inventory of root files with keep-vs-move recommendations is delivered.",
       "doneNote": null
-    },
-    {
-      "id": "A83",
-      "title": "Resolve the svelte-check a11y warnings",
-      "category": "CHORE / REFACTOR",
-      "priority": "P2",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "`npm run typecheck` (svelte-check) currently reports 12 warnings across 6 files - mostly accessibility: `a11y_label_has_associated_control` on the decorative mock setup fields in src/site/components/Howto.svelte (x6), plus interactive-element issues in EquityCurve.svelte (svg drag handlers / noninteractive tabindex), Panel.svelte and StatCard.svelte (tabindex / role / focus), and Home.svelte (tablist tabindex). Resolve them: associate or stop using `<label>` for the Howto mock fields, give the drag/click-handler elements proper roles + keyboard handlers + focus, and fix the tablist/tabindex roles - without regressing layout or the CSP `style-src 'self'` rule (A55). Also clear the one non-a11y warning in the same output (`editShotInput` should be declared with `$state(...)` in ManageData.svelte) so the check goes fully clean. Done when: `npm run typecheck` reports 0 warnings and the e2e interaction/a11y specs still pass.",
-      "doneNote": null
     }
   ],
   "howToDrive": [

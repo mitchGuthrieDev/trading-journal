@@ -62,10 +62,10 @@
         <div class="mock">
           <p class="mlabel">Broker &amp; Costs</p>
           <div class="msetup">
-            <div class="mfield"><label>Broker</label><div class="sel">TradingView PaperTrade <span class="cv">&#9662;</span></div></div>
-            <div class="mfield"><label>Data feed /mo</label><div class="sel">CME Group — $7 <span class="cv">&#9662;</span></div></div>
-            <div class="mfield"><label>Platform fee /mo</label><div class="sel">$35</div></div>
-            <div class="mfield"><label>State (tax)</label><div class="sel">Texas <span class="cv">&#9662;</span></div></div>
+            <div class="mfield"><span class="mfl">Broker</span><div class="sel">TradingView PaperTrade <span class="cv">&#9662;</span></div></div>
+            <div class="mfield"><span class="mfl">Data feed /mo</span><div class="sel">CME Group — $7 <span class="cv">&#9662;</span></div></div>
+            <div class="mfield"><span class="mfl">Platform fee /mo</span><div class="sel">$35</div></div>
+            <div class="mfield"><span class="mfl">State (tax)</span><div class="sel">Texas <span class="cv">&#9662;</span></div></div>
           </div>
         </div>
       </section>
@@ -80,8 +80,8 @@
         <div class="mock">
           <p class="mlabel">Load &amp; detect</p>
           <div class="msetup">
-            <div class="mfield narrow"><label>&nbsp;</label><div class="sel">Load CSV</div></div>
-            <div class="mfield"><label>Platform</label><div class="sel">TradingView <span class="cv">&#9662;</span></div></div>
+            <div class="mfield narrow"><span class="mfl">&nbsp;</span><div class="sel">Load CSV</div></div>
+            <div class="mfield"><span class="mfl">Platform</span><div class="sel">TradingView <span class="cv">&#9662;</span></div></div>
           </div>
           <p class="mstatus">Detected TradingView · 63 trades ready to import</p>
         </div>
@@ -455,7 +455,7 @@
     flex: 1;
     min-width: 130px;
   }
-  .mfield label {
+  .mfield .mfl {
     display: block;
     font-size: 10px;
     letter-spacing: 0.06em;

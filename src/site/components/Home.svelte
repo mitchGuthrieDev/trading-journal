@@ -184,7 +184,7 @@
 
     <!-- clickable feature list (left) + detail (right) -->
     <div class="feat-explorer">
-      <div class="feat-list" role="tablist" aria-label="Feature explorer" aria-orientation="vertical" onkeydown={onFeatKeydown}>
+      <div class="feat-list" role="tablist" aria-label="Feature explorer" aria-orientation="vertical">
         {#each FEATURES as f, i (f.title)}
           <button
             type="button"
@@ -197,6 +197,7 @@
             tabindex={activeFeat === i ? 0 : -1}
             bind:this={featButtons[i]}
             onclick={() => (activeFeat = i)}
+            onkeydown={onFeatKeydown}
           >
             <span class="ficon"><svg viewBox="0 0 24 24" aria-hidden="true">{@html f.icon}</svg></span><span class="fl-t">{f.title}</span>
           </button>

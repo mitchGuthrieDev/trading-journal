@@ -48,7 +48,7 @@
 
   let csvInput: HTMLInputElement;
   let backupInput: HTMLInputElement;
-  let editShotInput: HTMLInputElement;
+  let editShotInput = $state<HTMLInputElement>();
 
   const filtered = $derived(
     search.trim()
@@ -278,7 +278,7 @@
                         <button type="button" class="rm" aria-label="Remove screenshot" onclick={() => (editShots = editShots.filter((_, j) => j !== i))}>×</button>
                       </span>
                     {/each}
-                    <button type="button" class="addshot" onclick={() => editShotInput.click()}>+ screenshot</button>
+                    <button type="button" class="addshot" onclick={() => editShotInput?.click()}>+ screenshot</button>
                     <input bind:this={editShotInput} type="file" accept="image/*" hidden onchange={addEditShot} />
                   </div>
                 </td>
