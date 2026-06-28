@@ -1,9 +1,23 @@
-<script>
+<script lang="ts">
   // A36 — unified dashboard panel chrome: a collapsible, drag-to-reorder card (parity with vanilla
   // ui.js initPanels). Collapse state + order are OWNED by App (persisted through the Store.local
   // seam under a staging-namespaced key) so workspace templates can snapshot them. The grip is the
   // drag handle (matches vanilla: mousedown arms the whole-panel draggable); clicking the header —
   // but not the grip or chevron — toggles collapse, and the chevron mirrors aria-expanded/label (B41).
+  import type { Snippet } from 'svelte';
+
+  interface Props {
+    pkey: string;
+    title: string;
+    collapsed?: boolean;
+    dragging?: boolean;
+    ontoggle?: () => void;
+    onreorderstart?: (key?: string) => void;
+    onreorderend?: () => void;
+    onreorderover?: (e: DragEvent, key?: string) => void;
+    actions?: Snippet;
+    children: Snippet;
+  }
   let {
     pkey,
     title,
@@ -15,21 +29,22 @@
     onreorderover = () => {},
     actions,
     children,
-  } = $props();
+  }: Props = $props();
 
   let armed = $state(false); // grip pressed → the section is draggable for this gesture only
 
-  function headClick(e) {
+  function headClick(e: MouseEvent) {
     // Toggle on a bare-header click only — never when the click lands on the grip, the chevron, or
     // an interactive control in the actions area (overlays, calendar nav), which would otherwise
     // collapse the panel out from under the user.
-    if (e.target.closest('.grip') || e.target.closest('.chev') || e.target.closest('.pactions')) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('.grip') || target.closest('.chev') || target.closest('.pactions')) return;
     ontoggle();
   }
-  function onDragStart(e) {
-    e.dataTransfer.effectAllowed = 'move';
+  function onDragStart(e: DragEvent) {
+    e.dataTransfer!.effectAllowed = 'move';
     try {
-      e.dataTransfer.setData('text/plain', pkey);
+      e.dataTransfer!.setData('text/plain', pkey);
     } catch (_) {}
     onreorderstart(pkey);
   }
@@ -37,7 +52,7 @@
     armed = false;
     onreorderend();
   }
-  function onDragOver(e) {
+  function onDragOver(e: DragEvent) {
     e.preventDefault();
     onreorderover(e, pkey);
   }

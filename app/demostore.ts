@@ -1,4 +1,3 @@
-// @ts-check
 'use strict';
 /* Blotterbook · DemoStore (A31) — an in-memory implementation of the Store interface (A4) for the
    DEMO surface. It backs every read/write with plain Maps/arrays and touches NEITHER IndexedDB NOR
@@ -11,20 +10,17 @@
    The dedupe key (tradeId) and the screenshot allow-list (validShot) are imported VERBATIM from
    store.js (A29) so they can never drift from the real backend. Backup restore (importAll) is a
    no-op in demo (restore is disabled), avoiding any duplication of store.js's sanitization. */
-import { tradeId, validShot } from './store.js';
+import { tradeId, validShot } from './store.ts';
+import type { Annotation, Trade, StoreLike } from './types.ts';
 
-export function createDemoStore() {
-  /** @type {Map<string, any>} */
-  const trades = new Map(); // id -> {id, ...trade}
-  /** @type {Map<string, any>} */
-  const journal = new Map(); // date -> {date,text,tags,shots,updated}
-  /** @type {Map<string, any>} */
-  const meta = new Map(); // key -> value
-  /** @type {Map<string, any>} */
-  const trademeta = new Map(); // id -> {id,tags,note,shots,updated}
-  const mem = new Map(); // in-memory stand-in for Store.local (no localStorage)
+export function createDemoStore(): StoreLike {
+  const trades = new Map<string, any>(); // id -> {id, ...trade}
+  const journal = new Map<string, any>(); // date -> {date,text,tags,shots,updated}
+  const meta = new Map<string, any>(); // key -> value
+  const trademeta = new Map<string, any>(); // id -> {id,tags,note,shots,updated}
+  const mem = new Map<string, any>(); // in-memory stand-in for Store.local (no localStorage)
 
-  const sortByTime = arr => arr.slice().sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+  const sortByTime = (arr: Trade[]) => arr.slice().sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
 
   return {
     available() {
@@ -61,7 +57,7 @@ export function createDemoStore() {
     },
 
     async saveJournal(date, rec) {
-      const r = typeof rec === 'string' ? { text: rec } : rec || {};
+      const r: Annotation = typeof rec === 'string' ? { text: rec } : rec || {};
       const text = (r.text || '').trim();
       const tags = Array.isArray(r.tags) ? r.tags.filter(Boolean) : [];
       const shots = Array.isArray(r.shots) ? r.shots.filter(validShot) : [];

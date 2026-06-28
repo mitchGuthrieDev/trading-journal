@@ -1,17 +1,27 @@
-<script>
+<script lang="ts">
   // Activity terminal (A27). Subscribes to the core event bus (onEvent — A29, reused verbatim) and
   // logs the action events shared code emits (note saved, CSV imported, backup, erase, trade edit).
   // The vanilla terminal does the same; here the Svelte components fire the emits.
   import { onMount } from 'svelte';
-  import { onEvent, pad2 } from '../../core.js';
+  import { onEvent, pad2 } from '../../core.ts';
   import Panel from './Panel.svelte';
+  import type { PanelBundle } from '../../types.ts';
 
-  let { panel = {} } = $props();
-  let lines = $state([]);
+  interface Line {
+    id: number;
+    ts: string;
+    msg: string;
+  }
+
+  interface Props {
+    panel?: PanelBundle;
+  }
+  let { panel = {} as PanelBundle }: Props = $props();
+  let lines = $state<Line[]>([]);
   let nextId = 0; // stable per-line key so the ring buffer doesn't reindex on wrap
-  let box;
+  let box: HTMLDivElement | undefined;
 
-  const FMT = {
+  const FMT: Record<string, (d?: any) => string> = {
     'data:loaded': d => `loaded ${d && d.count != null ? d.count : '?'} trades`,
     'data:imported': d => `imported ${d && d.added != null ? d.added : '?'} new trades`,
     'note:saved': d => `note saved · ${d && d.date ? d.date : ''}`,
@@ -24,7 +34,7 @@
     'ws:reverted': () => 'layout reverted to default',
   };
 
-  function add(msg) {
+  function add(msg: string) {
     const t = new Date();
     const ts = `${pad2(t.getHours())}:${pad2(t.getMinutes())}:${pad2(t.getSeconds())}`;
     lines = [...lines.slice(-49), { id: nextId++, ts, msg }]; // keep the last 50

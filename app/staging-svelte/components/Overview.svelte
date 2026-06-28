@@ -1,15 +1,21 @@
-<script>
+<script lang="ts">
   // Overview cards — derived purely from the compute() metrics object (A29: no recomputation,
   // just presentation). Formatters (usd/money/cls) are imported verbatim from the core.
-  import { usd, money, cls, ratio, num } from '../../core.js';
+  import { usd, money, cls, ratio, num } from '../../core.ts';
+  import type { Metrics } from '../../core.ts';
   import StatCard from './StatCard.svelte';
 
-  let { metrics, tradeCount, oncard = () => {} } = $props();
+  interface Props {
+    metrics: Metrics;
+    tradeCount: number;
+    oncard?: (key: string) => void;
+  }
+  let { metrics, tradeCount, oncard = () => {} }: Props = $props();
   const MODAL_KEYS = new Set(['net', 'win', 'pf', 'wl', 'dd']); // cards with F14 detail modals
 
   const cards = $derived(build(metrics, tradeCount));
 
-  function build(m, n) {
+  function build(m: Metrics, n: number) {
     if (!m) return [];
     return [
       { key: 'net', label: 'Net P&L', value: usd(m.net), tone: cls(m.net) },

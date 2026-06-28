@@ -1,19 +1,27 @@
-<script>
+<script lang="ts">
   // Break-even & cost (A27; A32). REUSES costModel() verbatim (A29). The cost setup is now owned by
   // App and shared with the curve overlays — this panel binds its form to the shared `setup` object
   // and renders the breakdown from costModel(metrics, costInputs). No DOM-id coupling; App persists.
-  import { costModel, BROKERS, BROKER_ORDER, BROKER_FEEDS, STATES, usd, money } from '../../core.js';
+  import { costModel, BROKERS, BROKER_ORDER, BROKER_FEEDS, STATES, usd, money } from '../../core.ts';
+  import type { Metrics } from '../../core.ts';
+  import type { AppSetup, CostInputs, PanelBundle, StateRow } from '../../types.ts';
   import Panel from './Panel.svelte';
 
-  let { metrics, setup, costInputs, panel = {} } = $props();
+  interface Props {
+    metrics: Metrics;
+    setup: AppSetup;
+    costInputs: CostInputs;
+    panel?: PanelBundle;
+  }
+  let { metrics, setup, costInputs, panel = {} as PanelBundle }: Props = $props();
 
   const feedGroups = $derived(BROKER_FEEDS[setup.broker] || {});
-  const stateOpts = $derived(STATES.slice().sort((a, b) => (a[2] < b[2] ? -1 : 1)));
-  const pct = v => (v * 100).toFixed(1) + '%';
+  const stateOpts = $derived(STATES.slice().sort((a: StateRow, b: StateRow) => (a[2] < b[2] ? -1 : 1)));
+  const pct = (v: number) => (v * 100).toFixed(1) + '%';
   const cost = $derived(metrics ? costModel(metrics, costInputs) : null);
 
-  function onBroker(e) {
-    setup.broker = e.currentTarget.value;
+  function onBroker(e: Event) {
+    setup.broker = (e.currentTarget as HTMLSelectElement).value;
     setup.feed = ''; // feed options depend on broker — reset like the vanilla populateFeeds()
   }
 </script>

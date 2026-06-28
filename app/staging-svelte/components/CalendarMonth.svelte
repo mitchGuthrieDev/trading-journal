@@ -1,8 +1,11 @@
-<script>
+<script lang="ts">
   // Sunday-first month calendar of daily P&L, derived from compute()'s m.days (A29 — no
   // recomputation). The cursor starts on the latest trade's month. Includes day-note dots, day
   // selection → dashboard scoping + curve cross-link, and the left ISO-Week column (A40).
-  import { pad2, usd, money, isoWeek } from '../../core.js';
+  import { pad2, usd, money, isoWeek } from '../../core.ts';
+  import type { Metrics } from '../../core.ts';
+  import type { PanelBundle } from '../../types.ts';
+  import type { Snippet } from 'svelte';
   import Panel from './Panel.svelte';
 
   // year/month are owned by App (so the all-time/month scope toggle can read the same cursor);
@@ -10,7 +13,19 @@
   // grid colors reflect the active filters regardless of scope. selectedDate + journalDates +
   // onselect wire the day-notes journal: clicking a day selects it; days with a note get a dot.
   // `extra` is App's snippet for the contextual day-note editor, rendered inside this panel's body.
-  let { metrics, year, month, onnav, onjump = () => {}, selectedDate = null, journalDates = new Set(), onselect = () => {}, panel = {}, extra } = $props();
+  interface Props {
+    metrics: Metrics;
+    year: number;
+    month: number;
+    onnav: (delta: number) => void;
+    onjump?: () => void;
+    selectedDate?: string | null;
+    journalDates?: Set<string>;
+    onselect?: (d: string) => void;
+    panel?: PanelBundle;
+    extra?: Snippet;
+  }
+  let { metrics, year, month, onnav, onjump = () => {}, selectedDate = null, journalDates = new Set(), onselect = () => {}, panel = {} as PanelBundle, extra }: Props = $props();
 
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -22,7 +37,7 @@
   const weeks = $derived(buildWeeks(year, month, byDate));
   const monthNet = $derived(weeks.reduce((a, w) => a + w.weekPnl, 0));
 
-  function buildWeeks(y, m, map) {
+  function buildWeeks(y: number, m: number, map: Map<string, Metrics['days'][number]>) {
     const offset = new Date(y, m, 1).getDay(); // 0 = Sunday
     const cur = new Date(y, m, 1 - offset);
     const rows = [];
@@ -58,7 +73,7 @@
   }
 
   // Compact whole-dollar label for a cell (the full value is in the title tooltip).
-  const compact = v => (v < 0 ? '-' : '+') + '$' + Math.abs(Math.round(v)).toLocaleString('en-US');
+  const compact = (v: number) => (v < 0 ? '-' : '+') + '$' + Math.abs(Math.round(v)).toLocaleString('en-US');
 </script>
 
 <Panel {...panel} title="Trading Calendar">

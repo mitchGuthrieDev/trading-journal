@@ -1,7 +1,15 @@
-<script>
+<script lang="ts">
   // A single overview metric. tone ('' | 'pos' | 'neg') colors the value; `card` is a stable
   // hook (data-card) used by the e2e specs. Styles are scoped (CSP-friendly — A27 step 5).
-  let { card = '', label = '', value = '', tone = '', sub = '', onclick = null } = $props();
+  interface Props {
+    card?: string;
+    label?: string;
+    value?: string;
+    tone?: string;
+    sub?: string;
+    onclick?: (() => void) | null;
+  }
+  let { card = '', label = '', value = '', tone = '', sub = '', onclick = null }: Props = $props();
 </script>
 
 <div

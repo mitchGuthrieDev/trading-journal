@@ -1,26 +1,32 @@
-<script>
+<script lang="ts">
   // App-mode landing (A32). Shown only on the `app` surface when there's no data yet (staging/demo
   // seed instead). Set up costs (broker/feed/state/platform — bound to the shared setup) and load a
   // balance-history CSV; a successful load populates the Store and App switches to the dashboard.
-  import { BROKERS, BROKER_ORDER, BROKER_FEEDS, STATES } from '../../core.js';
-  import { Adapters } from '../../adapters.js';
+  import { BROKERS, BROKER_ORDER, BROKER_FEEDS, STATES } from '../../core.ts';
+  import type { AppSetup } from '../../types.ts';
+  import { Adapters } from '../../adapters.ts';
 
-  let { setup, onload, msg = '' } = $props();
+  interface Props {
+    setup: AppSetup;
+    onload: (file: File, platformId: string) => void;
+    msg?: string;
+  }
+  let { setup, onload, msg = '' }: Props = $props();
 
   const feedGroups = $derived(BROKER_FEEDS[setup.broker] || {});
   const stateOpts = $derived(STATES.slice().sort((a, b) => (a[2] < b[2] ? -1 : 1)));
   const ready = $derived(!!(setup.broker && setup.feed && setup.stateAbbr));
   const platforms = Adapters.list(); // [{id,label,beta}] for the override dropdown
 
-  let fileInput;
+  let fileInput: HTMLInputElement;
   let platformId = $state(''); // '' = auto-detect
-  function onBroker(e) {
-    setup.broker = e.currentTarget.value;
+  function onBroker(e: Event) {
+    setup.broker = (e.currentTarget as HTMLSelectElement).value;
     setup.feed = '';
   }
-  function pick(e) {
-    const f = e.currentTarget.files[0];
-    e.currentTarget.value = '';
+  function pick(e: Event) {
+    const f = (e.currentTarget as HTMLInputElement).files?.[0];
+    (e.currentTarget as HTMLInputElement).value = '';
     if (f) onload(f, platformId);
   }
 </script>

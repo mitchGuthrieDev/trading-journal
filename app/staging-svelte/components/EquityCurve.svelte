@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   // Performance curve (A32; axis furniture added in A43). Daily cumulative series with selectable
   // gross / net / take-home overlays, computed by the shared pure dailySeries() (A29 — same math as
   // the vanilla curve) from the lifted cost inputs. Plus horizontal/vertical gridlines with y-$ and
@@ -7,26 +7,73 @@
   //
   // The viewBox WIDTH tracks the measured pixel width (like vanilla renderCurve) so the SVG text
   // labels aren't horizontally stretched — height is fixed, so both axes render at ~1:1.
-  import { usd, money, axMoney, niceTicks, blendedRateFor } from '../../core.js';
-  import { dailySeries } from '../../curveseries.js';
+  import { usd, money, axMoney, niceTicks, blendedRateFor } from '../../core.ts';
+  import type { Metrics } from '../../core.ts';
+  import { dailySeries } from '../../curveseries.ts';
+  import type { DailyPoint } from '../../curveseries.ts';
+  import type { CostInputs, PanelBundle } from '../../types.ts';
   import Panel from './Panel.svelte';
   import { styleProps } from '../actions.js';
 
-  let { metrics, costInputs, journalDates = new Set(), selectedDate = null, onselect = () => {}, panel = {} } = $props();
+  interface Props {
+    metrics: Metrics;
+    costInputs: CostInputs;
+    journalDates?: Set<string>;
+    selectedDate?: string | null;
+    onselect?: (d: string) => void;
+    panel?: PanelBundle;
+  }
+  let { metrics, costInputs, journalDates = new Set(), selectedDate = null, onselect = () => {}, panel = {} as PanelBundle }: Props = $props();
+
+  /** One overlay series descriptor; `key` indexes into a curve point's numeric fields. */
+  type SeriesKey = 'gross' | 'net' | 'take';
+  interface Series {
+    key: SeriesKey;
+    label: string;
+    color: string;
+  }
+  /** A curve point: the synthetic origin (date null) prepended to the DailyPoint series. */
+  interface CurvePoint {
+    date: string | null;
+    gross: number;
+    net: number;
+    take: number;
+  }
+  /** The fully resolved geometry/view model produced by build(). */
+  interface View {
+    pts: CurvePoint[];
+    x: (i: number) => number;
+    y: (v: number) => number;
+    lo: number;
+    hi: number;
+    len: number;
+    lines: Array<Series & { d: string }>;
+    area: string;
+    prim: SeriesKey;
+    idxByDate: Map<string, number>;
+    notes: Array<{ x: number; y: number; date: string }>;
+    dd: { x0: number; x1: number } | null;
+    primColor: string;
+    zeroY: number | null;
+    w: number;
+    yticks: Array<{ v: number; y: number; label: string }>;
+    xticks: Array<{ x: number; label: string }>;
+    ends: Array<{ color: string; y: number; label: string }>;
+  }
 
   const H = 240;
   const padL = 52; // y-axis $ labels
   const padR = 58; // end-of-line value labels
   const padT = 14;
   const padB = 22; // x-axis date labels
-  const SERIES = [
+  const SERIES: Series[] = [
     { key: 'gross', label: 'Gross', color: 'var(--green)' },
     { key: 'net', label: 'Net', color: 'var(--accent)' },
     { key: 'take', label: 'Take-home', color: 'var(--take)' },
   ];
 
-  let sel = $state({ gross: true, net: false, take: false });
-  let cursor = $state(null);
+  let sel = $state<Record<SeriesKey, boolean>>({ gross: true, net: false, take: false });
+  let cursor = $state<number | null>(null);
   let cw = $state(0); // measured plot width (px) → viewBox width, so labels don't stretch
 
   const W = $derived(Math.max(560, cw || 800));
@@ -37,20 +84,20 @@
   const view = $derived(build(metrics, costInputs, enabled, W));
   const tip = $derived(
     view && cursor != null && view.pts[cursor].date
-      ? `${view.pts[cursor].date} · ${enabled.map(s => `${s.label} ${usd(view.pts[cursor][s.key])}`).join(' · ')}`
+      ? `${view.pts[cursor].date} · ${enabled.map(s => `${s.label} ${usd(view.pts[cursor as number][s.key])}`).join(' · ')}`
       : ''
   );
   const selIdx = $derived(view && selectedDate ? (view.idxByDate.get(selectedDate) ?? null) : null);
   const grossOnly = $derived(enabled.length === 1 && enabled[0].key === 'gross');
 
-  function build(m, ci, ser, w) {
+  function build(m: Metrics, ci: CostInputs, ser: Series[], w: number): View | null {
     const { pts: raw } = dailySeries(m, {
-      broker: ci.broker,
+      broker: String(ci.broker ?? ''),
       tEff: blendedRateFor(ci.stateRate),
-      fixedMo: (ci.platform || 0) + (ci.feedCost || 0),
+      fixedMo: (Number(ci.platform) || 0) + (Number(ci.feedCost) || 0),
     });
     if (raw.length < 1) return null;
-    const pts = [{ date: null, gross: 0, net: 0, take: 0 }, ...raw];
+    const pts: CurvePoint[] = [{ date: null, gross: 0, net: 0, take: 0 }, ...raw];
     if (pts.length < 2) return null;
     let lo = Infinity,
       hi = -Infinity;
@@ -63,15 +110,15 @@
     lo = Math.min(lo, ticks[0]);
     hi = Math.max(hi, ticks[ticks.length - 1]);
     const span = hi - lo || 1;
-    const x = i => padL + (i / (pts.length - 1)) * (w - padL - padR);
-    const y = v => padT + (1 - (v - lo) / span) * (H - padT - padB);
+    const x = (i: number) => padL + (i / (pts.length - 1)) * (w - padL - padR);
+    const y = (v: number) => padT + (1 - (v - lo) / span) * (H - padT - padB);
     const prim = ser[0].key;
     const lines = ser.map(s => ({ ...s, d: pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[s.key]).toFixed(1)}`).join(' ') }));
     const baseY = (H - padB).toFixed(1);
     const area = `${pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[prim]).toFixed(1)}`).join(' ')} L${x(pts.length - 1).toFixed(1)},${baseY} L${x(0).toFixed(1)},${baseY} Z`;
-    const idxByDate = new Map();
+    const idxByDate = new Map<string, number>();
     pts.forEach((p, i) => p.date && idxByDate.set(p.date, i));
-    const notes = [];
+    const notes: Array<{ x: number; y: number; date: string }> = [];
     for (const [date, i] of idxByDate) if (journalDates.has(date)) notes.push({ x: x(i), y: y(pts[i][prim]), date });
     // Realized drawdown peak→trough on the gross series (shaded only when gross is the sole overlay).
     let gpeak = -Infinity,
@@ -94,8 +141,8 @@
     const dd = maxDD > 0 ? { x0: x(ddP), x1: x(ddT) } : null;
     // Axis ticks: y $ gridlines (framed ticks) + x date labels (5 across the real dates).
     const yticks = ticks.map(v => ({ v, y: y(v), label: axMoney(v) }));
-    const xticks = [];
-    const seen = new Set();
+    const xticks: Array<{ x: number; label: string }> = [];
+    const seen = new Set<string>();
     for (let k = 0; k <= 4; k++) {
       const i = Math.min(pts.length - 1, 1 + Math.round(((pts.length - 2) * k) / 4));
       const date = pts[i] && pts[i].date;
@@ -113,22 +160,22 @@
     };
   }
 
-  function toggle(key) {
-    const on = Object.keys(sel).filter(k => sel[k]);
+  function toggle(key: SeriesKey) {
+    const on = (Object.keys(sel) as SeriesKey[]).filter(k => sel[k]);
     if (sel[key] && on.length === 1) return; // keep at least one
     sel[key] = !sel[key];
   }
 
-  function idxFromEvent(e) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const vbx = ((e.clientX - rect.left) / rect.width) * view.w;
-    return Math.max(1, Math.min(view.len - 1, Math.round(((vbx - padL) / (view.w - padL - padR)) * (view.len - 1))));
+  function idxFromEvent(e: PointerEvent) {
+    const rect = (e.currentTarget as Element).getBoundingClientRect();
+    const vbx = ((e.clientX - rect.left) / rect.width) * view!.w;
+    return Math.max(1, Math.min(view!.len - 1, Math.round(((vbx - padL) / (view!.w - padL - padR)) * (view!.len - 1))));
   }
-  const move = e => (cursor = idxFromEvent(e));
+  const move = (e: PointerEvent) => (cursor = idxFromEvent(e));
   const pick = () => {
-    if (cursor != null && view.pts[cursor].date) onselect(view.pts[cursor].date);
+    if (cursor != null && view && view.pts[cursor].date) onselect(view.pts[cursor].date as string);
   };
-  function onkeydown(e) {
+  function onkeydown(e: KeyboardEvent) {
     if (!view) return;
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault();

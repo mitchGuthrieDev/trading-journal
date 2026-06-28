@@ -1,16 +1,26 @@
-<script>
+<script lang="ts">
   // Manage-data modal (A27): the all-trades table + per-trade tag/note editor, CSV import, backup
   // export/restore, and erase. All persistence + parsing reuse the verbatim core (Store seam +
   // Adapters — A29); this component is only the view. Per-trade screenshots from the vanilla editor
   // are deferred. Operations that change the dataset call onchanged() so App recomputes the dashboard.
   import { onMount, getContext } from 'svelte';
-  import { Adapters } from '../../adapters.js';
-  import { usd, money, emit, PAGE_MODE } from '../../core.js';
+  import { Adapters } from '../../adapters.ts';
+  import { usd, money, emit, PAGE_MODE } from '../../core.ts';
+  import type { Trade, TradeMeta, SavedFilter, StoreLike } from '../../types.ts';
   import { readImage, downloadBlob } from '../util.js';
   import { modal } from '../modal.js';
 
   const isDemo = PAGE_MODE === 'demo'; // demo is a read-only preview — write controls disabled + guarded (B23)
 
+  interface Props {
+    onclose: () => void;
+    onchanged: () => void;
+    onopenday?: (d: string) => void;
+    savedFilters?: SavedFilter[];
+    onapplyview?: (sf: SavedFilter) => void;
+    onrenameview?: (id: string, name: string) => void;
+    ondeleteview?: (id: string) => void;
+  }
   let {
     onclose,
     onchanged,
@@ -19,26 +29,26 @@
     onapplyview = () => {},
     onrenameview = () => {},
     ondeleteview = () => {},
-  } = $props();
-  const store = getContext('bb:store'); // A31: Store or DemoStore, chosen by App per mode
+  }: Props = $props();
+  const store = getContext('bb:store') as StoreLike; // A31: Store or DemoStore, chosen by App per mode
 
-  let trades = $state([]);
-  let metaMap = $state(new Map());
-  let dayNotes = $state([]);
+  let trades = $state<Trade[]>([]);
+  let metaMap = $state(new Map<string, Record<string, unknown>>());
+  let dayNotes = $state<Array<Record<string, any>>>([]);
   let localKb = $state('—'); // A52: approximate local footprint
   let search = $state('');
 
   // A52: Overview stats (parity with vanilla #dm_summary).
   const dmRange = $derived(trades.length ? `${trades[0].date} → ${trades[trades.length - 1].date}` : '—');
-  let editing = $state(null); // trade id under edit
+  let editing = $state<string | null>(null); // trade id under edit
   let editTags = $state('');
   let editNote = $state('');
-  let editShots = $state([]);
+  let editShots = $state<string[]>([]);
   let msg = $state('');
 
-  let csvInput;
-  let backupInput;
-  let editShotInput;
+  let csvInput: HTMLInputElement;
+  let backupInput: HTMLInputElement;
+  let editShotInput: HTMLInputElement;
 
   const filtered = $derived(
     search.trim()
@@ -51,7 +61,7 @@
   async function reload() {
     trades = await store.getAllTrades();
     const all = await store.allTradeMeta();
-    metaMap = new Map(all.map(m => [m.id, m]));
+    metaMap = new Map(all.map(m => [m.id as string, m]));
     dayNotes = await store.getAllJournal();
     try {
       localKb = (new Blob([JSON.stringify(await store.exportAll())]).size / 1024).toFixed(1) + ' KB';
@@ -60,7 +70,7 @@
     }
   }
 
-  async function deleteDay(date) {
+  async function deleteDay(date: string) {
     if (isDemo) return;
     if (!confirm(`Delete the note for ${date}?`)) return;
     await store.deleteJournal(date);
@@ -68,32 +78,33 @@
     onchanged();
   }
 
-  function renameView(sf) {
+  function renameView(sf: SavedFilter) {
     const name = (window.prompt('Rename saved filter:', sf.name) || '').trim();
     if (name && name !== sf.name) onrenameview(sf.id, name);
   }
 
-  const metaOf = t => metaMap.get(store.tradeId(t)) || { tags: [], note: '', shots: [] };
+  const metaOf = (t: Trade): TradeMeta => (metaMap.get(store.tradeId(t)) as TradeMeta) || { tags: [], note: '', shots: [] };
 
-  function openEdit(t) {
+  function openEdit(t: Trade) {
     const id = store.tradeId(t);
-    const m = metaMap.get(id) || {};
+    const m = (metaMap.get(id) || {}) as TradeMeta;
     editing = id;
     editTags = (m.tags || []).join(', ');
     editNote = m.note || '';
     editShots = m.shots || [];
   }
 
-  async function addEditShot(e) {
-    const f = e.currentTarget.files[0];
-    e.currentTarget.value = '';
+  async function addEditShot(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const f = input.files?.[0];
+    input.value = '';
     if (!f) return;
     const url = await readImage(f);
     if (url && store.validShot(url)) editShots = [...editShots, url];
     else msg = 'Only image screenshots are allowed.';
   }
 
-  async function deleteTrade(t) {
+  async function deleteTrade(t: Trade) {
     if (isDemo) return;
     const id = store.tradeId(t);
     if (!confirm(`Delete this ${t.symbol} trade on ${t.date}? This also removes its tags, note and screenshots.`)) return;
@@ -108,24 +119,25 @@
   async function saveEdit() {
     if (isDemo) return;
     const tags = [...new Set(editTags.split(',').map(s => s.trim().toLowerCase()).filter(Boolean))];
-    await store.saveTradeMeta(editing, { tags, note: editNote, shots: editShots });
+    if (editing) await store.saveTradeMeta(editing, { tags, note: editNote, shots: editShots });
     editing = null;
     emit('trade:edited');
     await reload();
     onchanged();
   }
 
-  async function importCSV(e) {
+  async function importCSV(e: Event) {
     if (isDemo) return;
-    const f = e.currentTarget.files[0];
-    e.currentTarget.value = '';
+    const input = e.currentTarget as HTMLInputElement;
+    const f = input.files?.[0];
+    input.value = '';
     if (!f) return;
     const r = Adapters.parse(await f.text());
     if (!r.ok) {
       msg = r.error || 'Could not parse that CSV.';
       return;
     }
-    const res = await store.addTrades(r.trades);
+    const res = await store.addTrades(r.trades || []);
     msg = `Imported ${res.added} new trade${res.added === 1 ? '' : 's'} (${res.duplicate} duplicate).`;
     emit('data:imported', { added: res.added });
     await reload();
@@ -139,10 +151,11 @@
     emit('backup:created');
   }
 
-  async function importBackup(e) {
+  async function importBackup(e: Event) {
     if (isDemo) return;
-    const f = e.currentTarget.files[0];
-    e.currentTarget.value = '';
+    const input = e.currentTarget as HTMLInputElement;
+    const f = input.files?.[0];
+    input.value = '';
     if (!f) return;
     try {
       const res = await store.importAll(JSON.parse(await f.text()));
@@ -166,7 +179,7 @@
   }
 </script>
 
-<div class="overlay" role="presentation" onclick={e => e.target === e.currentTarget && onclose()}>
+<div class="overlay" role="presentation" onclick={(e: MouseEvent) => e.target === e.currentTarget && onclose()}>
   <!-- Escape cancels an open per-trade editor first, otherwise closes the modal (A42). -->
   <div class="modal" role="dialog" aria-modal="true" aria-label="Manage data" tabindex="-1" use:modal={{ onclose: () => (editing ? (editing = null) : onclose()) }}>
     <div class="head">

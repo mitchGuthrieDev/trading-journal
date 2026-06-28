@@ -1,11 +1,10 @@
-// @ts-check
 'use strict';
 /* Blotterbook · sample data — the deterministic two-year demo dataset, as a TradingView-format
    CSV string. Extracted from data.js (A27) into its own tiny module so BOTH the vanilla surfaces
    (via data.js, which re-exports it) AND the Svelte staging app can import it WITHOUT pulling in
    the DOM-coupled view layer (render.js/ui.js/datamanager.js). Depends only on core.js helpers.
    Pure: same seed → same output. */
-import { pad2, fmtDate } from './core.js';
+import { pad2, fmtDate } from './core.ts';
 
 export function demoCSV() {
   let seed = 246813579;

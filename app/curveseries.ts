@@ -1,4 +1,3 @@
-// @ts-check
 'use strict';
 /* Blotterbook · curve series (A32). The per-day cumulative gross / net / take-home series behind
    the performance curve's overlays. Extracted from render.js so BOTH the vanilla curve (render.js
@@ -11,36 +10,40 @@
    - take:  net − Section-1256 tax on positive net.
    Subscriptions accrue as each new calendar month is entered (B8); the endpoint equals
    costModel.fixedPeriod (fixedMo × distinct months). */
-import { rateFor } from './core.js';
+import { rateFor } from './core.ts';
+import type { Metrics } from './core.ts';
 
-/**
- * @param {*} m  compute() result (reads m.trades).
- * @param {{broker:string, tEff:number, fixedMo:number}} opts
- * @returns {{pts: Array<{date:string, gross:number, net:number, take:number}>}}
- */
-export function dailySeries(m, opts) {
+export interface DailyPoint {
+  date: string;
+  gross: number;
+  net: number;
+  take: number;
+}
+
+/** Per-day cumulative gross/net/take-home series. `m` is a compute() result (reads m.trades). */
+export function dailySeries(m: Metrics, opts: { broker: string; tEff?: number; fixedMo?: number }): { pts: DailyPoint[] } {
   const broker = opts.broker,
     tEff = opts.tEff || 0,
     fixedMo = opts.fixedMo || 0;
-  const map = new Map();
+  const map = new Map<string, { gross: number; comm: number }>();
   for (const t of (m && m.trades) || []) {
-    if (!map.has(t.date)) map.set(t.date, { gross: 0, comm: 0 });
-    const e = map.get(t.date);
+    let e = map.get(t.date);
+    if (!e) map.set(t.date, (e = { gross: 0, comm: 0 }));
     e.gross += t.pnl;
     e.comm += rateFor(broker, t.root).rate * 2 * (t.qty || 1); // per-contract (B4)
   }
   let cg = 0,
     cn = 0,
     subAcc = 0;
-  const pts = [];
-  const seenMonths = new Set();
+  const pts: DailyPoint[] = [];
+  const seenMonths = new Set<string>();
   for (const d of [...map.keys()].sort()) {
     const mo = d.slice(0, 7);
     if (!seenMonths.has(mo)) {
       seenMonths.add(mo);
       subAcc += fixedMo;
     }
-    const e = map.get(d);
+    const e = map.get(d)!;
     cg += e.gross;
     cn += e.gross - e.comm;
     const net = cn - subAcc,

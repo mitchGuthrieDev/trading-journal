@@ -1,23 +1,29 @@
-<script>
+<script lang="ts">
   // Day-note editor (A27; A32 added tags + screenshots). Persists per-day annotations through the
   // Store seam (getJournal/saveJournal — A29, reused verbatim). The store comes from context (A31):
   // real Store on app/staging, in-memory DemoStore on demo. Screenshots are gated by the shared
   // store.validShot allow-list (base64 images only — S15/S18). An empty save deletes the row.
   import { getContext } from 'svelte';
-  import { emit, PAGE_MODE } from '../../core.js';
+  import { emit, PAGE_MODE } from '../../core.ts';
   import { readImage } from '../util.js';
+  import type { StoreLike } from '../../types.ts';
 
-  let { date, onsaved, onclose } = $props();
-  const store = getContext('bb:store');
+  interface Props {
+    date: string;
+    onsaved?: () => void;
+    onclose?: () => void;
+  }
+  let { date, onsaved, onclose }: Props = $props();
+  const store = getContext('bb:store') as StoreLike;
   const isDemo = PAGE_MODE === 'demo'; // demo never persists — controls are disabled + a note shown (A49/A33)
 
   let text = $state('');
   let tagsStr = $state('');
-  let shots = $state([]);
+  let shots = $state<string[]>([]);
   let saving = $state(false);
   let savedMsg = $state('');
   let ready = $state(false); // false until the day's record has loaded (avoids clobbering edits — see below)
-  let shotInput;
+  let shotInput: HTMLInputElement;
 
   // Reload whenever the selected date changes. The load is async (IndexedDB), so we gate the form on
   // `ready` until it resolves — otherwise a fast edit could be overwritten by the in-flight load.
@@ -33,9 +39,9 @@
     });
   });
 
-  async function addShot(e) {
-    const f = e.currentTarget.files[0];
-    e.currentTarget.value = '';
+  async function addShot(e: Event) {
+    const f = (e.currentTarget as HTMLInputElement).files?.[0];
+    (e.currentTarget as HTMLInputElement).value = '';
     if (!f) return;
     const url = await readImage(f);
     if (url && store.validShot(url)) shots = [...shots, url];
@@ -50,7 +56,7 @@
     saving = false;
     savedMsg = text.trim() || tags.length || shots.length ? 'Saved' : 'Cleared';
     emit('note:saved', { date });
-    onsaved();
+    onsaved?.();
   }
 </script>
 

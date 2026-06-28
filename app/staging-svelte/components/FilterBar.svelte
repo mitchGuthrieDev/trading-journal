@@ -1,9 +1,22 @@
-<script>
+<script lang="ts">
   // Filter + scope bar (A27). Drives the whole dashboard: App applies these filters to the trade
   // set and recomputes metrics. `filters` is a shared reactive object (mutated in place — Svelte 5
   // deep reactivity propagates to App's deriveds). Scope = all-time vs the calendar's current month.
   // Session + tag filters and saved-filter views from the vanilla bar are deferred to a later slice.
-  let { filters, roots, tags = [], savedFilters = [], count = 0, onclear, onsave = () => {}, onapply = () => {}, ondelete = () => {} } = $props();
+  import type { FilterState, SavedFilter } from '../../types.ts';
+
+  interface Props {
+    filters: FilterState;
+    roots: string[];
+    tags?: string[];
+    savedFilters?: SavedFilter[];
+    count?: number;
+    onclear?: () => void;
+    onsave?: (name: string) => void;
+    onapply?: (sf: SavedFilter) => void;
+    ondelete?: (id: string) => void;
+  }
+  let { filters, roots, tags = [], savedFilters = [], count = 0, onclear, onsave = () => {}, onapply = () => {}, ondelete = () => {} }: Props = $props();
   let viewName = $state('');
   const save = () => {
     onsave(viewName);
@@ -20,7 +33,7 @@
     ['eth', 'ETH'],
   ];
   const DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-  const toggleDow = d => (filters.dows = filters.dows.includes(d) ? filters.dows.filter(x => x !== d) : [...filters.dows, d]);
+  const toggleDow = (d: number) => (filters.dows = filters.dows.includes(d) ? filters.dows.filter(x => x !== d) : [...filters.dows, d]);
 </script>
 
 <section class="filterbar">

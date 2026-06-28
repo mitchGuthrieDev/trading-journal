@@ -1,9 +1,13 @@
-<script>
+<script lang="ts">
   // Definitions & Caveats (A37 — parity with the vanilla data-key="defs" panel). Static glossary +
   // warnings; the text is ported verbatim from partials/app-dash.html so the two read identically.
   import Panel from './Panel.svelte';
+  import type { PanelBundle } from '../../types.ts';
 
-  let { panel = {} } = $props();
+  interface Props {
+    panel?: PanelBundle;
+  }
+  let { panel = {} as PanelBundle }: Props = $props();
 </script>
 
 <Panel {...panel} title="Definitions &amp; Caveats">

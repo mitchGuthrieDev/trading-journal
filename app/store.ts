@@ -1,6 +1,6 @@
-// @ts-check
 'use strict';
-import { Adapters } from './adapters.js';
+import { Adapters } from './adapters.ts';
+import type { Trade, Annotation, TradeMeta, StoreLike } from './types.ts';
 /* ============================================================
    Local persistence — IndexedDB
 
@@ -42,15 +42,15 @@ const TRADEMETA = 'trademeta'; // per-trade tags / note / screenshots, keyed by 
 // Exported so the in-memory DemoStore (A31) reuses the EXACT screenshot allow-list (no drift).
 export const SHOT_RE = /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/;
 // Standalone validator (Store.validShot delegates) — shared with DemoStore.
-export function validShot(s) {
+export function validShot(s: unknown): boolean {
   return typeof s === 'string' && SHOT_RE.test(s);
 }
 
-let dbp = null; // cached open-promise
+let dbp: Promise<IDBDatabase> | null = null; // cached open-promise
 
 function open() {
   if (dbp) return dbp;
-  dbp = new Promise((resolve, reject) => {
+  dbp = new Promise<IDBDatabase>((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
@@ -65,18 +65,18 @@ function open() {
   return dbp;
 }
 
-function tx(store, mode) {
+function tx(store: string, mode: IDBTransactionMode): Promise<IDBObjectStore> {
   return open().then(db => db.transaction(store, mode).objectStore(store));
 }
-function done(t) {
-  return new Promise((resolve, reject) => {
+function done(t: IDBObjectStore): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
     t.transaction.oncomplete = () => resolve();
     t.transaction.onerror = () => reject(t.transaction.error);
     t.transaction.onabort = () => reject(t.transaction.error);
   });
 }
-function reqP(r) {
-  return new Promise((resolve, reject) => {
+function reqP<T = any>(r: IDBRequest<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
     r.onsuccess = () => resolve(r.result);
     r.onerror = () => reject(r.error);
   });
@@ -85,7 +85,7 @@ function reqP(r) {
 /* Stable, order-independent dedupe key for a trade. Two CSV exports
    that overlap will produce identical ids for the shared rows, so a
    re-upload only inserts the genuinely new trades. */
-export function tradeId(t) {
+export function tradeId(t: Trade): string {
   const raw = `${t.time}|${t.symbol}|${t.side}|${t.pnl}`;
   // FNV-1a 32-bit — small, dependency-free, good enough for dedupe.
   let h = 0x811c9dc5;
@@ -96,7 +96,7 @@ export function tradeId(t) {
   return h.toString(16).padStart(8, '0');
 }
 
-export const Store = {
+export const Store: StoreLike = {
   available() {
     return typeof indexedDB !== 'undefined';
   },
@@ -119,7 +119,7 @@ export const Store = {
     const store = await tx(TRADES, 'readwrite');
     let added = 0,
       duplicate = 0;
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const kr = store.getAllKeys();
       kr.onerror = () => reject(kr.error);
       kr.onsuccess = () => {
@@ -158,7 +158,7 @@ export const Store = {
   // bare string (legacy callers) or the record object; deletes the row when fully empty.
   async saveJournal(date, rec) {
     const store = await tx(JOURNAL, 'readwrite');
-    const r = typeof rec === 'string' ? { text: rec } : rec || {};
+    const r: Annotation = typeof rec === 'string' ? { text: rec } : rec || {};
     const text = (r.text || '').trim();
     const tags = Array.isArray(r.tags) ? r.tags.filter(Boolean) : [];
     const shots = Array.isArray(r.shots) ? r.shots.filter(s => this.validShot(s)) : [];
@@ -177,7 +177,7 @@ export const Store = {
   async journalDates() {
     const store = await tx(JOURNAL, 'readonly');
     const keys = await reqP(store.getAllKeys());
-    return new Set(keys);
+    return new Set(keys as string[]);
   },
 
   async deleteTrade(id) {
@@ -253,21 +253,21 @@ export const Store = {
     // A26: `Adapters` is a static ESM import and rootSym is unconditionally exported, so the old
     // `Adapters && Adapters.rootSym ? … : <fallback>` guard was always truthy (dead fallback +
     // duplicated charset regex). Call rootSym directly — it's the stricter sanitizer.
-    const cleanSym = s => Adapters.rootSym(String(s || ''));
+    const cleanSym = (s: unknown) => Adapters.rootSym(String(s || ''));
     // B29: lowercase to match the live editors' canonical form (annCapture lowercases + dedupes),
     // so restored tags match the tag filter/chips. cleanTags also dedupes, like the live path.
-    const cleanTag = s =>
+    const cleanTag = (s: unknown) =>
       String(s == null ? '' : s)
         .replace(/[<>&"']/g, '')
         .trim()
         .toLowerCase();
-    const cleanTags = a => [...new Set((Array.isArray(a) ? a : []).map(cleanTag).filter(Boolean))];
+    const cleanTags = (a: unknown) => [...new Set((Array.isArray(a) ? a : []).map(cleanTag).filter(Boolean))];
     // Restore is untrusted: keep ONLY well-formed base64 image data URIs (S15, SHOT_RE above).
-    const cleanShots = a => (Array.isArray(a) ? a.filter(s => typeof s === 'string' && SHOT_RE.test(s)) : []);
+    const cleanShots = (a: unknown) => (Array.isArray(a) ? a.filter(s => typeof s === 'string' && SHOT_RE.test(s)) : []);
     // S17: a restored `date` flows into innerHTML sinks (the data-manager trades/day-notes lists),
     // and the CSV path validates dates but addTrades/journal-restore did not. Require canonical
     // YYYY-MM-DD (and a finite pnl for trades) here so a crafted backup can't smuggle markup in.
-    const validDate = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}/.test(s);
+    const validDate = (s: unknown) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}/.test(s);
     if (Array.isArray(data.trades) && data.trades.length) {
       const clean = [];
       for (const t of data.trades) {
@@ -296,9 +296,9 @@ export const Store = {
     // at the boundary (coerce id to a safe charset, strip markup from name, whitelist filter
     // fields); unknown keys are dropped.
     const FILTER_FIELDS = ['from', 'to', 'symbol', 'side', 'session', 'tag'];
-    const cleanSavedFilters = a =>
+    const cleanSavedFilters = (a: unknown) =>
       (Array.isArray(a) ? a : [])
-        .map(s => {
+        .map((s: any) => {
           if (!s || typeof s !== 'object') return null;
           const id = String(s.id == null ? '' : s.id)
             .replace(/[^A-Za-z0-9]/g, '')
@@ -309,12 +309,12 @@ export const Store = {
             .trim()
             .slice(0, 80);
           const src = s.f && typeof s.f === 'object' ? s.f : {};
-          const f = {};
+          const f: Record<string, unknown> = {};
           for (const k of FILTER_FIELDS)
             f[k] = String(src[k] == null ? '' : src[k])
               .replace(/[<>&"']/g, '')
               .slice(0, 64);
-          f.dows = Array.isArray(src.dows) ? src.dows.map(Number).filter(d => Number.isInteger(d) && d >= 0 && d <= 6) : [];
+          f.dows = Array.isArray(src.dows) ? src.dows.map(Number).filter((d: number) => Number.isInteger(d) && d >= 0 && d <= 6) : [];
           return { id, name, f };
         })
         .filter(Boolean);

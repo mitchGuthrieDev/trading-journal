@@ -1,31 +1,45 @@
-<script>
+<script lang="ts">
   // Stat-card detail modal (A35 — parity with vanilla widgets.js CARD_VIEWS / openCardModal, F14).
   // Clicking a headline Overview card opens this drill-down. All data comes from compute() metrics +
   // costModel (A29 — reuses dowBuckets/DOW_LABEL/minMax from core); charts are small inline SVG/bars.
-  import { usd, money, cls, ratio, minMax, dowBuckets, DOW_LABEL } from '../../core.js';
+  import { usd, money, cls, ratio, minMax, dowBuckets, DOW_LABEL } from '../../core.ts';
+  import type { Metrics } from '../../core.ts';
+  import type { CostModel, Trade } from '../../types.ts';
   import { modal } from '../modal.js';
   import { styleProps } from '../actions.js';
 
-  let { cardKey, metrics: m, cost: c, onclose } = $props();
+  interface Props {
+    cardKey: string;
+    metrics: Metrics;
+    cost: CostModel;
+    onclose: () => void;
+  }
+  let { cardKey, metrics: m, cost: c, onclose }: Props = $props();
 
+  interface BarRow {
+    label: string;
+    value: number;
+    color?: string;
+    n?: number;
+  }
   // Signed horizontal bars scaled to the max abs value.
-  function bars(rows) {
+  function bars(rows: BarRow[]) {
     const max = Math.max(1, ...rows.map(r => Math.abs(r.value)));
     return rows.map(r => ({ ...r, pct: (Math.abs(r.value) / max) * 100, tone: r.color || (r.value >= 0 ? 'var(--green)' : 'var(--red)') }));
   }
   // Cumulative-curve polyline (optionally marking peak→trough).
-  function curvePath(curve) {
+  function curvePath(curve: number[]) {
     if (!curve || curve.length < 2) return null;
     const { lo, hi } = minMax(curve);
     const span = hi - lo || 1;
     const W = 320,
       H = 90;
-    const x = i => (i / (curve.length - 1)) * W;
-    const y = v => H - ((v - lo) / span) * H;
+    const x = (i: number) => (i / (curve.length - 1)) * W;
+    const y = (v: number) => H - ((v - lo) / span) * H;
     return { d: curve.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' '), x, y, W, H };
   }
   // Simple histogram (8 bins) of a value set.
-  function hist(values) {
+  function hist(values: number[]) {
     if (!values.length) return [];
     const { lo, hi } = minMax(values);
     const span = hi - lo || 1;
@@ -35,12 +49,12 @@
     return bins.map((n, i) => ({ pct: (n / max) * 100, lo: lo + (span * i) / 8, n }));
   }
   // Per-symbol gross profit factor + net (parity with vanilla cmSymPf — table, not bars).
-  function symPfRows(trades) {
-    const map = new Map();
+  function symPfRows(trades: Trade[]) {
+    const map = new Map<string, { gp: number; gl: number; n: number }>();
     for (const t of trades) {
       const r = t.root || '?';
       if (!map.has(r)) map.set(r, { gp: 0, gl: 0, n: 0 });
-      const o = map.get(r);
+      const o = map.get(r)!;
       o.n++;
       if (t.pnl > 0) o.gp += t.pnl;
       else o.gl += t.pnl;
@@ -56,7 +70,7 @@
   const ddCurve = $derived(cardKey === 'dd' || cardKey === 'net' ? curvePath(m.curve) : null);
 </script>
 
-<div class="overlay" role="presentation" onclick={e => e.target === e.currentTarget && onclose()}>
+<div class="overlay" role="presentation" onclick={(e: MouseEvent) => e.target === e.currentTarget && onclose()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label={title} tabindex="-1" use:modal={{ onclose }}>
     <div class="head">
       <h2>{title}</h2>
@@ -137,7 +151,7 @@
   </div>
 </div>
 
-{#snippet splitBar(segs)}
+{#snippet splitBar(segs: Array<{ value: number; color: string; label: string }>)}
   <div class="split">
     {#each segs.filter(s => s.value > 0) as s, i (i)}
       <span class="seg" use:styleProps={{ flex: s.value, background: s.color }} title="{s.label}: {s.value}">{s.value}</span>
@@ -145,7 +159,7 @@
   </div>
 {/snippet}
 
-{#snippet symPfTable(rows)}
+{#snippet symPfTable(rows: Array<{ root: string; n: number; pf: number; net: number }>)}
   <table class="symtab">
     <thead><tr><th>Symbol</th><th>Trades</th><th>PF</th><th>Net</th></tr></thead>
     <tbody>
@@ -156,7 +170,7 @@
   </table>
 {/snippet}
 
-{#snippet histChart(values, color)}
+{#snippet histChart(values: number[], color: string)}
   {#if values.length}
     <div class="bars">
       {#each hist(values) as b, i (i)}
@@ -172,7 +186,7 @@
   {/if}
 {/snippet}
 
-{#snippet barList(rows)}
+{#snippet barList(rows: Array<{ label: string; value: number; pct: number; tone: string }>)}
   <div class="bars">
     {#each rows as r, i (i)}
       <div class="bar">

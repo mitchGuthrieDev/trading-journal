@@ -1,5 +1,5 @@
-// @ts-check
 'use strict';
+import type { Trade, Fill, Row, Adapter, Detected, ParseResult } from './types.ts';
 /* ============================================================
    Platform CSV adapters + format auto-detection
    ------------------------------------------------------------
@@ -24,15 +24,15 @@
 
 /* ---------- low-level CSV ---------- */
 // Quote-aware splitter; auto-detects comma vs tab (Sierra Chart uses tabs).
-function parseCSV(text, delim) {
+function parseCSV(text: string, delim?: string): Row[] {
   if (delim == null) {
     const firstLine = text.slice(0, text.indexOf('\n') < 0 ? text.length : text.indexOf('\n'));
     delim = firstLine.split('\t').length > firstLine.split(',').length ? '\t' : ',';
   }
-  const rows = [];
+  const rows: Row[] = [];
   let i = 0,
     field = '',
-    row = [],
+    row: Row = [],
     q = false;
   const n = text.length;
   const push = () => {
@@ -68,10 +68,10 @@ function parseCSV(text, delim) {
 }
 
 /* ---------- helpers ---------- */
-const pad2 = n => String(n).padStart(2, '0');
+const pad2 = (n: string | number) => String(n).padStart(2, '0');
 
 // Futures root: MESM2025 → MES, M2KZ2025 → M2K, MES1! → MES, CME_MINI:ES1! → ES
-function rootSym(s) {
+function rootSym(s: string) {
   if (!s) return '?';
   s = s.toUpperCase().trim().replace(/^.*:/, '').replace(/^\//, ''); // drop exchange prefix and thinkorswim "/" futures marker
   s = s.replace(/[FGHJKMNQUVXZ]\d{1,4}$/, '').replace(/\d*!$/, '');
@@ -80,7 +80,7 @@ function rootSym(s) {
 }
 
 // tolerant number: "$1,234.50" → 1234.5, "(123.45)" → -123.45, EU "1.234,50" → 1234.5
-function num(x) {
+function num(x: unknown): number {
   if (x == null) return NaN;
   let s = String(x).trim();
   if (!s) return NaN;
@@ -115,8 +115,8 @@ function num(x) {
 // 'mdy' | 'dmy' force a column-wide interpretation; 'auto' falls back to the per-value heuristic
 // (used by standalone normTime callers/tests). This prevents one file from mixing M/D/Y and D/M/Y
 // rows just because only some days happen to exceed 12.
-let DATE_ORDER = 'auto';
-function detectDateOrder(text) {
+let DATE_ORDER: 'auto' | 'mdy' | 'dmy' = 'auto';
+function detectDateOrder(text: string): 'auto' | 'mdy' | 'dmy' {
   const re = /\b(\d{1,2})\/(\d{1,2})\/\d{2,4}\b/g;
   let m,
     dayFirst = false,
@@ -133,12 +133,12 @@ function detectDateOrder(text) {
 }
 
 // Normalize any timestamp to canonical "YYYY-MM-DD HH:MM:SS".
-function normTime(s) {
+function normTime(s: unknown): string {
   if (!s) return '';
-  s = String(s).trim().replace(/^"|"$/g, '');
-  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  let str = String(s).trim().replace(/^"|"$/g, '');
+  let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
   if (m) return `${m[1]}-${pad2(m[2])}-${pad2(m[3])} ${pad2(m[4] || 0)}:${pad2(m[5] || 0)}:${pad2(m[6] || 0)}`;
-  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:[ ,]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?/i);
+  m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:[ ,]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?/i);
   if (m) {
     let h = +(m[4] || 0);
     const ap = (m[7] || '').toUpperCase();
@@ -162,14 +162,14 @@ function normTime(s) {
     }
     return `${Y}-${pad2(mo)}-${pad2(day)} ${pad2(h)}:${pad2(m[5] || 0)}:${pad2(m[6] || 0)}`;
   }
-  const d = new Date(s);
+  const d = new Date(str);
   if (!isNaN(d.getTime()))
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
-  return s;
+  return str;
 }
-const tms = iso => new Date(String(iso).replace(' ', 'T')).getTime();
-const round2 = v => Math.round(v * 100) / 100;
-const sideWord = s => {
+const tms = (iso: string) => new Date(String(iso).replace(' ', 'T')).getTime();
+const round2 = (v: number) => Math.round(v * 100) / 100;
+const sideWord = (s: string): 'buy' | 'sell' | '' => {
   s = String(s).toLowerCase();
   if (/\b(buy|bot|bought|b|long)\b/.test(s)) return 'buy';
   if (/\b(sell|sld|sold|s|short)\b/.test(s)) return 'sell';
@@ -177,7 +177,7 @@ const sideWord = s => {
 };
 
 /* ---------- futures point values (for fills exports without realized PnL) ---------- */
-const POINT = {
+const POINT: Record<string, number> = {
   ES: 50,
   MES: 5,
   NQ: 20,
@@ -233,7 +233,7 @@ const POINT = {
   M6E: 12500,
   M6A: 10000,
 };
-function pointValue(root) {
+function pointValue(root: string) {
   return POINT[root] != null ? POINT[root] : 1;
 }
 
@@ -242,10 +242,10 @@ function pointValue(root) {
      A closing fill realizes PnL against the oldest open lots. PnL uses the fill's
      own `realized` (apportioned by matched qty) when the export provides it, else
      (exitPrice − entryPrice) × qty × pointValue(root). Output carries hold time.
-     @param {import('./types.js').Fill[]} fills
-     @returns {import('./types.js').Trade[]} */
-function pairFills(fills) {
-  const bySym = new Map();
+     @param {import('./types.ts').Fill[]} fills
+     @returns {import('./types.ts').Trade[]} */
+function pairFills(fills: Fill[]): Trade[] {
+  const bySym = new Map<string, Fill[]>();
   // Timestamps are second-resolution, so same-second fills can't be ordered by time alone — FIFO
   // must keep their true execution order. Detect whether the export is newest-first and, if so,
   // invert the row-index tiebreak so same-second fills still resolve in execution order (B25).
@@ -261,15 +261,16 @@ function pairFills(fills) {
   fills.forEach((f, i) => {
     if (!f || !f.symbol || !f.side || !(f.qty > 0) || isNaN(f.price)) return;
     f._seq = desc ? fills.length - i : i; // stable, execution-order tiebreak within a second
-    if (!bySym.has(f.symbol)) bySym.set(f.symbol, []);
-    bySym.get(f.symbol).push(f);
+    let bucket = bySym.get(f.symbol);
+    if (!bucket) bySym.set(f.symbol, (bucket = []));
+    bucket.push(f);
   });
-  const trades = [];
+  const trades: Trade[] = [];
   for (const [sym, arr] of bySym) {
-    arr.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : a._seq - b._seq));
+    arr.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : (a._seq ?? 0) - (b._seq ?? 0)));
     const root = rootSym(sym),
       pv = pointValue(root);
-    const open = []; // FIFO lots: { dir:1|-1, qty, price, time }
+    const open: Array<{ dir: number; qty: number; price: number; time: string }> = []; // FIFO lots
     for (const f of arr) {
       const dir = f.side === 'buy' ? 1 : -1;
       let remaining = f.qty;
@@ -310,11 +311,11 @@ function pairFills(fills) {
 }
 
 /* ---------- header utilities ---------- */
-const lc = a => a.map(h => String(h).trim().toLowerCase());
-const finder = head => name => head.findIndex(h => h.includes(name));
-const hasAny = (head, names) => names.some(n => head.some(h => h.includes(n)));
+const lc = (a: Row) => a.map(h => String(h).trim().toLowerCase());
+const finder = (head: string[]) => (name: string) => head.findIndex(h => h.includes(name));
+const hasAny = (head: string[], names: string[]) => names.some(n => head.some(h => h.includes(n)));
 // first row index whose lowercased cells contain every substring in `names`
-function headerRow(rows, names) {
+function headerRow(rows: Row[], names: string[]) {
   for (let i = 0; i < Math.min(rows.length, 40); i++) {
     const h = lc(rows[i]);
     if (names.every(n => h.some(c => c.includes(n)))) return i;
@@ -327,7 +328,7 @@ function headerRow(rows, names) {
      ============================================================ */
 
 /* TradingView — "List of trades" / balance history (closed positions). */
-const tradingview = {
+const tradingview: Adapter = {
   id: 'tradingview',
   label: 'TradingView',
   kind: 'closed',
@@ -360,7 +361,7 @@ const tradingview = {
 };
 
 /* MotiveWave — Trade Report (closed; entry+exit+P/L per row → native hold time). */
-const motivewave = {
+const motivewave: Adapter = {
   id: 'motivewave',
   label: 'MotiveWave',
   kind: 'closed',
@@ -409,7 +410,7 @@ const motivewave = {
 };
 
 /* Tradovate — Orders export (fills). */
-const tradovate = {
+const tradovate: Adapter = {
   id: 'tradovate',
   label: 'Tradovate',
   kind: 'fills',
@@ -446,7 +447,7 @@ const tradovate = {
 };
 
 /* Rithmic R|Trader — Completed Orders (fills). */
-const rithmic = {
+const rithmic: Adapter = {
   id: 'rithmic',
   label: 'Rithmic R|Trader',
   kind: 'fills',
@@ -479,7 +480,7 @@ const rithmic = {
 };
 
 /* Sierra Chart — Trade Activity Log (fills; usually tab-separated). */
-const sierrachart = {
+const sierrachart: Adapter = {
   id: 'sierrachart',
   label: 'Sierra Chart',
   kind: 'fills',
@@ -518,7 +519,7 @@ const sierrachart = {
 };
 
 /* TradeStation — trades/fills export. */
-const tradestation = {
+const tradestation: Adapter = {
   id: 'tradestation',
   label: 'TradeStation',
   kind: 'fills',
@@ -564,7 +565,7 @@ const tradestation = {
 };
 
 /* Webull — Orders export (fills; equities). */
-const webull = {
+const webull: Adapter = {
   id: 'webull',
   label: 'Webull',
   kind: 'fills',
@@ -605,7 +606,7 @@ const webull = {
 };
 
 /* Interactive Brokers — Flex/Activity trades (fills; uses Realized P/L when present). */
-const ibkr = {
+const ibkr: Adapter = {
   id: 'ibkr',
   label: 'Interactive Brokers',
   kind: 'fills',
@@ -639,7 +640,7 @@ const ibkr = {
       const price = num(row[cPx]);
       const qty = isNaN(qn) ? 1 : Math.abs(qn);
       if (!side || isNaN(price) || !(qty > 0)) continue;
-      const f = { time: normTime(row[cT]), symbol: row[cSym], side, qty, price };
+      const f: Fill = { time: normTime(row[cT]), symbol: row[cSym], side, qty, price };
       if (cReal >= 0) {
         const rp = num(row[cReal]);
         if (!isNaN(rp) && rp !== 0) f.realized = rp;
@@ -651,7 +652,7 @@ const ibkr = {
 };
 
 /* Charles Schwab / thinkorswim — Account Statement "Account Trade History" (fills). */
-const schwab = {
+const schwab: Adapter = {
   id: 'schwab',
   label: 'Schwab / thinkorswim',
   kind: 'fills',
@@ -687,19 +688,19 @@ const schwab = {
   },
 };
 
-const ADAPTERS = [tradingview, motivewave, tradovate, rithmic, sierrachart, tradestation, webull, ibkr, schwab];
-const byId = id => ADAPTERS.find(a => a.id === id);
+const ADAPTERS: Adapter[] = [tradingview, motivewave, tradovate, rithmic, sierrachart, tradestation, webull, ibkr, schwab];
+const byId = (id: string) => ADAPTERS.find(a => a.id === id);
 
 /* Best-guess platform for an export (or null). */
-function detect(text) {
-  let rows;
+function detect(text: string): Detected | null {
+  let rows: Row[];
   try {
     rows = parseCSV(text);
   } catch (_) {
     return null;
   }
   if (!rows.length) return null;
-  let best = null;
+  let best: Detected | null = null;
   for (const a of ADAPTERS) {
     let score = 0;
     try {
@@ -712,14 +713,10 @@ function detect(text) {
   return best;
 }
 
-/* Parse an export into normalized trades.
-     platformId optional — when omitted, auto-detect.
-     @param {string} text
-     @param {string} [platformId]
-     @returns {import('./types.js').ParseResult} */
-function parse(text, platformId) {
+/* Parse an export into normalized trades. platformId optional — when omitted, auto-detect. */
+function parse(text: string, platformId?: string): ParseResult {
   if (!text || !text.trim()) return { ok: false, error: 'The file is empty.' };
-  let rows;
+  let rows: Row[];
   try {
     rows = parseCSV(text);
   } catch (e) {
@@ -728,7 +725,7 @@ function parse(text, platformId) {
   if (rows.length < 2) return { ok: false, error: 'The file has no data rows.' };
   DATE_ORDER = detectDateOrder(text); // decide M/D/Y vs D/M/Y once for the whole file (B26)
 
-  let adapter,
+  let adapter: Adapter | undefined,
     detected = detect(text);
   if (platformId) {
     adapter = byId(platformId);
@@ -740,12 +737,14 @@ function parse(text, platformId) {
       error: 'Could not recognize this platform’s export format. Choose your platform from the dropdown and try again.',
       detected: null,
     };
+  // Unreachable in practice (detect() ids always resolve), but narrows `adapter` for the rest.
+  if (!adapter) return { ok: false, error: 'Unknown platform.', detected: detected ? detected.id : null };
 
   let trades;
   try {
     trades = adapter.toTrades(text, rows);
   } catch (e) {
-    return { ok: false, error: `Could not parse this file as ${adapter.label}: ${e.message}.`, platform: adapter.id };
+    return { ok: false, error: `Could not parse this file as ${adapter.label}: ${(e as Error).message}.`, platform: adapter.id };
   }
 
   trades = (trades || []).filter(t => t && t.time && !isNaN(t.pnl) && t.date && /^\d{4}-\d{2}-\d{2}/.test(t.date));

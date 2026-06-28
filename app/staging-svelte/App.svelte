@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   // App root (A27 staging; A31 made it mode-aware for the coming prod/demo migration). Boots by
   // REUSING the vanilla pure-logic core verbatim (A29): loadRefData + a Store + Adapters + compute().
   // The view layer (this component + children) is the only thing rewritten in Svelte.
@@ -10,11 +10,12 @@
   //   staging  → real IndexedDB Store (isolated blotterbookStaging DB), seeded
   // A33 cutover: this app now mounts on ALL three surfaces (app/demo/staging.html).
   import { onMount, setContext } from 'svelte';
-  import { loadRefData, compute, costModel, emit, sessionOf, PAGE_MODE, STATES, BROKERS, DEMO_BROKER, DEMO_FEED, DEMO_STATE } from '../core.js';
-  import { Store } from '../store.js';
-  import { createDemoStore } from '../demostore.js';
-  import { Adapters } from '../adapters.js';
-  import { demoCSV } from '../sampledata.js';
+  import { loadRefData, compute, costModel, emit, sessionOf, PAGE_MODE, STATES, BROKERS, DEMO_BROKER, DEMO_FEED, DEMO_STATE } from '../core.ts';
+  import { Store } from '../store.ts';
+  import { createDemoStore } from '../demostore.ts';
+  import { Adapters } from '../adapters.ts';
+  import { demoCSV } from '../sampledata.ts';
+  import type { Trade, FilterState, SavedFilter, SavedFilterDef, AppSetup, PanelBundle } from '../types.ts';
 
   // Pick the backend by mode and share it with every child (they read getContext('bb:store')).
   const store = PAGE_MODE === 'demo' ? createDemoStore() : Store;
@@ -36,7 +37,7 @@
   import WorkspaceBar from './components/WorkspaceBar.svelte';
   import Landing from './components/Landing.svelte';
 
-  let allTrades = $state([]);
+  let allTrades = $state<Trade[]>([]);
   let loaded = $state(false);
   let status = $state('Loading…');
   let error = $state('');
@@ -44,19 +45,19 @@
   let landingMsg = $state('');
   let online = $state(typeof navigator === 'undefined' ? true : navigator.onLine); // A38 session pill
   let pillOpen = $state(false); // A49 session-pill legend popup
-  let cardModalKey = $state(null); // A35 stat-card detail modal
+  let cardModalKey = $state<string | null>(null); // A35 stat-card detail modal
   let exportOpen = $state(false); // A34 performance-report export
 
   // Day-notes journal: the selected calendar day + the set of dates carrying a saved note.
-  let selectedDate = $state(null);
-  let journalDates = $state(new Set());
+  let selectedDate = $state<string | null>(null);
+  let journalDates = $state<Set<string>>(new Set());
   // Per-trade metadata (id -> {tags,note,...}) for the tag filter + manage-data table.
-  let tradeMeta = $state(new Map());
+  let tradeMeta = $state<Map<string, any>>(new Map());
   // Saved filter views ([{id,name,f}]), persisted to Store meta in the vanilla-compatible shape.
-  let savedFilters = $state([]);
+  let savedFilters = $state<SavedFilter[]>([]);
   // Cost setup (broker/feed/state/platform), lifted here (A32) so BOTH the cost panel and the
   // curve overlays share it. Persisted to the 'setup' meta.
-  let setup = $state({ broker: '', feed: '', stateAbbr: '', platform: 0 });
+  let setup = $state<AppSetup>({ broker: '', feed: '', stateAbbr: '', platform: 0 });
 
   // Panel system (A36 — parity with vanilla ui.js/widgets.js). The dashboard's reorderable,
   // collapsible panels; order + collapsed map persist through the Store.local seam under a
@@ -67,31 +68,31 @@
   const LS_ORDER = 'tj_order' + LS_SUFFIX;
   const LS_COLLAPSE = 'tj_collapsed' + LS_SUFFIX;
   const WS_KEY = 'tj_ws_templates' + LS_SUFFIX;
-  const sanitizeOrder = ord => {
+  const sanitizeOrder = (ord: unknown): string[] => {
     if (!Array.isArray(ord)) return [...DEFAULT_ORDER];
     const known = ord.filter(k => DEFAULT_ORDER.includes(k));
     return [...known, ...DEFAULT_ORDER.filter(k => !known.includes(k))];
   };
   // Initialize synchronously from localStorage so the restored layout paints without a flash.
-  let panelOrder = $state(sanitizeOrder(store.local.get(LS_ORDER, null)));
-  let collapsedPanels = $state(store.local.get(LS_COLLAPSE, {}) || {});
-  let draggingKey = $state(null);
-  let wsNames = $state(Object.keys(store.local.get(WS_KEY, {}) || {}));
+  let panelOrder = $state<string[]>(sanitizeOrder(store.local.get(LS_ORDER, null)));
+  let collapsedPanels = $state<Record<string, number>>((store.local.get(LS_COLLAPSE, {}) as Record<string, number>) || {});
+  let draggingKey = $state<string | null>(null);
+  let wsNames = $state<string[]>(Object.keys((store.local.get(WS_KEY, {}) as Record<string, unknown>) || {}));
   let wsSelected = $state('');
 
   const persistOrder = () => store.local.set(LS_ORDER, $state.snapshot(panelOrder));
   const persistCollapsed = () => store.local.set(LS_COLLAPSE, $state.snapshot(collapsedPanels));
 
-  function togglePanel(key) {
+  function togglePanel(key: string) {
     const next = { ...collapsedPanels };
     if (next[key]) delete next[key];
     else next[key] = 1;
     collapsedPanels = next;
     persistCollapsed();
   }
-  function reorderOver(e, overKey) {
+  function reorderOver(e: DragEvent, overKey: string) {
     if (!draggingKey || draggingKey === overKey) return;
-    const rect = e.currentTarget.getBoundingClientRect();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const after = e.clientY > rect.top + rect.height / 2;
     const next = panelOrder.filter(k => k !== draggingKey);
     const idx = next.indexOf(overKey);
@@ -100,7 +101,7 @@
     panelOrder = next;
   }
   // The prop bundle each panel forwards to its <Panel> chrome.
-  const panelBundle = key => ({
+  const panelBundle = (key: string): PanelBundle => ({
     pkey: key,
     collapsed: !!collapsedPanels[key],
     dragging: draggingKey === key,
@@ -114,7 +115,8 @@
   });
 
   // Workspace templates (Store.local seam).
-  const readWs = () => store.local.get(WS_KEY, {}) || {};
+  const readWs = (): Record<string, { order: string[]; collapsed: Record<string, number> }> =>
+    (store.local.get(WS_KEY, {}) as Record<string, { order: string[]; collapsed: Record<string, number> }>) || {};
   function saveWorkspace() {
     if (PAGE_MODE === 'demo') return; // demo never persists new layouts (B23)
     const name = (window.prompt('Name this workspace layout:') || '').trim();
@@ -126,7 +128,7 @@
     wsSelected = name;
     emit('ws:saved', { name });
   }
-  function selectWorkspace(name) {
+  function selectWorkspace(name: string) {
     wsSelected = name;
     if (!name) {
       // "— Default —" → drop the saved layout and restore the default arrangement.
@@ -149,18 +151,18 @@
 
   // Filters drive the whole dashboard (a shared reactive object). scope = all-time vs the
   // calendar's current month. The cursor (calYear/calMonth) lives here so scope can read it.
-  let filters = $state({ scope: 'all', from: '', to: '', root: '', side: '', session: '', tag: '', dows: [] });
+  let filters = $state<FilterState>({ scope: 'all', from: '', to: '', root: '', side: '', session: '', tag: '', dows: [] });
   let calYear = $state(new Date().getFullYear());
   let calMonth = $state(new Date().getMonth());
 
-  const inMonth = (t, y, m) => {
+  const inMonth = (t: Trade, y: number, m: number) => {
     const d = new Date(t.date + 'T00:00:00');
     return d.getFullYear() === y && d.getMonth() === m;
   };
   // sessionOf (RTH 09:30–16:00 vs ETH) is shared from core.js so the Svelte filter and the vanilla
   // render.js filter use ONE definition (A29/A41).
 
-  function applyFilters(trades, f) {
+  function applyFilters(trades: Trade[], f: FilterState) {
     return trades.filter(t => {
       if (f.from && t.date < f.from) return false;
       if (f.to && t.date > f.to) return false;
@@ -223,7 +225,7 @@
   async function seedIfEmpty() {
     if ((await store.tradeCount()) > 0) return;
     const r = Adapters.parse(demoCSV(), 'tradingview');
-    if (r.ok && r.trades.length) {
+    if (r.ok && r.trades && r.trades.length) {
       await store.addTrades(r.trades);
       await store.setMeta('setup', { broker: DEMO_BROKER, feed: DEMO_FEED, state: DEMO_STATE, platform: '35' });
     }
@@ -237,9 +239,9 @@
     const trades = await store.getAllTrades();
     allTrades = trades;
     journalDates = await store.journalDates();
-    tradeMeta = new Map((await store.allTradeMeta()).map(m => [m.id, m]));
-    savedFilters = (await store.getMeta('savedFilters')) || [];
-    const su = (await store.getMeta('setup')) || {};
+    tradeMeta = new Map((await store.allTradeMeta()).map((m: any) => [m.id, m]));
+    savedFilters = ((await store.getMeta('savedFilters')) as SavedFilter[]) || [];
+    const su = ((await store.getMeta('setup')) as any) || {};
     setup = { broker: su.broker || '', feed: su.feed || '', stateAbbr: su.state || '', platform: Number(su.platform) || 0 };
     const last = trades.length ? trades[trades.length - 1].date : null;
     calYear = last ? +last.slice(0, 4) : new Date().getFullYear();
@@ -258,16 +260,16 @@
   async function reloadAll() {
     allTrades = await store.getAllTrades();
     journalDates = await store.journalDates();
-    tradeMeta = new Map((await store.allTradeMeta()).map(m => [m.id, m]));
-    savedFilters = (await store.getMeta('savedFilters')) || []; // A49: a backup-restore can replace these
+    tradeMeta = new Map((await store.allTradeMeta()).map((m: any) => [m.id, m]));
+    savedFilters = ((await store.getMeta('savedFilters')) as SavedFilter[]) || []; // A49: a backup-restore can replace these
   }
 
   // App-mode landing: parse + persist a CSV, then the dashboard takes over (allTrades non-empty).
   // platformId overrides auto-detect when the user picks a platform in the landing dropdown.
-  async function loadCSV(file, platformId) {
+  async function loadCSV(file: File, platformId?: string) {
     landingMsg = '';
     const r = Adapters.parse(await file.text(), platformId || undefined);
-    if (!r.ok) {
+    if (!r.ok || !r.trades) {
       landingMsg = r.error || 'Could not parse that CSV.';
       return;
     }
@@ -276,7 +278,7 @@
     await reloadAll();
   }
 
-  function navMonth(delta) {
+  function navMonth(delta: number) {
     let m = calMonth + delta;
     let y = calYear;
     if (m < 0) {
@@ -312,13 +314,13 @@
 
   // Saved filter views — persisted in the vanilla-compatible {id,name,f} shape (f.symbol holds the
   // root value, matching render.js + the Store.importAll sanitizer's FILTER_FIELDS).
-  async function saveView(name) {
-    const f = { from: filters.from, to: filters.to, symbol: filters.root, side: filters.side, session: filters.session, tag: filters.tag, dows: [...filters.dows] };
+  async function saveView(name: string) {
+    const f: SavedFilterDef = { from: filters.from, to: filters.to, symbol: filters.root, side: filters.side, session: filters.session, tag: filters.tag, dows: [...filters.dows] };
     const id = Date.now().toString(36) + savedFilters.length;
     savedFilters = [...savedFilters, { id, name: (name || '').trim() || `View ${savedFilters.length + 1}`, f }];
     await store.setMeta('savedFilters', $state.snapshot(savedFilters)); // plain clone — IndexedDB can't clone a $state proxy
   }
-  function applyView(sf) {
+  function applyView(sf: SavedFilter) {
     const f = sf.f || {};
     filters.from = f.from || '';
     filters.to = f.to || '';
@@ -328,17 +330,17 @@
     filters.tag = f.tag || '';
     filters.dows = Array.isArray(f.dows) ? [...f.dows] : [];
   }
-  async function deleteView(id) {
+  async function deleteView(id: string) {
     savedFilters = savedFilters.filter(s => s.id !== id);
     await store.setMeta('savedFilters', $state.snapshot(savedFilters));
   }
-  async function renameView(id, name) {
+  async function renameView(id: string, name: string) {
     savedFilters = savedFilters.map(s => (s.id === id ? { ...s, name } : s));
     await store.setMeta('savedFilters', $state.snapshot(savedFilters));
   }
 
   onMount(() => {
-    boot().catch(e => {
+    boot().catch((e: any) => {
       console.error('staging boot failed', e);
       error = String(e && e.message ? e.message : e);
       status = '';

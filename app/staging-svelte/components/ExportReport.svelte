@@ -1,15 +1,24 @@
-<script>
+<script lang="ts">
   // Performance-report export (A34 — parity with vanilla export.js, F3/CH16). Builds the report
   // ONCE via report.js (A29 — the pure builder shared by the on-screen doc, the Markdown download
   // and the email summary) and renders it in an isolated <iframe> (its own baked-token palette, so
   // it tracks tokens.css — A8). Download is disabled until a real format is chosen; PDF prints the
   // iframe, PNG/JPEG rasterize it, Markdown/Email reuse the builder's strings.
-  import { buildReport, reportHtmlDoc } from '../../report.js';
-  import { fmtDate } from '../../core.js';
+  import { buildReport, reportHtmlDoc } from '../../report.ts';
+  import { fmtDate } from '../../core.ts';
+  import type { Metrics } from '../../core.ts';
+  import type { CostModel, ReportLabels } from '../../types.ts';
   import { downloadBlob } from '../util.js';
   import { modal } from '../modal.js';
 
-  let { metrics: m, cost: c, labels, onclose } = $props();
+  interface Props {
+    metrics: Metrics;
+    cost: CostModel;
+    // App supplies all header labels except `generated`, which this component stamps at export time.
+    labels: Omit<ReportLabels, 'generated'>;
+    onclose: () => void;
+  }
+  let { metrics: m, cost: c, labels, onclose }: Props = $props();
 
   // Bake the live design tokens into a :root{…} block so the standalone report matches tokens.css
   // without report.js touching the DOM (A8). System fonts + a CSS-gradient dot → no external assets.
@@ -27,9 +36,9 @@
   const fname = `blotterbook-report-${fmtDate(gen)}`;
 
   function applyStyles() {
-    if (!iframeEl || !iframeEl.contentWindow) return;
+    if (!iframeEl || !iframeEl.contentWindow || !iframeEl.contentDocument) return;
     try {
-      const sheet = new iframeEl.contentWindow.CSSStyleSheet();
+      const sheet = new (iframeEl.contentWindow as any).CSSStyleSheet();
       sheet.replaceSync(built.css);
       iframeEl.contentDocument.adoptedStyleSheets = [sheet];
     } catch (_) {
@@ -40,20 +49,20 @@
   let format = $state('');
   let note = $state('');
   let noteKind = $state('');
-  let iframeEl;
+  let iframeEl: HTMLIFrameElement;
 
-  function setNote(t, k = '') {
+  function setNote(t: string, k = '') {
     note = t || '';
     noteKind = k;
   }
 
   // Rasterize the report node (serialized HTML + CSS in an SVG <foreignObject> → 2× canvas → blob).
   // No external images (system fonts + CSS-gradient dot), so the canvas is not tainted.
-  function rasterize(type) {
+  function rasterize(type: string): Promise<Blob> {
     return new Promise((resolve, reject) => {
       try {
         const idoc = iframeEl.contentDocument;
-        const sheet = idoc.querySelector('.sheet');
+        const sheet = idoc?.querySelector('.sheet');
         if (!sheet) return reject(new Error('no report to render'));
         const w = Math.ceil(sheet.scrollWidth),
           h = Math.ceil(sheet.scrollHeight);
@@ -72,6 +81,7 @@
             cv.width = w * sc;
             cv.height = h * sc;
             const ctx = cv.getContext('2d');
+            if (!ctx) return reject(new Error('no 2d context'));
             ctx.scale(sc, sc);
             ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0d1014';
             ctx.fillRect(0, 0, w, h);
@@ -93,8 +103,8 @@
     if (!format) return;
     try {
       if (format === 'pdf') {
-        iframeEl.contentWindow.focus();
-        iframeEl.contentWindow.print();
+        iframeEl.contentWindow?.focus();
+        iframeEl.contentWindow?.print();
       } else if (format === 'md') {
         downloadBlob(fname + '.md', new Blob([rep.reportMd], { type: 'text/markdown;charset=utf-8' }));
         setNote('Markdown downloaded.', 'ok');
@@ -111,7 +121,7 @@
   }
 </script>
 
-<div class="overlay" role="presentation" onclick={e => e.target === e.currentTarget && onclose()}>
+<div class="overlay" role="presentation" onclick={(e: MouseEvent) => e.target === e.currentTarget && onclose()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Export performance report" tabindex="-1" use:modal={{ onclose }}>
     <div class="bar">
       <strong>Performance report</strong>

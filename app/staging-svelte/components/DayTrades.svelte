@@ -1,12 +1,18 @@
-<script>
+<script lang="ts">
   // Read-only intraday trade list for the selected day (A50 — parity with vanilla data.js
   // renderDayTrades / #j_trades). Shown alongside the day-note editor on calendar/curve day-select.
   // `trades` is the active-filtered set for the day (passed from App), so it tracks the filters.
-  import { usd, cls } from '../../core.js';
+  import { usd, cls } from '../../core.ts';
+  import type { Trade } from '../../types.ts';
 
-  let { date, trades = [], filtered = false } = $props();
+  interface Props {
+    date: string;
+    trades?: Trade[];
+    filtered?: boolean;
+  }
+  let { date, trades = [], filtered = false }: Props = $props();
   const net = $derived(trades.reduce((a, t) => a + t.pnl, 0));
-  const hm = t => (t.time || '').slice(11, 16) || '—';
+  const hm = (t: Trade) => (t.time || '').slice(11, 16) || '—';
 </script>
 
 <section class="panel daytrades">

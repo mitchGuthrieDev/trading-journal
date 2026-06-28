@@ -1,23 +1,29 @@
-<script>
+<script lang="ts">
   // Advanced statistics — the deeper compute() metrics not shown in the Overview, presented as
   // label/value rows (A29: pure presentation of the existing metrics object). DOW_LABEL/usd/cls
   // are imported verbatim from the core.
-  import { usd, cls, ratio, num, fmtDur, DOW_LABEL } from '../../core.js';
+  import { usd, cls, ratio, num, fmtDur, DOW_LABEL } from '../../core.ts';
+  import type { Metrics } from '../../core.ts';
+  import type { PanelBundle } from '../../types.ts';
   import Panel from './Panel.svelte';
 
-  let { metrics, panel = {} } = $props();
+  interface Props {
+    metrics: Metrics;
+    panel?: PanelBundle;
+  }
+  let { metrics, panel = {} as PanelBundle }: Props = $props();
 
-  const dow = d => (d ? `${DOW_LABEL[d.i]} · ${usd(d.avg)}/trade` : '—');
+  const dow = (d: { i: number; avg: number } | null) => (d ? `${DOW_LABEL[d.i]} · ${usd(d.avg)}/trade` : '—');
 
   const rows = $derived(build(metrics));
 
-  function build(m) {
+  function build(m: Metrics) {
     if (!m) return [];
     // Avg hold time is only available for fills-based platform exports (round-trip matched, so the
     // trade carries holdMs); computed straight off m.trades like vanilla renderAdv (A47/A29). It's
     // omitted entirely for close-event exports (e.g. TradingView) that carry no hold duration.
     const held = (m.trades || []).filter(t => t.holdMs != null && t.holdMs > 0);
-    const avgHold = held.length ? held.reduce((a, t) => a + t.holdMs, 0) / held.length : null;
+    const avgHold = held.length ? held.reduce((a, t) => a + t.holdMs!, 0) / held.length : null;
     const rows = [
       { k: 'Payoff ratio (avg win / avg loss)', v: ratio(m.wl) },
       { k: 'Average win', v: usd(m.avgW), tone: 'pos' },

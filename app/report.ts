@@ -1,18 +1,15 @@
-// @ts-check
 'use strict';
 /* Blotterbook · performance-report builder (A34). Pure assembly of the report content from the
    compute() metrics + costModel result + setup labels — ONE source for the on-screen report, the
    Markdown download, and the email summary (so they can't drift, like the vanilla export.js).
    Depends only on core formatters. */
-import { money, cls, DOW_LABEL, fmtDate, pad2 } from './core.js';
+import { money, cls, DOW_LABEL, fmtDate, pad2 } from './core.ts';
+import type { Metrics } from './core.ts';
+import type { CostModel, ReportLabels } from './types.ts';
 import { esc } from '../assets/util.js';
 
-/**
- * @param {*} m  active compute() metrics
- * @param {*} c  costModel(m, inputs) result
- * @param {{broker:string, feed:string, state:string, scope:string, stateRate:number, platform:(number|string), generated:Date}} labels
- */
-export function buildReport(m, c, labels) {
+/** Assemble the report content (on-screen tiles/tables + Markdown + email body) from the metrics. */
+export function buildReport(m: Metrics, c: CostModel, labels: ReportLabels) {
   const range = m.firstDate === '—' ? '—' : `${m.firstDate} → ${m.lastDate}`;
   const gen = labels.generated;
   const genStr = `${fmtDate(gen)} ${pad2(gen.getHours())}:${pad2(gen.getMinutes())}`;
@@ -69,7 +66,7 @@ export function buildReport(m, c, labels) {
     `Break-even / trade: ${money(c.bePer)}\n\n` +
     `Estimates only — not financial or tax advice.`;
 
-  const mdRow = (l, v) => `| ${l} | ${v} |\n`;
+  const mdRow = (l: string, v: string) => `| ${l} | ${v} |\n`;
   const reportMd =
     `# Blotterbook — Performance Report\n\n` +
     `**Period:** ${range} (${labels.scope})  \n` +
@@ -102,10 +99,11 @@ export function buildReport(m, c, labels) {
    sheetHtml + reportCss) for the iframe preview + print(PDF) + raster(PNG/JPEG). Kept DOM-free:
    the caller bakes the live design tokens into `tokenBlock` (a `:root{…}` string) via
    getComputedStyle so the report palette tracks tokens.css (A8) without this module touching the DOM. */
-export function reportHtmlDoc(rep, labels, tokenBlock) {
-  const tile = (k, v, cl = '') => `<div class="rtile"><div class="rk">${esc(k)}</div><div class="rv ${cl}">${esc(v)}</div></div>`;
+export function reportHtmlDoc(rep: ReturnType<typeof buildReport>, labels: Omit<ReportLabels, 'generated'>, tokenBlock: string) {
+  const tile = (k: string, v: string, cl = '') =>
+    `<div class="rtile"><div class="rk">${esc(k)}</div><div class="rv ${cl}">${esc(v)}</div></div>`;
   const tiles = rep.headline.map(([k, v, tone]) => tile(k, v, tone || '')).join('');
-  const COST_CLASS = {
+  const COST_CLASS: Record<string, string> = {
     'Net P&L (pre-tax)': 'tot',
     'After-tax take-home': 'tot',
     'State top rate': 'sub',

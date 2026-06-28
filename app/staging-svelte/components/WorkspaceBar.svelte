@@ -1,9 +1,16 @@
-<script>
+<script lang="ts">
   // A36 — workspace template bar (parity with vanilla widgets.js ws_tpl / ws_save). Picks a saved
   // panel layout or "— Default —" (revert), and saves the current layout under a name. The template
   // CRUD + persistence live in App (Store.local seam); this is presentation only. Save is disabled
   // in demo (the demo is a 1:1 mirror with data-writing controls off — B23).
-  let { names = [], value = '', onsave = () => {}, onselect = () => {}, saveDisabled = false } = $props();
+  interface Props {
+    names?: string[];
+    value?: string;
+    onsave?: () => void;
+    onselect?: (name: string) => void;
+    saveDisabled?: boolean;
+  }
+  let { names = [], value = '', onsave = () => {}, onselect = () => {}, saveDisabled = false }: Props = $props();
 </script>
 
 <div class="wsbar">

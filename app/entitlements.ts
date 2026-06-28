@@ -19,7 +19,7 @@
    then it always resolves to "local" and the local Store, so the
    rest of the app can already be written against this interface.
    ============================================================ */
-import { Store } from './store.js';
+import { Store } from './store.ts';
 
 export const Entitlements = {
   async current() {

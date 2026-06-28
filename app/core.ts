@@ -1,15 +1,15 @@
-// @ts-check
 'use strict';
 /* Blotterbook app · core — metrics, formatting, broker/cost model, reference-data loading, shared
    pure helpers, and the app event bus. A native ES module: everything it shares is `export`ed and
    imported explicitly by the Svelte app + the pure-logic modules. */
+import type { Trade, CostInputs, CostModel, SymCost, Broker, FeedGroups, TaxModel, StateRow } from './types.ts';
 
-export const pad2 = n => String(n).padStart(2, '0');
-export const fmtDate = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+export const pad2 = (n: number) => String(n).padStart(2, '0');
+export const fmtDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 // running min/max — avoids Math.min(...arr)/Math.max(...arr), whose argument spread overflows the
 // call stack on large per-trade arrays (equity curve / pnl list). compute() walks manually for the
 // same reason; this is the shared helper for the chart code (B27).
-export function minMax(arr) {
+export function minMax(arr: number[]) {
   let lo = Infinity,
     hi = -Infinity;
   for (const v of arr) {
@@ -71,13 +71,13 @@ export const STAGING_PAGE = PAGE_MODE === 'staging';
    data:imported, note:saved, trade:deleted, backup:created, data:erased.
    ------------------------------------------------------------------ */
 export const BUS = new EventTarget();
-export function emit(name, detail) {
+export function emit(name: string, detail?: unknown) {
   BUS.dispatchEvent(new CustomEvent(name, { detail }));
 }
 // Subscribe to a bus event; returns an unsubscribe function (callers that don't need cleanup —
 // the vanilla widgets — can ignore it; the Svelte components capture it for onMount teardown).
-export function onEvent(name, fn) {
-  const handler = e => fn(/** @type {CustomEvent} */ (e).detail);
+export function onEvent(name: string, fn: (detail: unknown) => void) {
+  const handler = (e: Event) => fn((e as CustomEvent).detail);
   BUS.addEventListener(name, handler);
   return () => BUS.removeEventListener(name, handler);
 }
@@ -88,8 +88,7 @@ export function onEvent(name, fn) {
 /* ============================================================
    Metrics
    ============================================================ */
-/** @param {import('./types.js').Trade[]} tr */
-export function compute(tr) {
+export function compute(tr: Trade[]) {
   const n = tr.length,
     pnls = tr.map(t => t.pnl);
   const wins = pnls.filter(p => p > 0),
@@ -153,10 +152,11 @@ export function compute(tr) {
     .slice(0, 5)
     .reduce((a, b) => a + b, 0);
   const concPct = net > 0 ? (top5Win / net) * 100 : null; // null when there's no net profit to concentrate
-  const dayMap = new Map();
+  const dayMap = new Map<string, number[]>();
   for (const t of tr) {
-    if (!dayMap.has(t.date)) dayMap.set(t.date, []);
-    dayMap.get(t.date).push(t.pnl);
+    let arr = dayMap.get(t.date);
+    if (!arr) dayMap.set(t.date, (arr = []));
+    arr.push(t.pnl);
   }
   const days = [...dayMap.entries()]
     .map(([d, arr]) => ({ date: d, pnl: arr.reduce((a, b) => a + b, 0), trades: arr.length, wins: arr.filter(p => p > 0).length }))
@@ -212,7 +212,7 @@ export function compute(tr) {
   const tmean = expectancy;
   const tStd = n ? Math.sqrt(pnls.reduce((a, p) => a + (p - tmean) ** 2, 0) / n) : 0;
   // long / short split
-  const side = k => {
+  const side = (k: string) => {
     const s = tr.filter(t => t.side === k);
     const p = s.reduce((a, t) => a + t.pnl, 0);
     return { n: s.length, pnl: p, wins: s.filter(t => t.pnl > 0).length };
@@ -280,10 +280,13 @@ export function compute(tr) {
     firstDate: tr.length ? tr[0].date : '—',
   };
 }
+/** The full metrics object compute() returns — derived from its implementation so the two can't drift. */
+export type Metrics = ReturnType<typeof compute>;
+
 export const DOW_LABEL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 // Day-of-week buckets (0=Sun..6=Sat), summing PnL + count per weekday. Shared by compute()
 // (Best/Worst Weekday) and the win-rate card modal (cmDow) so the two can't drift (CH23).
-export function dowBuckets(trades) {
+export function dowBuckets(trades: Trade[]) {
   const d = Array.from({ length: 7 }, () => ({ pnl: 0, n: 0 }));
   for (const t of trades) {
     const wd = new Date(t.date + 'T00:00:00').getDay();
@@ -296,20 +299,20 @@ export function dowBuckets(trades) {
 /* ============================================================
    Formatting
    ============================================================ */
-export const usd = (v, s = true) => {
+export const usd = (v: number, s = true) => {
   if (v === Infinity) return '∞';
   const sign = v < 0 ? '-' : s && v > 0 ? '+' : '';
   return sign + '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
-export const money = v => usd(v, false);
-export const cls = v => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
+export const money = (v: number) => usd(v, false);
+export const cls = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
 // Ratio/number formatters shared by the Svelte overview / advanced-stats / stat-card modal so the
 // "∞ / —" handling can't drift between them.
-export const ratio = v => (v === Infinity ? '∞' : Number.isFinite(v) ? v.toFixed(2) : '—');
-export const num = v => (Number.isFinite(v) ? v.toFixed(2) : '—');
+export const ratio = (v: number) => (v === Infinity ? '∞' : Number.isFinite(v) ? v.toFixed(2) : '—');
+export const num = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : '—');
 // Compact duration (ms → "45s" / "12m" / "3h 20m" / "2d 4h"), shared by the vanilla advanced-stats
 // hold-time row and the Svelte port (A29/A47) so the two read identically.
-export function fmtDur(ms) {
+export function fmtDur(ms: number) {
   const s = Math.round(ms / 1000);
   if (s < 90) return s + 's';
   const mn = Math.round(s / 60);
@@ -322,7 +325,7 @@ export function fmtDur(ms) {
 }
 /* "nice" axis ticks spanning [min,max] with ~count steps. Shared by the vanilla curve and the
    Svelte curve (A29/A43) so axis framing matches. */
-export function niceTicks(min, max, count) {
+export function niceTicks(min: number, max: number, count: number) {
   const span = max - min || 1;
   const rawStep = span / Math.max(1, count);
   const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
@@ -330,12 +333,12 @@ export function niceTicks(min, max, count) {
   const step = (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
   const lo = Math.floor(min / step) * step,
     hi = Math.ceil(max / step) * step;
-  const ticks = [];
+  const ticks: number[] = [];
   for (let v = lo; v <= hi + step * 1e-6; v += step) ticks.push(+v.toFixed(6));
   return ticks;
 }
 /* compact money for axis labels: $1.2k / $850 / -$3.4k */
-export function axMoney(v) {
+export function axMoney(v: number) {
   const a = Math.abs(v),
     s = v < 0 ? '-' : '';
   if (a >= 1000) return s + '$' + (a / 1000).toFixed(a >= 10000 ? 0 : 1) + 'k';
@@ -347,11 +350,11 @@ export function axMoney(v) {
    app use ONE definition — A29). sessionOf: RTH = 09:30–16:00 by the export's own clock time,
    else ETH (extended). isoWeek: ISO-8601 week number for the calendar's Week column.
    ============================================================ */
-export const sessionOf = t => {
+export const sessionOf = (t: Trade) => {
   const hm = (t.time || '').slice(11, 16);
   return hm && hm >= '09:30' && hm < '16:00' ? 'rth' : 'eth';
 };
-export function isoWeek(d) {
+export function isoWeek(d: Date) {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const dn = (t.getUTCDay() + 6) % 7;
   t.setUTCDate(t.getUTCDate() - dn + 3);
@@ -369,20 +372,20 @@ export function isoWeek(d) {
 
 /* Reference data — loaded at runtime from /data/*.json (see loadRefData).
    Populated before any setup/render runs, so call-time access is safe. */
-export let EXCH = {}; // root -> exchange/clearing/NFA $ per side
-export let MICRO = new Set(); // roots priced at the micro tier
+export let EXCH: Record<string, number> = {}; // root -> exchange/clearing/NFA $ per side
+export let MICRO = new Set<string>(); // roots priced at the micro tier
 export let EXCH_FALLBACK = { micro: 0.37, std: 1.5 };
-export let BROKERS = {}; // key -> {name, comm:{micro,std}}
-export let BROKER_ORDER = [];
-export let BROKER_FEEDS = {}; // key -> {group: [[label,$/mo],...]}
-export let STATES = []; // [abbr, ratePct, name]
-export let TAXMODEL = { fedOrdinary: 24, ltcg: 15, ltcgWeight: 0.6, ordinaryWeight: 0.4 };
+export let BROKERS: Record<string, Broker> = {}; // key -> {name, comm:{micro,std}}
+export let BROKER_ORDER: string[] = [];
+export let BROKER_FEEDS: Record<string, FeedGroups> = {}; // key -> {group: [[label,$/mo],...]}
+export let STATES: StateRow[] = []; // [abbr, ratePct, name]
+export let TAXMODEL: TaxModel = { fedOrdinary: 24, ltcg: 15, ltcgWeight: 0.6, ordinaryWeight: 0.4 };
 
-export function tierOf(root) {
+export function tierOf(root: string): 'micro' | 'std' {
   if (EXCH[root] != null) return MICRO.has(root) ? 'micro' : 'std';
   return root[0] === 'M' && root.length >= 3 ? 'micro' : 'std';
 }
-export function exchOf(root, tier) {
+export function exchOf(root: string, tier: 'micro' | 'std') {
   return EXCH[root] != null ? EXCH[root] : tier === 'micro' ? EXCH_FALLBACK.micro : EXCH_FALLBACK.std;
 }
 
@@ -401,8 +404,8 @@ export async function loadRefData() {
     if (!r.ok) throw new Error('manifest ' + r.status);
     return r.json();
   });
-  const v = f => (man.files && man.files[f] ? '?v=' + man.files[f] : '');
-  const get = f =>
+  const v = (f: string) => (man.files && man.files[f] ? '?v=' + man.files[f] : '');
+  const get = (f: string) =>
     fetch(`../data/${f}${v(f)}`).then(r => {
       if (!r.ok) throw new Error(f + ' ' + r.status);
       return r.json();
@@ -442,7 +445,7 @@ export async function loadRefData() {
   }
 }
 
-export function rateFor(brokerKey, root) {
+export function rateFor(brokerKey: string, root: string) {
   const b = BROKERS[brokerKey] || BROKERS.AMP;
   const tier = tierOf(root),
     exch = exchOf(root, tier);
@@ -451,24 +454,23 @@ export function rateFor(brokerKey, root) {
 
 // Section-1256 blended federal rate + a given state rate (%). Takes the rate as a param so the cost
 // panel passes its own value (A32) — no DOM coupling.
-export function blendedRateFor(stateRatePct) {
-  return (TAXMODEL.ltcgWeight * TAXMODEL.ltcg) / 100 + (TAXMODEL.ordinaryWeight * TAXMODEL.fedOrdinary) / 100 + (+stateRatePct || 0) / 100;
+export function blendedRateFor(stateRatePct?: number | string) {
+  return (
+    (TAXMODEL.ltcgWeight * TAXMODEL.ltcg) / 100 + (TAXMODEL.ordinaryWeight * TAXMODEL.fedOrdinary) / 100 + (Number(stateRatePct) || 0) / 100
+  );
 }
 
 /**
- * @param {*} m  Active metrics (compute() result) — reads m.trades / m.net / m.months.
- * @param {{ broker?:string, platform?:(number|string), feedCost?:(number|string), stateRate?:(number|string) }} inputs
- *   The cost setup (A32). Negatives are clamped to 0 (B13). (A33: the old DOM-read fallback was
- *   removed — all callers pass inputs explicitly.)
- * @returns {import('./types.js').CostModel}
+ * Active metrics + the cost setup → commissions, subscriptions, tax, take-home (A32). Negatives are
+ * clamped to 0 (B13). (A33: the old DOM-read fallback was removed — all callers pass inputs explicitly.)
  */
-export function costModel(m, inputs = {}) {
+export function costModel(m: Metrics, inputs: CostInputs = {}): CostModel {
   const broker = inputs.broker || 'AMP',
-    platform = Math.max(0, +inputs.platform || 0),
-    data = Math.max(0, +inputs.feedCost || 0),
+    platform = Math.max(0, Number(inputs.platform) || 0),
+    data = Math.max(0, Number(inputs.feedCost) || 0),
     fixedMo = platform + data;
   const trades = m && m.trades ? m.trades : [];
-  const bySym = new Map();
+  const bySym = new Map<string, SymCost>();
   let totalComm = 0,
     gp = 0,
     gl = 0;
@@ -480,8 +482,8 @@ export function costModel(m, inputs = {}) {
     const { rate, known } = rateFor(broker, t.root);
     const rt = rate * 2 * q;
     totalComm += rt;
-    if (!bySym.has(t.root)) bySym.set(t.root, { root: t.root, count: 0, qty: 0, rate, known, total: 0 });
-    const e = bySym.get(t.root);
+    let e = bySym.get(t.root);
+    if (!e) bySym.set(t.root, (e = { root: t.root, count: 0, qty: 0, rate, known, total: 0 }));
     e.count++;
     e.qty += q;
     e.total += rt;
