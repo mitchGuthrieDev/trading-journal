@@ -1,9 +1,8 @@
 <script>
-  // Break-even & cost (A27). REUSES costModel() verbatim (A29) — no core.js change (the param
-  // refactor is deferred to Phase 4). costModel reads its inputs from DOM elements by id
-  // (#c_broker/#c_feed/#c_state_sel/#c_tv), so this panel renders exactly those controls (in the
-  // formats core's curBroker/feedCost/stateRate/numIn expect) and calls costModel() against them.
-  // Setup is loaded from / persisted to the isolated staging Store ('setup' meta), seeded already.
+  // Break-even & cost (A27; A32 cleanup). REUSES costModel() verbatim (A29). A32 added the
+  // costModel(inputs) param signature, so this panel now PASSES its own setup values instead of
+  // relying on DOM ids — clean Svelte, no #c_broker/#c_feed/#c_state_sel/#c_tv coupling. Setup is
+  // loaded from / persisted to the active Store ('setup' meta).
   import { onMount, getContext } from 'svelte';
   import { costModel, BROKERS, BROKER_ORDER, BROKER_FEEDS, STATES, usd, money } from '../../core.js';
 
@@ -20,6 +19,10 @@
   const feedGroups = $derived(BROKER_FEEDS[broker] || {});
   const stateOpts = $derived(STATES.slice().sort((a, b) => (a[2] < b[2] ? -1 : 1)));
   const pct = v => (v * 100).toFixed(1) + '%';
+  // Derive the cost/tax inputs from the panel's own state (feed value is "name|cost"; state rate
+  // comes from the STATES table) — no DOM reads.
+  const feedCostVal = $derived(feed ? parseFloat(feed.split('|')[1]) || 0 : 0);
+  const stateRateVal = $derived((STATES.find(s => s[0] === stateAbbr) || [, 0])[1] || 0);
 
   onMount(async () => {
     const s = (await store.getMeta('setup')) || {};
@@ -30,12 +33,10 @@
     ready = true;
   });
 
-  // Recompute (and persist) whenever a setup control or the metrics change. Runs post-render, so
-  // the bound <select>/<input> DOM already holds the new values that costModel() reads by id.
+  // Recompute (and persist) whenever a setup control or the metrics change.
   $effect(() => {
     if (!ready || !metrics) return;
-    void [broker, feed, stateAbbr, platform, metrics];
-    cost = costModel(metrics);
+    cost = costModel(metrics, { broker, platform, feedCost: feedCostVal, stateRate: stateRateVal });
     store.setMeta('setup', { broker, feed, state: stateAbbr, platform: String(platform) });
   });
 
@@ -51,32 +52,32 @@
   <div class="setup">
     <label>
       <span>Broker</span>
-      <select id="c_broker" value={broker} onchange={onBroker}>
+      <select value={broker} onchange={onBroker}>
         <option value="">— Select broker —</option>
         {#each BROKER_ORDER as k (k)}<option value={k}>{BROKERS[k].name}</option>{/each}
       </select>
     </label>
     <label>
       <span>Data feed</span>
-      <select id="c_feed" bind:value={feed}>
+      <select bind:value={feed}>
         <option value="">— Select data feed —</option>
         {#each Object.entries(feedGroups) as [grp, list] (grp)}
           <optgroup label={grp}>
-            {#each list as [name, c] (name)}<option value={`${name}|${c}`} data-cost={c}>{name} — ${c}</option>{/each}
+            {#each list as [name, c] (name)}<option value={`${name}|${c}`}>{name} — ${c}</option>{/each}
           </optgroup>
         {/each}
       </select>
     </label>
     <label>
       <span>State</span>
-      <select id="c_state_sel" bind:value={stateAbbr}>
+      <select bind:value={stateAbbr}>
         <option value="">— Select state —</option>
-        {#each stateOpts as [a, r, n] (a)}<option value={a} data-rate={r}>{n}</option>{/each}
+        {#each stateOpts as [a, r, n] (a)}<option value={a}>{n}</option>{/each}
       </select>
     </label>
     <label>
       <span>Platform fee ($/mo)</span>
-      <input id="c_tv" type="number" min="0" step="1" bind:value={platform} />
+      <input type="number" min="0" step="1" bind:value={platform} />
     </label>
   </div>
 
