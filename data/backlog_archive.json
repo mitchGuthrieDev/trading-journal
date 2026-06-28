@@ -2016,6 +2016,18 @@
       "effort": "medium",
       "status": "done",
       "prompt": null
+    },
+    {
+      "completedDate": "2026-06-28",
+      "partial": false,
+      "doneNote": "Done — read-only structure audit + decided target layout delivered in docs/structure-reorg-plan.md. Findings: the flat root-as-web-root layout no longer earns its keep (A26 decoupled source from URL; no surface is servable un-built), so the A30 reorg is justified as a P3 maintainability cleanup. Catalogued the pure-logic core, the mixed assets/ dir (bundled JS+SVG vs the one verbatim-static og-image.png), the misplaced/colliding util.js files (assets/util.js shared-core vs app/staging-svelte/util.js app-only), the app/staging-svelte misnomer, app/entitlements.js as intentional-but-currently-dead scaffold, and the full coupled-path set (vite/build-manifest/bump-version/build-includes/copy-static/jsconfig/eslint/prettier + imports). Per the owner's call, designed ONE target layout (src/{lib,app,site} + static/ publicDir; functions/ pinned at root) that ABSORBS A69 so A30 lands once and is final: src/site/ has prepared homes for the Svelte marketing components + shared chrome, retiring partials/ + build-includes; static/ replaces copy-static.mjs. Recommendation: A61(TS) decision first, then A69+A30 as one coordinated reorg-and-convert pass. Follow-ups: A30 + A69 prompts repointed at the plan; filed A76 (util.js collision + entitlements.js scaffold cleanup, rides with A30).",
+      "id": "A70",
+      "title": "Audit project structure to optimize for Vite + Svelte",
+      "category": "ARCHITECTURE / DUPLICATION",
+      "priority": "P3",
+      "effort": "medium",
+      "status": "done",
+      "prompt": null
     }
   ]
 }
