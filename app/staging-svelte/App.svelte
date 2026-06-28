@@ -38,6 +38,7 @@
   let error = $state('');
   let manageOpen = $state(false);
   let landingMsg = $state('');
+  let online = $state(typeof navigator === 'undefined' ? true : navigator.onLine); // A38 session pill
 
   // Day-notes journal: the selected calendar day + the set of dates carrying a saved note.
   let selectedDate = $state(null);
@@ -178,6 +179,15 @@
     calYear = y;
   }
 
+  // A38: jump the calendar cursor to the most recent trade's month.
+  function jumpToLatest() {
+    const last = allTrades.length ? allTrades[allTrades.length - 1].date : null;
+    if (last) {
+      calYear = +last.slice(0, 4);
+      calMonth = +last.slice(5, 7) - 1;
+    }
+  }
+
   function clearFilters() {
     filters.from = '';
     filters.to = '';
@@ -217,6 +227,14 @@
       error = String(e && e.message ? e.message : e);
       status = '';
     });
+    const on = () => (online = true);
+    const off = () => (online = false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
   });
 </script>
 
@@ -228,7 +246,11 @@
     <div class="meta">
       Svelte&nbsp;5 proving ground · isolated local data{#if dateRange} · {dateRange}{/if}
     </div>
-    {#if loaded}<button type="button" class="managebtn" onclick={() => (manageOpen = true)}>Manage data</button>{/if}
+    <div class="topactions">
+      <span class="pill" class:off={!online} title={online ? 'Online' : 'Offline'}>{online ? 'online' : 'offline'}</span>
+      <a class="link" href="../changelog.html">Changelog</a>
+      {#if loaded}<button type="button" class="managebtn" onclick={() => (manageOpen = true)}>Manage data</button>{/if}
+    </div>
   </header>
 
   {#if error}
@@ -236,7 +258,7 @@
   {:else if loaded && PAGE_MODE === 'app' && !allTrades.length}
     <Landing {setup} onload={loadCSV} msg={landingMsg} />
   {:else if loaded}
-    <FilterBar {filters} {roots} {tags} {savedFilters} onclear={clearFilters} onsave={saveView} onapply={applyView} ondelete={deleteView} />
+    <FilterBar {filters} {roots} {tags} {savedFilters} count={metricsActive.n} onclear={clearFilters} onsave={saveView} onapply={applyView} ondelete={deleteView} />
     <Overview metrics={metricsActive} tradeCount={metricsActive.n} />
     <EquityCurve metrics={metricsAll} {costInputs} {journalDates} {selectedDate} onselect={d => (selectedDate = d)} />
     <CalendarMonth
@@ -244,6 +266,7 @@
       year={calYear}
       month={calMonth}
       onnav={navMonth}
+      onjump={jumpToLatest}
       {selectedDate}
       {journalDates}
       onselect={d => (selectedDate = d)}
@@ -313,6 +336,43 @@
     font-size: 12px;
     color: var(--faint);
     font-family: var(--mono);
+  }
+  .topactions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .pill {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--green);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 3px 9px;
+  }
+  .pill::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .pill.off {
+    color: var(--faint);
+  }
+  .pill.off::before {
+    background: var(--faint);
+  }
+  .link {
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .link:hover {
+    text-decoration: underline;
   }
   .managebtn {
     background: var(--panel2);

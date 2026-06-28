@@ -114,6 +114,11 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   await page.click('#sv-app .overlays button:has-text("Net")');
   await expect(page.locator('#sv-app svg.equity .line')).toHaveCount(2);
 
+  // A38 Tier-2 bits: filter trade-count, session pill, calendar Latest button all render.
+  await expect(page.locator('#sv-app .filterbar .count')).toContainText('trade');
+  await expect(page.locator('#sv-app .pill')).toBeVisible();
+  await expect(page.locator('#sv-app .calendar .today')).toBeVisible();
+
   // Manage data: open the modal, edit a trade's tags via the Store, and see them in the table.
   await page.click('.managebtn');
   await expect(page.locator('.modal table tbody tr').first()).toBeVisible();

@@ -8,7 +8,7 @@
   // onnav(delta) asks App to shift the month. metrics here is the FILTERED all-time set, so the
   // grid colors reflect the active filters regardless of scope. selectedDate + journalDates +
   // onselect wire the day-notes journal: clicking a day selects it; days with a note get a dot.
-  let { metrics, year, month, onnav, selectedDate = null, journalDates = new Set(), onselect = () => {} } = $props();
+  let { metrics, year, month, onnav, onjump = () => {}, selectedDate = null, journalDates = new Set(), onselect = () => {} } = $props();
 
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -41,6 +41,7 @@
       <button type="button" aria-label="Previous month" onclick={() => onnav(-1)}>‹</button>
       <span class="label">{MONTHS[month]} {year}</span>
       <button type="button" aria-label="Next month" onclick={() => onnav(1)}>›</button>
+      <button type="button" class="today" onclick={() => onjump()}>Latest</button>
     </div>
     <span class="mnet" class:neg={monthNet < 0}>{usd(monthNet)}</span>
   </div>
@@ -126,6 +127,11 @@
     font-weight: 700;
     min-width: 9.5em;
     text-align: center;
+  }
+  .nav .today {
+    width: auto;
+    padding: 0 10px;
+    font-size: 12px;
   }
   .mnet {
     font-family: var(--mono);
