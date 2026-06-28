@@ -2028,6 +2028,18 @@
       "effort": "medium",
       "status": "done",
       "prompt": null
+    },
+    {
+      "completedDate": "2026-06-28",
+      "partial": false,
+      "doneNote": "Done — discussion + decision delivered in docs/typescript-decision.md. Owner decided: ADOPT full native TypeScript everywhere (incl. the pure-logic core), strict from the start, with the .js→.ts / lang=ts renames FOLDED INTO the A30 reorg (touch files once). Analysis covered what TS buys beyond today's JSDoc @ts-check (biggest win = real types on the 18 untyped Svelte components; ergonomics + one language elsewhere; marginal added safety on the already-@ts-check'd core), and the mechanics/risks: Vite/esbuild compiles .ts free at build; the node test suites can't run .ts raw → use Node 22 native --experimental-strip-types (zero dep, preferred) or tsx fallback; svelte-check (dev-only) added for component typing; jsconfig→tsconfig strict; functions/ convertible separately. A29 reconciled: JS→TS is a behavior-preserving syntax-host change (no logic rewrite), gated by the node suites passing identically. Follow-ups: A30 prompt updated to fold in the full-TS conversion; A29 guardrail amended with the TS clarification; filed A77 (Phase-1 toolchain scaffold pre-step, P2) and A78 (Phase-3 functions→TS, P3).",
+      "id": "A61",
+      "title": "Discuss: migrate from JS to TypeScript",
+      "category": "REVIEW / AUDIT",
+      "priority": "P3",
+      "effort": "medium",
+      "status": "done",
+      "prompt": null
     }
   ]
 }
