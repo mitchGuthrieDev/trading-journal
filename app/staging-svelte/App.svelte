@@ -29,12 +29,14 @@
   import JournalEditor from './components/JournalEditor.svelte';
   import ManageData from './components/ManageData.svelte';
   import ActivityTerminal from './components/ActivityTerminal.svelte';
+  import Landing from './components/Landing.svelte';
 
   let allTrades = $state([]);
   let loaded = $state(false);
   let status = $state('Loading…');
   let error = $state('');
   let manageOpen = $state(false);
+  let landingMsg = $state('');
 
   // Day-notes journal: the selected calendar day + the set of dates carrying a saved note.
   let selectedDate = $state(null);
@@ -147,6 +149,19 @@
     tradeMeta = new Map((await store.allTradeMeta()).map(m => [m.id, m]));
   }
 
+  // App-mode landing: parse + persist a CSV, then the dashboard takes over (allTrades non-empty).
+  async function loadCSV(file) {
+    landingMsg = '';
+    const r = Adapters.parse(await file.text());
+    if (!r.ok) {
+      landingMsg = r.error || 'Could not parse that CSV.';
+      return;
+    }
+    await store.addTrades(r.trades);
+    emit('data:imported', { added: r.trades.length });
+    await reloadAll();
+  }
+
   function navMonth(delta) {
     let m = calMonth + delta;
     let y = calYear;
@@ -217,6 +232,8 @@
 
   {#if error}
     <p class="msg error" role="alert">Could not start the staging app: {error}</p>
+  {:else if loaded && PAGE_MODE === 'app' && !allTrades.length}
+    <Landing {setup} onload={loadCSV} msg={landingMsg} />
   {:else if loaded}
     <FilterBar {filters} {roots} {tags} {savedFilters} onclear={clearFilters} onsave={saveView} onapply={applyView} ondelete={deleteView} />
     <Overview metrics={metricsActive} tradeCount={metricsActive.n} />
@@ -237,10 +254,10 @@
     <CostPanel metrics={metricsActive} {setup} {costInputs} />
     <ActivityTerminal />
     <p class="note">
-      A27 staging migration: Overview, performance curve, trading calendar (with day notes),
-      advanced statistics, break-even/cost, filters/scope, manage-data and the activity terminal are
-      all live in Svelte 5. Next up (ADR-001 Phase 4): migrate prod + demo, then the source-tree
-      reorg (A30).
+      Svelte 5 app at prod parity (A32): Overview, performance curve (overlays + day-notes),
+      trading calendar, advanced statistics, break-even/cost, filters/scope (incl. session/tag/saved
+      views), manage-data, screenshots, and the activity terminal — all reusing the pure-logic core.
+      Next (ADR-001 Phase 4c/A33): cut prod + demo over to this app and retire the vanilla layer.
     </p>
   {:else}
     <p class="msg">{status}</p>
