@@ -254,10 +254,11 @@
     <CostPanel metrics={metricsActive} {setup} {costInputs} />
     <ActivityTerminal />
     <p class="note">
-      Svelte 5 app at prod parity (A32): Overview, performance curve (overlays + day-notes),
+      Svelte 5 app — core dashboard (A32): Overview, performance curve (overlays + day-notes),
       trading calendar, advanced statistics, break-even/cost, filters/scope (incl. session/tag/saved
-      views), manage-data, screenshots, and the activity terminal — all reusing the pure-logic core.
-      Next (ADR-001 Phase 4c/A33): cut prod + demo over to this app and retire the vanilla layer.
+      views), manage-data, screenshots, activity terminal. Closing the remaining prod-parity gaps
+      (A34–A38: export report, stat-card modals, panel/workspace system, Definitions & Caveats,
+      Tier-2) before the prod/demo cutover (A33).
     </p>
   {:else}
     <p class="msg">{status}</p>

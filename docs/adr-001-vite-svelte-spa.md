@@ -225,13 +225,24 @@ shared across surfaces:
 All three HTML files become hand-authored Svelte mounts (like `staging.html`), each with its
 `data-mode`. `build-includes` no longer assembles the app shell.
 
-#### 4b. Finish prod-parity features (absorbs the A27 "deferred polish") — **DONE (A32)**
+#### 4b. Finish prod-parity features (absorbs the A27 "deferred polish") — **PARTIAL (A32 core; gaps A34–A38)**
 
-> All items below shipped on `claude/phase4-prod-demo-svelte`: the `costModel(inputs)` refactor,
-> curve interactivity + gross/net/take-home overlays (via the extracted pure `app/curveseries.js`,
-> shared with vanilla `render.js`), session/tag/saved/day-of-week filters, journal + per-trade
-> screenshots (which also fixed a `$state`-proxy→IndexedDB clone bug and closed a `saveTradeMeta`
-> `validShot` gap), and the app-mode landing/CSV flow. Verified by the unit + e2e suites.
+> **Correction (post-merge audit):** A32 was initially marked "complete/parity," but a
+> feature-by-feature audit of the merged `main` found parity is only ~65–70% — several real
+> prod/demo features have no Svelte equivalent yet. A32 delivered the *core* dashboard
+> (`costModel(inputs)` refactor; curve interactivity + gross/net/take-home overlays via the shared
+> `app/curveseries.js`; session/tag/saved/day-of-week filters; journal + per-trade screenshots —
+> which also fixed a `$state`→IndexedDB clone bug and a `saveTradeMeta` `validShot` gap; app-mode
+> landing). **It did NOT reach full parity.** The gaps are now tracked as A34–A38 and MUST close
+> before A33 (cutover) so prod doesn't regress:
+>
+> - **A34** — export / performance report (print→PDF / image / markdown / email).
+> - **A35** — clickable stat cards → detail drill-down modals (F14).
+> - **A36** — panel system: collapse + drag-reorder + workspace templates + layout persistence.
+> - **A37** — Definitions & Caveats panel (glossary + warnings).
+> - **A38** — Tier-2 parity bundle (session pill; calendar week-column + jump-to-today; cost
+>   Assumptions & Caveats; manage-data day-notes list; landing platform-override; filter trade-count;
+>   changelog/contact links; curve drawdown band).
 
 
 Staging was allowed to skip these as a proving ground, but prod must **not regress** below today's
