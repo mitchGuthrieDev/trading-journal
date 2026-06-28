@@ -29,6 +29,7 @@
   import JournalEditor from './components/JournalEditor.svelte';
   import ManageData from './components/ManageData.svelte';
   import ActivityTerminal from './components/ActivityTerminal.svelte';
+  import Definitions from './components/Definitions.svelte';
   import Landing from './components/Landing.svelte';
 
   let allTrades = $state([]);
@@ -252,6 +253,7 @@
     {/if}
     <AdvancedStats metrics={metricsActive} />
     <CostPanel metrics={metricsActive} {setup} {costInputs} />
+    <Definitions />
     <ActivityTerminal />
     <p class="note">
       Svelte 5 app — core dashboard (A32): Overview, performance curve (overlays + day-notes),

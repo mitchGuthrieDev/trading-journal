@@ -99,6 +99,9 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   // Activity terminal logs bus events — the note save above should appear.
   await expect(page.locator('#sv-app .terminal .log')).toContainText('note saved');
 
+  // Definitions & Caveats panel (A37) renders its glossary.
+  await expect(page.locator('#sv-app .defs')).toContainText('Win / Loss / Scratch');
+
   // Equity curve interactivity (A32): the journaled day shows a note-dot on the curve, and the
   // keyboard cursor fills the aria-live tooltip (B33).
   await expect(page.locator('#sv-app svg.equity .notedot').first()).toBeVisible();
