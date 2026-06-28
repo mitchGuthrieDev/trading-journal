@@ -30,23 +30,30 @@ CH16, F13, F14, S19, R1, …) are backlog item ids from
 
 ## Design pillars
 
-Three intentional constraints shape every decision:
+> **Re-ranked 2026-06-27 (ADR-001).** As Blotterbook moves from a personal tool to a
+> commercial futures-analytics product, the one *product* pillar (local compute) is affirmed
+> as HARD, while the two *implementation* pillars (no runtime deps, no build step) relax to
+> enable the complex-UI roadmap. A **Vite build + Svelte SPA** on the `/app/` surface is now
+> adopted — see [adr-001-vite-svelte-spa.md](adr-001-vite-svelte-spa.md), which supersedes the
+> Tier B deferral in [build-step-decision.md](build-step-decision.md).
 
-1. **Compute happens locally** — all parsing, metrics, and storage are
-   client-side; no trade data leaves the browser.
-2. **No runtime dependencies** *(hard rule)* — the shipped app loads no framework
-   and no third-party/runtime libraries; it's plain JavaScript. Build-*time*/dev
-   tooling is separate: **R19 is decided** — dev-only tooling (ESLint, Prettier,
-   Playwright render tests) is adopted and lives in `devDependencies` that run
-   locally/CI and **never alter the shipped bytes**; only the *shipped* output must
-   stay dependency-free. See [build-step-decision.md](build-step-decision.md).
-3. **Deployable as static files with zero runtime deps** — ships to Cloudflare
-   Pages as static assets, with `/functions/*` as the thin edge layer for the few
-   things that can't be client-side. No build is *required* to deploy: the
-   committed files are the artifacts (the dev tooling from #2 does not emit shipped
-   output). A shipped-output build — bundler/minify/hashed names/nonce-CSP, which
-   *would* reverse this — is **deferred** (guardrail **A18**; tracked as **A24**,
-   gated on a concrete trigger). See [build-step-decision.md](build-step-decision.md).
+1. **Compute happens locally** *(HARD — the product moat)* — all parsing, metrics, and storage
+   are client-side; **no trade data ever leaves the browser.** No telemetry, no analytics, no
+   trade-data egress, regardless of what dependencies are added. This survives
+   commercialization intact (the paid sync tier stays zero-knowledge / E2E-encrypted) and it
+   gates every dependency (A28).
+2. **Minimal, pinned, audited dependencies** *(policy — relaxed from "no runtime
+   dependencies")* — dependencies are allowed where they earn their weight (the framework,
+   charting, layout/virtualization libs); small utilities stay hand-written. The supply chain
+   is treated as a security control: pinned versions + committed lockfile, `npm audit` in CI,
+   SRI / strict CSP on shipped bundles. See guardrail **A28**. (Dev-only tooling — ESLint,
+   Prettier, Playwright — was already adopted in R19 Tier A.)
+3. **Deployable to Cloudflare Pages** *(build step now adopted)* — ships to Pages, with
+   `/functions/*` as the thin edge layer for the few things that can't be client-side. A
+   shipped-output build (Vite: bundler/minify/hashed names/nonce-CSP) is being adopted via the
+   `public/` output-dir split (**A26**), reversing the old "committed files are the artifacts"
+   contract (**A18**) — done all-at-once while there are no users. The pure-logic core is
+   migrated **verbatim** (guardrail **A29**).
 
 Because the app is split across files (it used to be one `index.html`), it must
 be **served over http(s)** — opening from disk blocks the `fetch()` of the
@@ -54,12 +61,21 @@ reference data.
 
 ## Repository layout & the deploy contract
 
-**There is no build step, so the repo root *is* the Cloudflare Pages web root —
-a file's path *is* its public URL.** Pages serves the committed tree as-is
-(`build-manifest.mjs` is only a "recommended build command" that regenerates a
-file in place; the deploy works without it). This one fact makes the folder
-layout simultaneously the **URL structure** and the **deploy contract**, and it's
-why the root is deliberately flat rather than split into `src/`+`public/`.
+> **Updated by ADR-001 / A26.** There is now a Vite build: `npm run build` bundles the site into
+> **`dist/`**, and Cloudflare Pages serves `dist/` (build command `npm run build`, output dir
+> `dist`). **URLs are preserved 1:1** — source files were not moved, so a file's source path still
+> mirrors its public URL, and the coupled-path table below still holds for any *future* move. What
+> changed is only the deploy mechanism: Pages builds + serves an output dir instead of serving the
+> committed tree as-is. The pre-Vite text below is kept because the couplings it documents remain
+> accurate.
+
+**The repo root is the *source* root, and (preserving URLs) a file's path still maps to its public
+URL.** Vite fingerprints the JS/CSS it bundles and rewrites the HTML references; the verbatim-static
+set (`data/*.json`, `_headers`, `_redirects`, `robots.txt`, `sitemap.xml`, `assets/og-image.png`) is
+copied into `dist/` by `scripts/copy-static.mjs`. `functions/`, `scripts/`, `partials/`, and tooling
+stay at the root, unserved. The folder layout still doubles as the **URL structure** and the
+**deploy contract**; the root is deliberately flat (no `src/`+`public/` source reorg — A26 reversed
+the contract via a build *output* dir, `dist/`, not by moving sources).
 
 **Pinned at the deploy root** (Cloudflare Pages requires it — these cannot move):
 

@@ -2,7 +2,7 @@
   "name": "blotterbook",
   "private": true,
   "version": "0.0.0",
-  "description": "DEV-ONLY tooling for Blotterbook (tests + lint + format). The SHIPPED app has ZERO runtime dependencies — everything here is devDependencies that run locally/CI and never alter the deployed static files. See docs/build-step-decision.md (R19).",
+  "description": "Blotterbook tooling + build (ADR-001 / A26). Vite builds the static site + the /app/ surface into dist/ (the Cloudflare Pages output dir); dependencies are minimal/pinned/audited (guardrail A28) and the local-compute pillar is hard (no telemetry/egress). Dev-only tooling (ESLint/Prettier/Playwright) came in R19 Tier A.",
   "scripts": {
     "test": "npm run lint && npm run typecheck && npm run format:check && npm run test:unit",
     "test:unit": "node scripts/test-adapters.mjs && node scripts/test-auth.mjs && node scripts/test-version.mjs && node scripts/test-flags.mjs && node scripts/test-tax.mjs",
@@ -11,14 +11,20 @@
     "typecheck": "tsc -p jsconfig.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "build": "node scripts/build-includes.mjs && node scripts/build-manifest.mjs"
+    "includes": "node scripts/build-includes.mjs && node scripts/build-manifest.mjs",
+    "build": "node scripts/build-includes.mjs && node scripts/build-manifest.mjs && vite build && node scripts/copy-static.mjs",
+    "dev": "vite",
+    "preview": "vite preview"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "1.56.1",
+    "@sveltejs/vite-plugin-svelte": "7.1.2",
     "eslint": "^10.6.0",
     "globals": "^17.7.0",
     "prettier": "^3.9.0",
-    "typescript": "^6.0.3"
+    "svelte": "5.56.4",
+    "typescript": "^6.0.3",
+    "vite": "8.1.0"
   }
 }

@@ -17,18 +17,28 @@ leaves the browser.** It deploys to Cloudflare Pages as static files plus
 
 ## Hard constraints (do not break these)
 
-- **No runtime dependencies** *(hard)*. The shipped app loads no framework and no
-  third-party/runtime libraries — keep the *shipped output* dependency-free. Build-*time*/dev
-  tooling is now decided (**R19**): ESLint + Prettier + Playwright live in `devDependencies`
-  that run locally/CI and **must never alter the shipped/committed files** (guardrail **A25**;
-  CI's drift gate enforces it). A shipped-output build (bundler/minify/nonce-CSP) stays
-  **deferred** (**A24**). See
-  [`docs/build-step-decision.md`](docs/build-step-decision.md) and the design pillars in
+- **Compute happens locally — no trade data ever leaves the browser** *(hard — the
+  product moat)*. All parsing, metrics, and storage are client-side; no telemetry, no
+  analytics, no trade-data egress, ever — this gates every dependency. The paid sync tier
+  stays zero-knowledge / E2E-encrypted. **This is the one pillar that does not bend.**
+- **Dependencies: minimal, pinned, audited** *(policy — was "no runtime dependencies",
+  relaxed by [ADR-001](docs/adr-001-vite-svelte-spa.md))*. Blotterbook is adopting a **Vite
+  build + Svelte SPA** on the `/app/` surface to enable the complex-UI roadmap
+  (R11/R12/R13/F23); marketing pages stay static. Dependencies are allowed where they earn
+  their weight (framework, charting, layout libs); small utilities stay hand-written. Pin every
+  version + commit the lockfile; treat the supply chain as a security control (guardrail
+  **A28**). The pure-logic core (adapters/compute/costModel/tax/Store/util) is migrated
+  **verbatim** (guardrail **A29**). Migration is phased: **A26** (Vite infra + deploy-contract
+  reversal) → **A27** (Svelte on staging) → prod/demo. Dev-only tooling (ESLint/Prettier/
+  Playwright) came earlier in R19 Tier A. See
+  [`docs/adr-001-vite-svelte-spa.md`](docs/adr-001-vite-svelte-spa.md),
+  [`docs/build-step-decision.md`](docs/build-step-decision.md), and the design pillars in
   [`docs/architecture.md`](docs/architecture.md#design-pillars).
 - **Must be served over http(s).** The app `fetch()`es `/data/*.json`, so opening
   files from disk breaks it. Use a static server.
-- **App scripts are native ES modules** (A20) — *(hard: no build, no runtime deps;
-  this is browser-native ESM)*. [`partials/app-scripts.html`](partials/app-scripts.html)
+- **App scripts are native ES modules** (A20) — *(describes today's vanilla app; the
+  Vite + Svelte migration of ADR-001 changes this for the `/app/` surface — see A26/A27)*.
+  [`partials/app-scripts.html`](partials/app-scripts.html)
   is a single module entry, `<script type="module" src="main.js">`; `main.js`
   imports the rest. Each module `export`s what others use and `import`s what it
   needs — no shared global scope, no fixed load order, no module-isolation
@@ -48,30 +58,41 @@ leaves the browser.** It deploys to Cloudflare Pages as static files plus
 ## Commands
 
 ```bash
-# Serve locally (any static server works)
-python3 -m http.server 8000      # → http://localhost:8000/app/app.html
+# One-time: install pinned deps (Vite + dev tooling) from the lockfile
+npm ci
 
-# Dev tooling (R19 Tier A — devDependencies only; NEVER ships). One-time:
-npm ci                           # install pinned devDeps from package-lock.json
+# Build the deploy artifact (ADR-001/A26). Emits dist/ = what Cloudflare Pages serves.
+npm run build                    # build-includes + build-manifest + vite build + copy-static → dist/
+npm run dev                      # Vite dev server (HMR) for local development
+npm run preview                  # serve the built dist/ locally (production-like)
 
 # Tests / lint (the CI suite — run before pushing)
-npm test                         # = test:unit + lint
+npm test                         # = lint + typecheck + format:check + test:unit
 npm run test:unit                # the 5 node suites: adapters / auth / version / flags / tax
 npm run lint                     # ESLint (flat config)
 npm run typecheck                # tsc --checkJs over the JSDoc-typed modules (CH33; opt-in via // @ts-check)
-npm run test:e2e                 # Playwright render tests (boots every surface; starts its own server)
-npm run format                   # Prettier (NOT yet applied repo-wide — see CH32)
+npm run test:e2e                 # Playwright render tests — BUILDS then serves dist/, boots every surface
+npm run format                   # Prettier
 # (the node suites still run standalone too, e.g. `node scripts/test-adapters.mjs`)
 
-# Build steps (idempotent; commit their output)
+# Build sub-steps (idempotent; commit their output — they write COMMITTED sources, not dist/)
 node scripts/build-includes.mjs  # regenerate app/{app,demo,staging}.html + info-page nav/footer from partials/
 node scripts/build-manifest.mjs  # regenerate data/manifest.json content hashes (cache-busting)
+# scripts/copy-static.mjs runs as part of `npm run build` (copies verbatim files into dist/)
 ```
 
-CI (`.github/workflows/ci.yml`) runs `npm ci` → lint → typecheck → the unit/logic
-tests → the Playwright render tests, then re-runs both build scripts and **fails if
-the result differs from what's committed** (which also proves the dev tooling never wrote into
-the shipped/committed files). So:
+> **Deploy artifact = `dist/` (gitignored), built by Vite (ADR-001/A26).** The repo root is no
+> longer the web root — Cloudflare Pages runs `npm run build` and serves `dist/`. URLs are preserved
+> 1:1, source files were not moved, and `functions/`/`scripts/`/`partials/` stay at the root
+> (unserved). Pages dashboard settings (build command `npm run build`, output dir `dist`, unset
+> `SKIP_DEPENDENCY_INSTALL`) are recorded in [the ADR](docs/adr-001-vite-svelte-spa.md). The Svelte
+> migration of the `/app/` surface is A27 (not yet started — the app is still vanilla ESM).
+
+CI (`.github/workflows/ci.yml`) runs `npm ci` → lint → typecheck → format → the unit/logic
+tests → **the Vite build** → the Playwright render tests (against `dist/`), then re-runs both
+include/manifest build scripts and **fails if the result differs from what's committed** (the drift
+gate; `dist/` is gitignored, so this proves the build-time tooling didn't leave committed sources
+stale). So:
 
 - **After editing any `partials/*` →** run `build-includes.mjs` and commit the
   regenerated `app/*.html` / info pages.
@@ -87,9 +108,12 @@ the shipped/committed files). So:
 - **PR titles are conventional commits** and drive the version bump: `feat:` →
   minor, `fix:`/`chore:`/`refactor:` → patch, `feat!:` / `BREAKING CHANGE:` →
   major.
-- **Three app surfaces, one source.** `app/{app,demo,staging}.html` are generated
-  from `partials/app-*.html` via `<!--IF mode=app|demo|staging-->` conditionals.
-  Edit the partial, not the generated HTML.
+- **App surfaces & their sources.** `app/app.html` + `app/demo.html` are still vanilla,
+  generated from `partials/app-*.html` via `<!--IF mode=app|demo-->` conditionals — edit the
+  partial, not the generated HTML. **`app/staging.html` is now the Svelte 5 app** (ADR-001/A27):
+  a hand-authored mount point with no include markers (build-includes skips it); its UI lives in
+  `app/staging-svelte/*.svelte` and reuses the pure-logic core verbatim (A29). Don't add staging
+  markup to the partials anymore — staging diverges until prod/demo also migrate (Phase 4).
 - **Demo must never mutate or persist.** Any data-writing control needs `disabled`
   in its `<!--IF mode=demo-->` variant **and** a `DEMO_MODE` guard on the write
   path. When adding a write, confirm it can't run under `DEMO_MODE`.
@@ -102,15 +126,18 @@ the shipped/committed files). So:
 
 ## Repo layout
 
-> **No build step → the repo root IS the Cloudflare Pages web root, so a file's
-> path IS its public URL.** Moving any browser-served file changes its URL and
-> must be updated in lockstep across `_redirects`, `_headers`, `robots.txt`,
-> `sitemap.xml` + page canonicals, the absolute `/app//assets//data/`
-> references, and the `build-includes`/`build-manifest`/`bump-version` path
-> assumptions. `functions/`, `_headers`, and `_redirects` are pinned at the root
-> by Pages. Don't reorganize into `src/`+`public/`. See
-> [the deploy contract](docs/architecture.md#repository-layout--the-deploy-contract)
-> (guardrail A18).
+> **Vite builds the repo to `dist/` (ADR-001/A26); Pages serves `dist/`.** Source files stay at
+> the repo root (they were NOT moved) but the root is no longer the served web root — `npm run build`
+> emits `dist/` and that is what deploys. **URLs are preserved 1:1** with the old layout, so a file's
+> source path still mirrors its public URL. Vite fingerprints the JS/CSS it bundles; the
+> verbatim-static set (`data/*.json`, `_headers`, `_redirects`, `robots.txt`, `sitemap.xml`,
+> `assets/og-image.png`) is copied into `dist/` by `scripts/copy-static.mjs`. `functions/`,
+> `scripts/`, `partials/`, and tooling stay at the root, unserved. Renaming/moving a browser-served
+> file still changes its URL and must be kept in lockstep across `_redirects`, `_headers`,
+> `robots.txt`, `sitemap.xml` + page canonicals, the absolute `/app//assets//data/` refs, the Vite
+> `rollupOptions.input` list, and the `build-includes`/`build-manifest`/`bump-version`/`copy-static`
+> path assumptions. See [the deploy contract](docs/architecture.md#repository-layout--the-deploy-contract)
+> (guardrail A18, now realized by A26).
 
 ```
 /                       marketing + info site (bespoke CSS in index.html; site.css for the rest)
@@ -163,11 +190,15 @@ the shipped/committed files). So:
 /scripts/
   build-includes.mjs    assembles info pages + the three app surfaces from partials/
   build-manifest.mjs    regenerates data/manifest.json content hashes
+  copy-static.mjs       copies verbatim-static files (data/, _headers, _redirects, robots, sitemap, og-image) into dist/ (A26)
   bump-version.mjs      two-track version bump from a merge commit (run by CI)
   test-*.mjs            the CI test suite (adapters / auth / version / flags / tax)
 /assets/                banner.svg, favicon.svg, page scripts (changelog.js, util.js, …)
 /e2e/                   Playwright render/E2E specs (dev-only — R19 Tier A)
-package.json            dev-only tooling manifest — devDependencies ONLY (the shipped app has none)
+/dist/                  Vite build output (GITIGNORED) — the artifact Cloudflare Pages serves (A26)
+vite.config.mjs         Vite multi-page build config (9 HTML entries → dist/) — ADR-001/A26
+.node-version           pins Node 22 for the Cloudflare Pages build
+package.json            deps manifest — Vite + dev tooling (minimal/pinned/audited per A28)
 eslint.config.mjs       ESLint flat config  ·  .prettierrc.json  Prettier  ·  jsconfig.json  tsc --checkJs  ·  playwright.config.mjs  e2e
 LICENSE                 proprietary — all rights reserved
 ```

@@ -1,9 +1,10 @@
 name: CI
 
 # Guards the project: the committed HTML must match the partials, the data manifest must match
-# the data files, the unit/logic tests pass, ESLint is clean, and the Playwright render tests boot
-# every surface with no console errors. Dev-only tooling (R19 Tier A) — the devDependencies run
-# HERE and never alter the shipped static files (the deploy stays dependency-free).
+# the data files, the unit/logic tests pass, ESLint is clean, the Vite build (ADR-001/A26) emits
+# a complete dist/, and the Playwright render tests boot every surface (served from dist/) with no
+# console errors. The drift gate (build-includes/build-manifest committed) still proves the
+# build-time tooling didn't leave the committed sources stale; dist/ itself is gitignored.
 on:
   push:
     branches: [main]
@@ -34,6 +35,9 @@ jobs:
 
       - name: Unit + logic tests (adapters / auth / version / flags / tax)
         run: npm run test:unit
+
+      - name: Build (Vite → dist/)
+        run: npm run build
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium

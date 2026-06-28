@@ -49,25 +49,65 @@ test('modal scroll-lock releases on close (B36)', async ({ page }) => {
   expect(await page.evaluate(() => document.body.style.overflow)).toBe('');
 });
 
-// Staging persists to its own IndexedDB: a saved day-note must place a note dot on the curve
-// (B37's Map/binary-search path), and the per-trade editor must persist a tag through the Store.
-test('staging: day-note → curve note dot (B37) + per-trade tag persists', async ({ page }) => {
+// Staging is the Svelte 5 app (ADR-001/A27). It boots into the Overview by reusing the
+// pure-logic core (loadRefData + compute) over its OWN isolated IndexedDB, seeded once. Verify
+// it boots clean, renders real computed metrics, and that the seeded data PERSISTS across a
+// reload (the isolated-DB guarantee + no duplicate re-seed). The vanilla render/data paths
+// (calendar/day-notes/per-trade editor — B37) stay covered by the demo specs above and ship
+// unchanged on prod/demo; their staging-Svelte ports return as A27 advances toward parity.
+test('staging (Svelte): boots into Overview with computed metrics, seeded data persists', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/app/staging.html', { waitUntil: 'networkidle' });
-  await page.click('#startBtn');
-  await expect(page.locator('body')).toHaveClass(/loaded/);
 
-  await page.locator('#cal .cell[data-date]').first().click();
-  await page.fill('#j_note', 'e2e note');
-  await expect(page.locator('#curve .notedot').first()).toBeVisible({ timeout: 5000 });
+  // Overview renders from compute() — the net P&L card must show a $ value.
+  const net = page.locator('#sv-app [data-card="net"] .value');
+  await expect(net).toContainText('$', { timeout: 5000 });
+  const tradesText = await page.locator('#sv-app [data-card="trades"] .value').textContent();
+  const seededCount = Number((tradesText || '').trim());
+  expect(seededCount).toBeGreaterThan(0);
 
-  await page.click('#manageBtn');
-  await expect(page.locator('#dataModal.open')).toBeVisible();
-  await page.locator('#dm_trades button[data-edit]').first().click();
-  await page.fill('#dm_tags', 'e2e, tag');
-  await page.click('[data-editsave]');
-  await expect(page.locator('#dm_trades')).toContainText('e2e');
-  await page.click('#dm_close');
+  // Performance equity curve renders an SVG path from compute()'s m.curve.
+  const curve = page.locator('#sv-app svg.equity path.line');
+  await expect(curve).toHaveAttribute('d', /^M[\d.]+,[\d.]+ L/);
+
+  // Trading calendar renders day cells, including traded (colored) days from m.days.
+  await expect(page.locator('#sv-app .calendar .calgrid .cell.traded').first()).toBeVisible();
+
+  // Advanced statistics panel renders its metric rows from compute().
+  await expect(page.locator('#sv-app .advstats .row').first()).toBeVisible();
+
+  // Break-even/cost panel reuses costModel() verbatim against the seeded setup → take-home shows.
+  await expect(page.locator('#sv-app .costpanel [data-cost-takehome]')).toContainText('$');
+
+  // Filters/scope: switching to the calendar-month scope narrows the active trade count.
+  await page.click('#sv-app .filterbar .scope button:last-child');
+  const monthText = await page.locator('#sv-app [data-card="trades"] .value').textContent();
+  expect(Number((monthText || '').trim())).toBeLessThan(seededCount);
+
+  // Day-notes journal: select a calendar day, write a note, save → a note dot appears + persists.
+  await page.locator('#sv-app .calendar .calgrid .cell.traded').first().click();
+  await page.fill('#sv-app .journal textarea', 'e2e day note');
+  await page.click('#sv-app .journal .save');
+  await expect(page.locator('#sv-app .calendar .calgrid .cell .notedot').first()).toBeVisible();
+
+  // Activity terminal logs bus events — the note save above should appear.
+  await expect(page.locator('#sv-app .terminal .log')).toContainText('note saved');
+
+  // Manage data: open the modal, edit a trade's tags via the Store, and see them in the table.
+  await page.click('.managebtn');
+  await expect(page.locator('.modal table tbody tr').first()).toBeVisible();
+  await page.locator('.modal .edit').first().click();
+  await page.fill('.modal .etags', 'e2e, setup');
+  await page.click('.modal .editrow .save');
+  await expect(page.locator('.modal table tbody tr .tags').first()).toContainText('e2e');
+
+  // Reload: the isolated staging DB already has the seed, so the count is identical (no re-seed
+  // duplication) and the app still boots clean from persisted data.
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(net).toContainText('$', { timeout: 5000 });
+  const afterText = await page.locator('#sv-app [data-card="trades"] .value').textContent();
+  expect(Number((afterText || '').trim())).toBe(seededCount);
+
   expect(errors, errors.join('\n')).toHaveLength(0);
 });
 

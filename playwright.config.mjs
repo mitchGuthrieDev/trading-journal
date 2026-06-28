@@ -1,7 +1,8 @@
 // Playwright render/E2E config — DEV-ONLY (R19 Tier A). Closes the repo's render-test gap:
 // every app surface + info page must boot with zero console/page errors, and the key
-// interactions must run clean. Serves the committed static tree over http (the app fetch()es
-// /data/*.json, so file:// won't work) — exactly how it deploys. No shipped bytes change.
+// interactions must run clean. Since ADR-001/A26 the deploy artifact is the Vite build
+// output (dist/), so the webServer builds the site then serves dist/ over http — testing
+// exactly what Cloudflare Pages serves (the app fetch()es /data/*.json, so file:// won't work).
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
@@ -16,11 +17,14 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
-  // Serve the repo root (= the Pages web root) so URLs match production exactly.
+  // Build the site, then serve the Vite output dir (dist/) so URLs + bundled assets match
+  // production exactly (Cloudflare Pages serves dist/). _redirects/_headers aren't applied by
+  // python's server, but the specs hit page paths directly (e.g. /app/app.html), not the
+  // /app/ rewrite, so that doesn't matter here.
   webServer: {
-    command: 'python3 -m http.server 8000',
+    command: 'npm run build && python3 -m http.server 8000 --directory dist',
     url: 'http://localhost:8000/app/app.html',
     reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
+    timeout: 120_000,
   },
 });
