@@ -1,53 +1,78 @@
 <script>
-  // Cumulative-equity curve, derived from compute()'s m.curve (A29: no recomputation). Core line +
-  // gradient fill, plus (A32) day note-dots, a hover/keyboard cursor with an aria-live tooltip
-  // (B33), and click-to-select-day which cross-links to the calendar + journal (B37). The
-  // gross/net/take-home overlays are a separate sub-slice (they need the cost inputs).
-  import { minMax, usd, money } from '../../core.js';
+  // Performance curve (A32). Daily cumulative series with selectable gross / net / take-home
+  // overlays, computed by the shared pure dailySeries() (A29 — same math as the vanilla curve)
+  // from the lifted cost inputs. Plus day note-dots, a hover/keyboard cursor with an aria-live
+  // tooltip (B33), and click-to-select-day cross-link (B37).
+  import { usd, money, blendedRateFor } from '../../core.js';
+  import { dailySeries } from '../../curveseries.js';
 
-  let { metrics, journalDates = new Set(), selectedDate = null, onselect = () => {} } = $props();
+  let { metrics, costInputs, journalDates = new Set(), selectedDate = null, onselect = () => {} } = $props();
 
   const W = 800;
   const H = 240;
   const PX = 10;
-  const PY = 14;
+  const PY = 16;
+  const SERIES = [
+    { key: 'gross', label: 'Gross', color: 'var(--green)' },
+    { key: 'net', label: 'Net', color: 'var(--accent)' },
+    { key: 'take', label: 'Take-home', color: 'var(--take)' },
+  ];
 
-  let cursor = $state(null); // active curve index (hover / keyboard), null when idle
+  let sel = $state({ gross: true, net: false, take: false });
+  let cursor = $state(null);
 
-  const view = $derived(build(metrics));
-  // Tooltip text for the active point (aria-live announces it for keyboard users).
-  const tip = $derived(view && cursor != null && view.dates[cursor] ? `${view.dates[cursor]} · ${usd(view.c[cursor])}` : '');
-  const selIdx = $derived(view && selectedDate ? view.lastIdxByDate.get(selectedDate) ?? null : null);
+  const enabled = $derived(SERIES.filter(s => sel[s.key]).length ? SERIES.filter(s => sel[s.key]) : [SERIES[0]]);
+  const view = $derived(build(metrics, costInputs, enabled));
+  const tip = $derived(
+    view && cursor != null && view.pts[cursor].date
+      ? `${view.pts[cursor].date} · ${enabled.map(s => `${s.label} ${usd(view.pts[cursor][s.key])}`).join(' · ')}`
+      : ''
+  );
+  const selIdx = $derived(view && selectedDate ? (view.idxByDate.get(selectedDate) ?? null) : null);
 
-  function build(m) {
-    const c = m && m.curve ? m.curve : [];
-    const trades = m && m.trades ? m.trades : [];
-    if (c.length < 2) return null;
-    const { lo, hi } = minMax(c);
+  function build(m, ci, ser) {
+    const { pts: raw } = dailySeries(m, {
+      broker: ci.broker,
+      tEff: blendedRateFor(ci.stateRate),
+      fixedMo: (ci.platform || 0) + (ci.feedCost || 0),
+    });
+    if (raw.length < 1) return null;
+    const pts = [{ date: null, gross: 0, net: 0, take: 0 }, ...raw];
+    if (pts.length < 2) return null;
+    let lo = Infinity,
+      hi = -Infinity;
+    for (const p of pts) for (const s of ser) {
+      if (p[s.key] < lo) lo = p[s.key];
+      if (p[s.key] > hi) hi = p[s.key];
+    }
     const span = hi - lo || 1;
-    const x = i => PX + (i / (c.length - 1)) * (W - 2 * PX);
+    const x = i => PX + (i / (pts.length - 1)) * (W - 2 * PX);
     const y = v => PY + (1 - (v - lo) / span) * (H - 2 * PY);
-    const dates = c.map((_, i) => (i === 0 ? null : trades[i - 1] && trades[i - 1].date));
-    const line = c.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const prim = ser[0].key;
+    const lines = ser.map(s => ({ ...s, d: pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[s.key]).toFixed(1)}`).join(' ') }));
     const baseY = (H - PY).toFixed(1);
-    const area = `${line} L${x(c.length - 1).toFixed(1)},${baseY} L${x(0).toFixed(1)},${baseY} Z`;
-    // One note-dot per journaled day, placed at that day's last curve point.
-    const lastIdxByDate = new Map();
-    for (let i = 1; i < c.length; i++) if (dates[i]) lastIdxByDate.set(dates[i], i);
+    const area = `${pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[prim]).toFixed(1)}`).join(' ')} L${x(pts.length - 1).toFixed(1)},${baseY} L${x(0).toFixed(1)},${baseY} Z`;
+    const idxByDate = new Map();
+    pts.forEach((p, i) => p.date && idxByDate.set(p.date, i));
     const notes = [];
-    for (const [date, i] of lastIdxByDate) if (journalDates.has(date)) notes.push({ x: x(i), y: y(c[i]), date });
-    return { c, dates, line, area, x, y, lo, hi, len: c.length, up: c[c.length - 1] >= 0, zeroY: lo <= 0 && hi >= 0 ? y(0) : null, lastIdxByDate, notes };
+    for (const [date, i] of idxByDate) if (journalDates.has(date)) notes.push({ x: x(i), y: y(pts[i][prim]), date });
+    return { pts, x, y, lo, hi, len: pts.length, lines, area, prim, idxByDate, notes, primColor: ser[0].color, zeroY: lo <= 0 && hi >= 0 ? y(0) : null };
+  }
+
+  function toggle(key) {
+    const on = Object.keys(sel).filter(k => sel[k]);
+    if (sel[key] && on.length === 1) return; // keep at least one
+    sel[key] = !sel[key];
   }
 
   function idxFromEvent(e) {
     const rect = e.currentTarget.getBoundingClientRect();
     const vbx = ((e.clientX - rect.left) / rect.width) * W;
-    const i = Math.round(((vbx - PX) / (W - 2 * PX)) * (view.len - 1));
-    return Math.max(1, Math.min(view.len - 1, i));
+    return Math.max(1, Math.min(view.len - 1, Math.round(((vbx - PX) / (W - 2 * PX)) * (view.len - 1))));
   }
   const move = e => (cursor = idxFromEvent(e));
   const pick = () => {
-    if (cursor != null && view.dates[cursor]) onselect(view.dates[cursor]);
+    if (cursor != null && view.pts[cursor].date) onselect(view.pts[cursor].date);
   };
   function onkeydown(e) {
     if (!view) return;
@@ -65,17 +90,20 @@
 <section class="panel">
   <div class="phead">
     <h2>Performance</h2>
-    {#if metrics}<span class="net" class:neg={metrics.net < 0}>{usd(metrics.net)}</span>{/if}
+    <div class="overlays" role="group" aria-label="Curve overlays">
+      {#each SERIES as s (s.key)}
+        <button type="button" class:on={sel[s.key]} aria-pressed={sel[s.key]} style="--sw:{s.color}" onclick={() => toggle(s.key)}>{s.label}</button>
+      {/each}
+    </div>
   </div>
 
   {#if view}
     <svg
       class="equity"
-      class:neg={!view.up}
       viewBox="0 0 {W} {H}"
       preserveAspectRatio="none"
       role="img"
-      aria-label="Cumulative equity curve — use arrow keys to inspect days, Enter to select"
+      aria-label="Cumulative performance curve — arrow keys inspect days, Enter selects"
       tabindex="0"
       onpointermove={move}
       onpointerleave={() => (cursor = null)}
@@ -84,22 +112,22 @@
     >
       <defs>
         <linearGradient id="eqfill" x1="0" y1="0" x2="0" y2="1">
-          <stop class="g0" offset="0%" />
-          <stop class="g1" offset="100%" />
+          <stop offset="0%" stop-color={view.primColor} stop-opacity="0.22" />
+          <stop offset="100%" stop-color={view.primColor} stop-opacity="0" />
         </linearGradient>
       </defs>
-      <path class="fill" d={view.area} fill="url(#eqfill)" />
+      <path d={view.area} fill="url(#eqfill)" />
       {#if view.zeroY != null}<line class="zero" x1={PX} y1={view.zeroY} x2={W - PX} y2={view.zeroY} vector-effect="non-scaling-stroke" />{/if}
-      <path class="line" d={view.line} fill="none" vector-effect="non-scaling-stroke" />
-      {#if selIdx != null}
-        <line class="sel" x1={view.x(selIdx)} y1={PY} x2={view.x(selIdx)} y2={H - PY} vector-effect="non-scaling-stroke" />
-      {/if}
+      {#if selIdx != null}<line class="sel" x1={view.x(selIdx)} y1={PY} x2={view.x(selIdx)} y2={H - PY} vector-effect="non-scaling-stroke" />{/if}
+      {#each view.lines as ln (ln.key)}
+        <path class="line" d={ln.d} fill="none" stroke={ln.color} vector-effect="non-scaling-stroke" />
+      {/each}
       {#each view.notes as nd (nd.date)}
         <circle class="notedot" cx={nd.x} cy={nd.y} r="3" vector-effect="non-scaling-stroke" />
       {/each}
       {#if cursor != null}
         <line class="cursor" x1={view.x(cursor)} y1={PY} x2={view.x(cursor)} y2={H - PY} vector-effect="non-scaling-stroke" />
-        <circle class="dot" cx={view.x(cursor)} cy={view.y(view.c[cursor])} r="3.5" vector-effect="non-scaling-stroke" />
+        <circle class="dot" cx={view.x(cursor)} cy={view.y(view.pts[cursor][view.prim])} r="3.5" vector-effect="non-scaling-stroke" />
       {/if}
     </svg>
     <div class="axis">
@@ -122,8 +150,9 @@
   }
   .phead {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
+    gap: 12px;
     margin-bottom: 10px;
   }
   h2 {
@@ -134,14 +163,23 @@
     color: var(--faint);
     font-weight: 700;
   }
-  .net {
-    font-family: var(--mono);
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--green);
+  .overlays {
+    display: flex;
+    gap: 4px;
   }
-  .net.neg {
-    color: var(--red);
+  .overlays button {
+    background: var(--panel2);
+    color: var(--dim);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 4px 9px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .overlays button.on {
+    color: var(--txt);
+    border-color: var(--sw);
+    box-shadow: inset 0 -2px 0 var(--sw);
   }
   .equity {
     width: 100%;
@@ -154,27 +192,9 @@
     outline-offset: 2px;
   }
   .line {
-    stroke: var(--green);
     stroke-width: 2;
     stroke-linejoin: round;
     stroke-linecap: round;
-  }
-  .equity.neg .line {
-    stroke: var(--red);
-  }
-  .g0 {
-    stop-color: var(--green);
-    stop-opacity: 0.28;
-  }
-  .g1 {
-    stop-color: var(--green);
-    stop-opacity: 0;
-  }
-  .equity.neg .g0 {
-    stop-color: var(--red);
-  }
-  .equity.neg .g1 {
-    stop-color: var(--red);
   }
   .zero {
     stroke: var(--line);

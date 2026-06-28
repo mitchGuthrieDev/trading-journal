@@ -10,7 +10,7 @@
   //   staging  → real IndexedDB Store (isolated blotterbookStaging DB), seeded
   // Today this app is still mounted only on staging.html; app/demo mounts land in A33.
   import { onMount, setContext } from 'svelte';
-  import { loadRefData, compute, emit, PAGE_MODE, DEMO_BROKER, DEMO_FEED, DEMO_STATE } from '../core.js';
+  import { loadRefData, compute, emit, PAGE_MODE, STATES, DEMO_BROKER, DEMO_FEED, DEMO_STATE } from '../core.js';
   import { Store } from '../store.js';
   import { createDemoStore } from '../demostore.js';
   import { Adapters } from '../adapters.js';
@@ -43,6 +43,9 @@
   let tradeMeta = $state(new Map());
   // Saved filter views ([{id,name,f}]), persisted to Store meta in the vanilla-compatible shape.
   let savedFilters = $state([]);
+  // Cost setup (broker/feed/state/platform), lifted here (A32) so BOTH the cost panel and the
+  // curve overlays share it. Persisted to the 'setup' meta.
+  let setup = $state({ broker: '', feed: '', stateAbbr: '', platform: 0 });
 
   // Filters drive the whole dashboard (a shared reactive object). scope = all-time vs the
   // calendar's current month. The cursor (calYear/calMonth) lives here so scope can read it.
@@ -86,7 +89,21 @@
   );
   const roots = $derived([...new Set(allTrades.map(t => t.root).filter(Boolean))].sort());
   const tags = $derived([...new Set([...tradeMeta.values()].flatMap(m => m.tags || []))].sort());
+  // Cost/tax inputs derived from the setup (feed value is "name|cost"; rate from the STATES table).
+  const costInputs = $derived({
+    broker: setup.broker,
+    platform: setup.platform,
+    feedCost: setup.feed ? parseFloat(setup.feed.split('|')[1]) || 0 : 0,
+    stateRate: (STATES.find(s => s[0] === setup.stateAbbr) || [, 0])[1] || 0,
+  });
   const dateRange = $derived(allTrades.length ? `${allTrades[0].date} → ${allTrades[allTrades.length - 1].date}` : '');
+
+  // Persist the cost setup whenever it changes (after the initial load).
+  $effect(() => {
+    if (!loaded) return;
+    void [setup.broker, setup.feed, setup.stateAbbr, setup.platform];
+    store.setMeta('setup', { broker: setup.broker, feed: setup.feed, state: setup.stateAbbr, platform: String(setup.platform) });
+  });
 
   // Seed the dataset once if the backend is empty (seeded surfaces only: staging + demo).
   async function seedIfEmpty() {
@@ -108,6 +125,8 @@
     journalDates = await store.journalDates();
     tradeMeta = new Map((await store.allTradeMeta()).map(m => [m.id, m]));
     savedFilters = (await store.getMeta('savedFilters')) || [];
+    const su = (await store.getMeta('setup')) || {};
+    setup = { broker: su.broker || '', feed: su.feed || '', stateAbbr: su.state || '', platform: Number(su.platform) || 0 };
     const last = trades.length ? trades[trades.length - 1].date : null;
     calYear = last ? +last.slice(0, 4) : new Date().getFullYear();
     calMonth = last ? +last.slice(5, 7) - 1 : new Date().getMonth();
@@ -201,7 +220,7 @@
   {:else if loaded}
     <FilterBar {filters} {roots} {tags} {savedFilters} onclear={clearFilters} onsave={saveView} onapply={applyView} ondelete={deleteView} />
     <Overview metrics={metricsActive} tradeCount={metricsActive.n} />
-    <EquityCurve metrics={metricsAll} {journalDates} {selectedDate} onselect={d => (selectedDate = d)} />
+    <EquityCurve metrics={metricsAll} {costInputs} {journalDates} {selectedDate} onselect={d => (selectedDate = d)} />
     <CalendarMonth
       metrics={metricsAll}
       year={calYear}
@@ -215,7 +234,7 @@
       <JournalEditor date={selectedDate} onsaved={refreshNotes} onclose={() => (selectedDate = null)} />
     {/if}
     <AdvancedStats metrics={metricsActive} />
-    <CostPanel metrics={metricsActive} />
+    <CostPanel metrics={metricsActive} {setup} {costInputs} />
     <ActivityTerminal />
     <p class="note">
       A27 staging migration: Overview, performance curve, trading calendar (with day notes),

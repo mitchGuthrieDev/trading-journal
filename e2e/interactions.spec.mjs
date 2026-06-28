@@ -100,6 +100,11 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('#sv-app .axis .tip')).not.toHaveText('cumulative P&L');
 
+  // Overlays (A32): default is gross-only (1 line); enabling Net adds a second series line.
+  await expect(page.locator('#sv-app svg.equity .line')).toHaveCount(1);
+  await page.click('#sv-app .overlays button:has-text("Net")');
+  await expect(page.locator('#sv-app svg.equity .line')).toHaveCount(2);
+
   // Manage data: open the modal, edit a trade's tags via the Store, and see them in the table.
   await page.click('.managebtn');
   await expect(page.locator('.modal table tbody tr').first()).toBeVisible();
