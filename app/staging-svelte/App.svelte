@@ -201,7 +201,8 @@
   const dateRange = $derived(allTrades.length ? `${allTrades[0].date} → ${allTrades[allTrades.length - 1].date}` : '');
   // Human-readable labels for the export report header (parity with export.js BROKERS/feedName/
   // stateLabel/scopeLabel). feed value is "name|cost"; scope mirrors render.js scopeLabel().
-  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  // Full month names to match vanilla scopeLabel() ("January 2025"), used in the export-report header.
+  const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const reportLabels = $derived({
     broker: (BROKERS[setup.broker] && BROKERS[setup.broker].name) || setup.broker || '—',
     feed: setup.feed ? setup.feed.split('|')[0] : '—',
