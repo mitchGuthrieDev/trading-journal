@@ -1,5 +1,5 @@
 {
-  "//": "TS config (A61/A77). TRANSITION state: allowJs + checkJs:false reproduce today's opt-in (// @ts-check) typecheck behavior while the tree is still .js. strict is NOT yet on — it flips to true during the A30 full-TS conversion (A61 'strict from the start' applies to the .ts files, with no loose-TS phase). svelte-check type-checks the .svelte components separately (tsc can't resolve .svelte imports).",
+  "//": "TS config (A61/A30). Base config: `tsc -p tsconfig.json` type-checks the pure-logic core (src/lib/**, native .ts, STRICT). The Svelte SPA (src/app/**: App.svelte + components + main.ts + lib/*.ts) is checked by svelte-check (tsconfig.svelte.json) instead, because plain tsc can't resolve .svelte imports (main.ts imports App.svelte). The marketing JS (src/site/**/*.js) stays untyped this pass (A69 converts it to Svelte). allowJs/checkJs are retained for the transition.",
   "compilerOptions": {
     "allowJs": true,
     "checkJs": false,
@@ -9,10 +9,10 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "strict": false,
+    "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["app/**/*.js", "assets/**/*.js"],
-  "exclude": ["node_modules", "dist", "app/staging-svelte/**"]
+  "include": ["src/lib/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }
