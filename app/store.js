@@ -214,7 +214,9 @@ export const Store = {
     const store = await tx(TRADEMETA, 'readwrite');
     const tags = (m.tags || []).filter(Boolean);
     const note = (m.note || '').trim();
-    const shots = m.shots || [];
+    // Enforce the screenshot allow-list here too (matches saveJournal — S15/S18); .filter also
+    // yields a plain array, so a Svelte $state proxy can't reach IndexedDB's structured clone.
+    const shots = (m.shots || []).filter(s => validShot(s));
     if (tags.length || note || shots.length) store.put({ id, tags, note, shots, updated: Date.now() });
     else store.delete(id); // empty → remove the record
     return done(store);

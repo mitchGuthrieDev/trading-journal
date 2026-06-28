@@ -16,10 +16,20 @@
   let editing = $state(null); // trade id under edit
   let editTags = $state('');
   let editNote = $state('');
+  let editShots = $state([]);
   let msg = $state('');
 
   let csvInput;
   let backupInput;
+  let editShotInput;
+
+  const readImage = file =>
+    new Promise(res => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = () => res(null);
+      r.readAsDataURL(file);
+    });
 
   const filtered = $derived(
     search.trim()
@@ -35,7 +45,7 @@
     metaMap = new Map(all.map(m => [m.id, m]));
   }
 
-  const metaOf = t => metaMap.get(store.tradeId(t)) || { tags: [], note: '' };
+  const metaOf = t => metaMap.get(store.tradeId(t)) || { tags: [], note: '', shots: [] };
 
   function openEdit(t) {
     const id = store.tradeId(t);
@@ -43,11 +53,21 @@
     editing = id;
     editTags = (m.tags || []).join(', ');
     editNote = m.note || '';
+    editShots = m.shots || [];
+  }
+
+  async function addEditShot(e) {
+    const f = e.currentTarget.files[0];
+    e.currentTarget.value = '';
+    if (!f) return;
+    const url = await readImage(f);
+    if (url && store.validShot(url)) editShots = [...editShots, url];
+    else msg = 'Only image screenshots are allowed.';
   }
 
   async function saveEdit() {
     const tags = [...new Set(editTags.split(',').map(s => s.trim().toLowerCase()).filter(Boolean))];
-    await store.saveTradeMeta(editing, { tags, note: editNote });
+    await store.saveTradeMeta(editing, { tags, note: editNote, shots: editShots });
     editing = null;
     emit('trade:edited');
     await reload();
@@ -162,6 +182,16 @@
                     <label class="grow">Note <input type="text" class="enote" bind:value={editNote} placeholder="per-trade note" /></label>
                     <button type="button" class="save" onclick={saveEdit}>Save</button>
                     <button type="button" onclick={() => (editing = null)}>Cancel</button>
+                  </div>
+                  <div class="editshots">
+                    {#each editShots as s, i (i)}
+                      <span class="shot">
+                        <img src={s} alt="screenshot {i + 1}" />
+                        <button type="button" class="rm" aria-label="Remove screenshot" onclick={() => (editShots = editShots.filter((_, j) => j !== i))}>×</button>
+                      </span>
+                    {/each}
+                    <button type="button" class="addshot" onclick={() => editShotInput.click()}>+ screenshot</button>
+                    <input bind:this={editShotInput} type="file" accept="image/*" hidden onchange={addEditShot} />
                   </div>
                 </td>
               </tr>
@@ -347,6 +377,46 @@
     border-radius: 6px;
     padding: 7px 14px;
     font-weight: 700;
+    cursor: pointer;
+  }
+  .editshots {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 0 0 8px;
+  }
+  .editshots .shot {
+    position: relative;
+    display: inline-block;
+  }
+  .editshots .shot img {
+    height: 44px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    display: block;
+  }
+  .editshots .shot .rm {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 0;
+    background: var(--red);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .editshots .addshot {
+    background: var(--panel2);
+    color: var(--dim);
+    border: 1px dashed var(--line);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
     cursor: pointer;
   }
   .editrow button:not(.save) {

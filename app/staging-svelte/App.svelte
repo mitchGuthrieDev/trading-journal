@@ -178,7 +178,7 @@
     const f = { from: filters.from, to: filters.to, symbol: filters.root, side: filters.side, session: filters.session, tag: filters.tag, dows: [...filters.dows] };
     const id = Date.now().toString(36) + savedFilters.length;
     savedFilters = [...savedFilters, { id, name: (name || '').trim() || `View ${savedFilters.length + 1}`, f }];
-    await store.setMeta('savedFilters', savedFilters);
+    await store.setMeta('savedFilters', $state.snapshot(savedFilters)); // plain clone — IndexedDB can't clone a $state proxy
   }
   function applyView(sf) {
     const f = sf.f || {};
@@ -192,7 +192,7 @@
   }
   async function deleteView(id) {
     savedFilters = savedFilters.filter(s => s.id !== id);
-    await store.setMeta('savedFilters', savedFilters);
+    await store.setMeta('savedFilters', $state.snapshot(savedFilters));
   }
 
   onMount(() => {

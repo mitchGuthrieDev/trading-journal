@@ -90,6 +90,12 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   await page.click('#sv-app .journal .save');
   await expect(page.locator('#sv-app .calendar .calgrid .cell .notedot').first()).toBeVisible();
 
+  // Day-note screenshot (A32): uploading an image adds a thumbnail (validShot allow-list).
+  await page
+    .locator('#sv-app .journal input[type=file]')
+    .setInputFiles({ name: 'shot.png', mimeType: 'image/png', buffer: Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex') });
+  await expect(page.locator('#sv-app .journal .shot img')).toHaveCount(1);
+
   // Activity terminal logs bus events — the note save above should appear.
   await expect(page.locator('#sv-app .terminal .log')).toContainText('note saved');
 
@@ -112,6 +118,17 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   await page.fill('.modal .etags', 'e2e, setup');
   await page.click('.modal .editrow .save');
   await expect(page.locator('.modal table tbody tr .tags').first()).toContainText('e2e');
+
+  // Per-trade screenshot (A32): upload → save → reopen shows it persisted (saveTradeMeta path).
+  await page.locator('.modal .edit').first().click();
+  await page
+    .locator('.modal .editshots input[type=file]')
+    .setInputFiles({ name: 't.png', mimeType: 'image/png', buffer: Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex') });
+  await expect(page.locator('.modal .editshots .shot img')).toHaveCount(1);
+  await page.click('.modal .editrow .save');
+  await page.locator('.modal .edit').first().click();
+  await expect(page.locator('.modal .editshots .shot img')).toHaveCount(1);
+  await page.click('.modal .editrow .save');
 
   // Reload: the isolated staging DB already has the seed, so the count is identical (no re-seed
   // duplication) and the app still boots clean from persisted data.
