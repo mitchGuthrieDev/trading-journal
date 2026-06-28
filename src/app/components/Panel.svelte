@@ -58,6 +58,9 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions (drag-to-reorder is a pointer-only enhancement;
+     the grip is aria-hidden and collapse/expand has a real keyboard button — panel content is fully
+     reachable without dragging) -->
 <section class="panel" class:collapsed class:dragging data-key={pkey} draggable={armed} ondragstart={onDragStart} ondragend={onDragEnd} ondragover={onDragOver}>
   <div class="phead" role="presentation" onclick={headClick}>
     <span

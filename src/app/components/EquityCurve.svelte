@@ -199,6 +199,12 @@
 
   {#if view}
     <div class="plot" bind:clientWidth={cw}>
+      <!-- A deliberately keyboard-navigable chart widget: tabindex + arrow/Enter handlers, with the
+           aria-label documenting the interaction; role="img" conveys the visual to AT. svelte-check
+           treats every <svg> as non-interactive regardless of role, so the two interaction warnings
+           are suppressed (one per line — combined-line ignores only apply the first code here). -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <svg
         class="equity"
         viewBox="0 0 {view.w} {H}"
