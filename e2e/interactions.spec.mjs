@@ -66,6 +66,12 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   const seededCount = Number((tradesText || '').trim());
   expect(seededCount).toBeGreaterThan(0);
 
+  // Stat-card detail modal (A35): clicking the Net card opens the drill-down with the waterfall.
+  await page.click('#sv-app [data-card="net"]');
+  await expect(page.locator('.modal[aria-label="Net PnL"]')).toBeVisible();
+  await expect(page.locator('.modal[aria-label="Net PnL"] .bars')).toContainText('Take-home');
+  await page.click('.modal[aria-label="Net PnL"] .x');
+
   // Performance equity curve renders an SVG path from compute()'s m.curve.
   const curve = page.locator('#sv-app svg.equity path.line');
   await expect(curve).toHaveAttribute('d', /^M[\d.]+,[\d.]+ L/);

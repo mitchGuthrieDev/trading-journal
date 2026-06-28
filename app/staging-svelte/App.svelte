@@ -10,7 +10,7 @@
   //   staging  → real IndexedDB Store (isolated blotterbookStaging DB), seeded
   // Today this app is still mounted only on staging.html; app/demo mounts land in A33.
   import { onMount, setContext } from 'svelte';
-  import { loadRefData, compute, emit, PAGE_MODE, STATES, DEMO_BROKER, DEMO_FEED, DEMO_STATE } from '../core.js';
+  import { loadRefData, compute, costModel, emit, PAGE_MODE, STATES, DEMO_BROKER, DEMO_FEED, DEMO_STATE } from '../core.js';
   import { Store } from '../store.js';
   import { createDemoStore } from '../demostore.js';
   import { Adapters } from '../adapters.js';
@@ -30,6 +30,7 @@
   import ManageData from './components/ManageData.svelte';
   import ActivityTerminal from './components/ActivityTerminal.svelte';
   import Definitions from './components/Definitions.svelte';
+  import StatCardModal from './components/StatCardModal.svelte';
   import Landing from './components/Landing.svelte';
 
   let allTrades = $state([]);
@@ -39,6 +40,7 @@
   let manageOpen = $state(false);
   let landingMsg = $state('');
   let online = $state(typeof navigator === 'undefined' ? true : navigator.onLine); // A38 session pill
+  let cardModalKey = $state(null); // A35 stat-card detail modal
 
   // Day-notes journal: the selected calendar day + the set of dates carrying a saved note.
   let selectedDate = $state(null);
@@ -261,7 +263,7 @@
     <Landing {setup} onload={loadCSV} msg={landingMsg} />
   {:else if loaded}
     <FilterBar {filters} {roots} {tags} {savedFilters} count={metricsActive.n} onclear={clearFilters} onsave={saveView} onapply={applyView} ondelete={deleteView} />
-    <Overview metrics={metricsActive} tradeCount={metricsActive.n} />
+    <Overview metrics={metricsActive} tradeCount={metricsActive.n} oncard={k => (cardModalKey = k)} />
     <EquityCurve metrics={metricsAll} {costInputs} {journalDates} {selectedDate} onselect={d => (selectedDate = d)} />
     <CalendarMonth
       metrics={metricsAll}
@@ -289,6 +291,10 @@
     </p>
   {:else}
     <p class="msg">{status}</p>
+  {/if}
+
+  {#if cardModalKey}
+    <StatCardModal cardKey={cardModalKey} metrics={metricsActive} cost={costModel(metricsActive, costInputs)} onclose={() => (cardModalKey = null)} />
   {/if}
 
   {#if manageOpen}

@@ -4,7 +4,8 @@
   import { usd, money, cls } from '../../core.js';
   import StatCard from './StatCard.svelte';
 
-  let { metrics, tradeCount } = $props();
+  let { metrics, tradeCount, oncard = () => {} } = $props();
+  const MODAL_KEYS = new Set(['net', 'win', 'pf', 'dd']); // cards with F14 detail modals
 
   const ratio = v => (v === Infinity ? '∞' : Number.isFinite(v) ? v.toFixed(2) : '—');
   const num = v => (Number.isFinite(v) ? v.toFixed(2) : '—');
@@ -30,7 +31,7 @@
 
 <section class="cards" aria-label="Overview metrics">
   {#each cards as c (c.key)}
-    <StatCard card={c.key} label={c.label} value={c.value} tone={c.tone || ''} sub={c.sub || ''} />
+    <StatCard card={c.key} label={c.label} value={c.value} tone={c.tone || ''} sub={c.sub || ''} onclick={MODAL_KEYS.has(c.key) ? () => oncard(c.key) : null} />
   {/each}
 </section>
 
