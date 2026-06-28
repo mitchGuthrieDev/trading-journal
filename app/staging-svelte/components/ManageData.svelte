@@ -3,12 +3,12 @@
   // export/restore, and erase. All persistence + parsing reuse the verbatim core (Store seam +
   // Adapters — A29); this component is only the view. Per-trade screenshots from the vanilla editor
   // are deferred. Operations that change the dataset call onchanged() so App recomputes the dashboard.
-  import { onMount } from 'svelte';
-  import { Store } from '../../store.js';
+  import { onMount, getContext } from 'svelte';
   import { Adapters } from '../../adapters.js';
   import { usd, money, emit } from '../../core.js';
 
   let { onclose, onchanged } = $props();
+  const store = getContext('bb:store'); // A31: Store or DemoStore, chosen by App per mode
 
   let trades = $state([]);
   let metaMap = $state(new Map());
@@ -30,15 +30,15 @@
   onMount(reload);
 
   async function reload() {
-    trades = await Store.getAllTrades();
-    const all = await Store.allTradeMeta();
+    trades = await store.getAllTrades();
+    const all = await store.allTradeMeta();
     metaMap = new Map(all.map(m => [m.id, m]));
   }
 
-  const metaOf = t => metaMap.get(Store.tradeId(t)) || { tags: [], note: '' };
+  const metaOf = t => metaMap.get(store.tradeId(t)) || { tags: [], note: '' };
 
   function openEdit(t) {
-    const id = Store.tradeId(t);
+    const id = store.tradeId(t);
     const m = metaMap.get(id) || {};
     editing = id;
     editTags = (m.tags || []).join(', ');
@@ -47,7 +47,7 @@
 
   async function saveEdit() {
     const tags = [...new Set(editTags.split(',').map(s => s.trim().toLowerCase()).filter(Boolean))];
-    await Store.saveTradeMeta(editing, { tags, note: editNote });
+    await store.saveTradeMeta(editing, { tags, note: editNote });
     editing = null;
     emit('trade:edited');
     await reload();
@@ -63,7 +63,7 @@
       msg = r.error || 'Could not parse that CSV.';
       return;
     }
-    const res = await Store.addTrades(r.trades);
+    const res = await store.addTrades(r.trades);
     msg = `Imported ${res.added} new trade${res.added === 1 ? '' : 's'} (${res.duplicate} duplicate).`;
     emit('data:imported', { added: res.added });
     await reload();
@@ -80,7 +80,7 @@
   }
 
   async function exportBackup() {
-    const data = await Store.exportAll();
+    const data = await store.exportAll();
     download(`blotterbook-staging-backup.json`, JSON.stringify(data));
     msg = 'Backup downloaded.';
     emit('backup:created');
@@ -91,7 +91,7 @@
     e.currentTarget.value = '';
     if (!f) return;
     try {
-      const res = await Store.importAll(JSON.parse(await f.text()));
+      const res = await store.importAll(JSON.parse(await f.text()));
       msg = `Restored ${res.added} trade${res.added === 1 ? '' : 's'} (${res.dup} duplicate).`;
       emit('data:imported', { added: res.added });
       await reload();
@@ -103,7 +103,7 @@
 
   async function eraseAll() {
     if (!confirm('Erase ALL trades, day-notes and per-trade tags/notes in this staging sandbox? This cannot be undone.')) return;
-    await Store.purge();
+    await store.purge();
     msg = 'All staging data erased.';
     emit('data:erased');
     await reload();
@@ -141,9 +141,9 @@
           <tr><th>Date</th><th>Time</th><th>Symbol</th><th class="r">Qty</th><th class="r">P&L</th><th>Tags</th><th>Note</th><th></th></tr>
         </thead>
         <tbody>
-          {#each filtered as t (Store.tradeId(t))}
+          {#each filtered as t (store.tradeId(t))}
             {@const m = metaOf(t)}
-            {@const id = Store.tradeId(t)}
+            {@const id = store.tradeId(t)}
             <tr class:editing={editing === id}>
               <td>{t.date}</td>
               <td class="dim">{(t.time || '').slice(11, 16)}</td>

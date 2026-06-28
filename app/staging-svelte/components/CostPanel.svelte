@@ -4,11 +4,11 @@
   // (#c_broker/#c_feed/#c_state_sel/#c_tv), so this panel renders exactly those controls (in the
   // formats core's curBroker/feedCost/stateRate/numIn expect) and calls costModel() against them.
   // Setup is loaded from / persisted to the isolated staging Store ('setup' meta), seeded already.
-  import { onMount } from 'svelte';
+  import { onMount, getContext } from 'svelte';
   import { costModel, BROKERS, BROKER_ORDER, BROKER_FEEDS, STATES, usd, money } from '../../core.js';
-  import { Store } from '../../store.js';
 
   let { metrics } = $props();
+  const store = getContext('bb:store'); // A31: Store or DemoStore, chosen by App per mode
 
   let broker = $state('');
   let feed = $state('');
@@ -22,7 +22,7 @@
   const pct = v => (v * 100).toFixed(1) + '%';
 
   onMount(async () => {
-    const s = (await Store.getMeta('setup')) || {};
+    const s = (await store.getMeta('setup')) || {};
     broker = s.broker || '';
     feed = s.feed || '';
     stateAbbr = s.state || '';
@@ -36,7 +36,7 @@
     if (!ready || !metrics) return;
     void [broker, feed, stateAbbr, platform, metrics];
     cost = costModel(metrics);
-    Store.setMeta('setup', { broker, feed, state: stateAbbr, platform: String(platform) });
+    store.setMeta('setup', { broker, feed, state: stateAbbr, platform: String(platform) });
   });
 
   function onBroker(e) {

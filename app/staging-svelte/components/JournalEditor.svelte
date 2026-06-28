@@ -1,12 +1,13 @@
 <script>
-  // Day-note editor (A27). Persists per-day notes to the isolated staging Store (Store.getJournal/
-  // saveJournal — A29, the Store seam is reused verbatim). Loads the existing note when the selected
-  // date changes; saving an empty note deletes the row (Store handles that). Per-day tags + screenshots
-  // from the vanilla annotation system are deferred to a later slice.
-  import { Store } from '../../store.js';
+  // Day-note editor (A27). Persists per-day notes through the Store seam (getJournal/saveJournal —
+  // A29, reused verbatim). The store comes from context (A31): real Store on app/staging, in-memory
+  // DemoStore on demo. Loads the existing note when the selected date changes; an empty save deletes
+  // the row. Per-day tags + screenshots from the vanilla annotation system are deferred (A32).
+  import { getContext } from 'svelte';
   import { emit } from '../../core.js';
 
   let { date, onsaved, onclose } = $props();
+  const store = getContext('bb:store');
 
   let text = $state('');
   let saving = $state(false);
@@ -16,14 +17,14 @@
   $effect(() => {
     const d = date;
     savedMsg = '';
-    Store.getJournal(d).then(rec => {
+    store.getJournal(d).then(rec => {
       text = rec.text || '';
     });
   });
 
   async function save() {
     saving = true;
-    await Store.saveJournal(date, { text });
+    await store.saveJournal(date, { text });
     saving = false;
     savedMsg = text.trim() ? 'Saved' : 'Cleared';
     emit('note:saved', { date });

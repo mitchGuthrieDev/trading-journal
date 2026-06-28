@@ -1,13 +1,25 @@
 <script>
-  // Staging app root (A27). Boots by REUSING the vanilla pure-logic core verbatim (A29):
-  // loadRefData + Store (isolated staging IndexedDB) + Adapters + compute(). The view layer
-  // (this component + children) is the only thing rewritten in Svelte. demoCSV is imported from
-  // data.js (no logic duplicated); the seed mirrors main.js's seedStagingIfEmpty().
-  import { onMount } from 'svelte';
-  import { loadRefData, compute, emit, DEMO_BROKER, DEMO_FEED, DEMO_STATE } from '../core.js';
+  // App root (A27 staging; A31 made it mode-aware for the coming prod/demo migration). Boots by
+  // REUSING the vanilla pure-logic core verbatim (A29): loadRefData + a Store + Adapters + compute().
+  // The view layer (this component + children) is the only thing rewritten in Svelte.
+  //
+  // A31: the persistence backend is chosen by PAGE_MODE and provided to the children via context
+  // ('bb:store'), so the same components work on every surface:
+  //   app      → real IndexedDB Store (blotterbook DB), no seed (real user data; landing flow is A32)
+  //   demo     → in-memory DemoStore (never persists), seeded
+  //   staging  → real IndexedDB Store (isolated blotterbookStaging DB), seeded
+  // Today this app is still mounted only on staging.html; app/demo mounts land in A33.
+  import { onMount, setContext } from 'svelte';
+  import { loadRefData, compute, emit, PAGE_MODE, DEMO_BROKER, DEMO_FEED, DEMO_STATE } from '../core.js';
   import { Store } from '../store.js';
+  import { createDemoStore } from '../demostore.js';
   import { Adapters } from '../adapters.js';
   import { demoCSV } from '../sampledata.js';
+
+  // Pick the backend by mode and share it with every child (they read getContext('bb:store')).
+  const store = PAGE_MODE === 'demo' ? createDemoStore() : Store;
+  const SEEDED = PAGE_MODE === 'staging' || PAGE_MODE === 'demo';
+  setContext('bb:store', store);
   import Overview from './components/Overview.svelte';
   import EquityCurve from './components/EquityCurve.svelte';
   import CalendarMonth from './components/CalendarMonth.svelte';
@@ -60,24 +72,24 @@
   const roots = $derived([...new Set(allTrades.map(t => t.root).filter(Boolean))].sort());
   const dateRange = $derived(allTrades.length ? `${allTrades[0].date} → ${allTrades[allTrades.length - 1].date}` : '');
 
-  // Seed the isolated staging DB once (same dataset + setup as the vanilla seedStagingIfEmpty).
+  // Seed the dataset once if the backend is empty (seeded surfaces only: staging + demo).
   async function seedIfEmpty() {
-    if ((await Store.tradeCount()) > 0) return;
+    if ((await store.tradeCount()) > 0) return;
     const r = Adapters.parse(demoCSV(), 'tradingview');
     if (r.ok && r.trades.length) {
-      await Store.addTrades(r.trades);
-      await Store.setMeta('setup', { broker: DEMO_BROKER, feed: DEMO_FEED, state: DEMO_STATE, platform: '35' });
+      await store.addTrades(r.trades);
+      await store.setMeta('setup', { broker: DEMO_BROKER, feed: DEMO_FEED, state: DEMO_STATE, platform: '35' });
     }
   }
 
   async function boot() {
     await loadRefData();
-    if (!Store.available()) throw new Error('IndexedDB is unavailable in this browser');
-    await Store.init();
-    await seedIfEmpty();
-    const trades = await Store.getAllTrades();
+    if (!store.available()) throw new Error('Local storage is unavailable in this browser');
+    await store.init();
+    if (SEEDED) await seedIfEmpty();
+    const trades = await store.getAllTrades();
     allTrades = trades;
-    journalDates = await Store.journalDates();
+    journalDates = await store.journalDates();
     const last = trades.length ? trades[trades.length - 1].date : null;
     calYear = last ? +last.slice(0, 4) : new Date().getFullYear();
     calMonth = last ? +last.slice(5, 7) - 1 : new Date().getMonth();
@@ -87,14 +99,14 @@
   }
 
   async function refreshNotes() {
-    journalDates = await Store.journalDates(); // reassign → reactive
+    journalDates = await store.journalDates(); // reassign → reactive
   }
 
   // After manage-data changes the dataset (import / restore / erase / per-trade edit), reload
   // everything the dashboard derives from.
   async function reloadAll() {
-    allTrades = await Store.getAllTrades();
-    journalDates = await Store.journalDates();
+    allTrades = await store.getAllTrades();
+    journalDates = await store.journalDates();
   }
 
   function navMonth(delta) {
