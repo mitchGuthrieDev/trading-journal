@@ -393,18 +393,6 @@
       "doneNote": null
     },
     {
-      "id": "A62",
-      "title": "Discuss: adopt SvelteKit (pros/cons + analysis)",
-      "category": "REVIEW / AUDIT",
-      "priority": "P3",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "DISCUSSION/ANALYSIS (no migration). Analyze adopting SvelteKit vs. the current Vite multi-page + Svelte 5 SPA (ADR-001). Cover: what SvelteKit adds (file-routing, SSR/SSG, endpoints, adapters) vs. what we actually need; the HARD local-compute pillar (no trade data leaves the browser — any SSR must never see trade data); fit with Cloudflare Pages/Functions (adapter-cloudflare) and the existing functions/ edge layer; impact on the deploy contract (A18/A26); and whether the static marketing pages would benefit from SSG. End with a recommendation + phased plan or an explicit defer. Done when: a written pros/cons + recommendation is delivered and follow-ups filed.",
-      "doneNote": null
-    },
-    {
       "id": "A63",
       "title": "Review PR history + backfill the changelog",
       "category": "CHORE / REFACTOR",
