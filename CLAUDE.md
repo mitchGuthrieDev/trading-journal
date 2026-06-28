@@ -197,7 +197,7 @@ stale). So:
 vite.config.mjs         Vite multi-page build config (9 HTML entries → dist/) — ADR-001/A26
 .node-version           pins Node 22 for the Cloudflare Pages build
 package.json            deps manifest — Vite + dev tooling (minimal/pinned/audited per A28)
-eslint.config.mjs       ESLint flat config  ·  .prettierrc.json  Prettier  ·  jsconfig.json  tsc --checkJs  ·  playwright.config.mjs  e2e
+eslint.config.mjs       ESLint flat config  ·  .prettierrc.json  Prettier  ·  tsconfig.json + tsconfig.svelte.json  tsc + svelte-check  ·  playwright.config.mjs  e2e
 LICENSE                 proprietary — all rights reserved
 ```
 
