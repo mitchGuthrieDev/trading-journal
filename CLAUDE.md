@@ -57,8 +57,8 @@ Cloudflare Pages (build → `dist/`) plus `/functions/*` edge functions.
 # One-time: install pinned deps (Vite + dev tooling) from the lockfile
 npm ci
 
-# Build the deploy artifact (ADR-001/A26; A30 src/+static split). Emits dist/ = what Pages serves.
-npm run build                    # build-includes + build-manifest + vite build (root:src, publicDir:static) → dist/
+# Build the deploy artifact (ADR-001/A26; A30 src/+static split; A69 site→Svelte SSG). Emits dist/.
+npm run build                    # build-manifest + vite build (root:src, publicDir:static; site pages prerendered) → dist/
 npm run dev                      # Vite dev server (HMR) for local development
 npm run preview                  # serve the built dist/ locally (production-like)
 
@@ -71,31 +71,31 @@ npm run test:e2e                 # Playwright render tests — BUILDS then serve
 npm run format                   # Prettier
 # (the node suites still run standalone too, e.g. `node scripts/test-adapters.mjs`)
 
-# Build sub-steps (idempotent; commit their output — they write COMMITTED sources, not dist/)
-node scripts/build-includes.mjs  # inject the info-page nav/footer from partials/ into src/*.html (app mounts skipped)
+# Build sub-step (idempotent; commit its output — it writes a COMMITTED source, not dist/)
 node scripts/build-manifest.mjs  # regenerate static/data/manifest.json content hashes (cache-busting)
-# (copy-static.mjs retired by A30 — Vite's publicDir copies static/ into dist/)
+# (build-includes.mjs retired by A69 — the nav/footer partials became Nav/Footer.svelte; the site
+#  pages are prerendered to static HTML at build time by vite-ssg.mjs. copy-static.mjs retired by A30.)
 ```
 
 > **Deploy artifact = `dist/` (gitignored), built by Vite (ADR-001/A26).** The repo root is no
 > longer the web root — Cloudflare Pages runs `npm run build` and serves `dist/`. URLs are preserved
-> 1:1, source files were not moved, and `functions/`/`scripts/`/`partials/` stay at the root
-> (unserved). Pages dashboard settings (build command `npm run build`, output dir `dist`, unset
+> 1:1, source files were not moved, and `functions/`/`scripts/` stay at the root (unserved; `partials/`
+> retired by A69). Pages dashboard settings (build command `npm run build`, output dir `dist`, unset
 > `SKIP_DEPENDENCY_INSTALL`) are recorded in [the ADR](docs/adr-001-vite-svelte-spa.md). The Svelte
 > migration is complete: A27 brought Svelte to staging, and the **A33 cutover** moved all three
 > surfaces (app/demo/staging) to the Svelte SPA and deleted the vanilla view layer.
 
 CI (`.github/workflows/ci.yml`) runs `npm ci` → lint → typecheck → format → the unit/logic
-tests → **the Vite build** → the Playwright render tests (against `dist/`), then re-runs both
-include/manifest build scripts and **fails if the result differs from what's committed** (the drift
-gate; `dist/` is gitignored, so this proves the build-time tooling didn't leave committed sources
-stale). So:
+tests → **the Vite build** → the Playwright render tests (against `dist/`), then re-runs the
+manifest build script and **fails if the result differs from what's committed** (the drift gate;
+`dist/` is gitignored, so this proves the build-time tooling didn't leave committed sources stale).
+So:
 
-- **After editing `partials/nav.html` or `partials/footer.html` →** run `build-includes.mjs` and
-  commit the regenerated info pages (changelog/roadmap/legal/howto). The app surfaces are
-  hand-authored Svelte mounts — they carry no include markers and are not regenerated.
 - **After editing any `static/data/*.json` →** run `build-manifest.mjs` and commit the
   regenerated `static/data/manifest.json`.
+- *(A69 retired the build-includes half of the drift gate: the nav/footer are now `Nav.svelte` /
+  `Footer.svelte`, and the site pages are prerendered to static HTML at build time — there is no
+  longer any committed HTML generated from partials.)*
 
 ## Conventions
 
@@ -116,8 +116,17 @@ stale). So:
   that, every data-writing control is `disabled` when `PAGE_MODE === 'demo'` and each write path is
   guarded (`if (isDemo) return;`). When adding a write, confirm both. (e2e asserts no Blotterbook
   IndexedDB is created on demo.)
-- **Design tokens live only in `tokens.css`** — `site.css` `@import`s it; the app surfaces and the
-  homepage link it; Svelte components read the token CSS vars. Don't duplicate colors/fonts.
+- **Design tokens live only in `tokens.css`** — every page links it (app surfaces, homepage, and the
+  info/admin pages); Svelte components read the token CSS vars. Don't duplicate colors/fonts. (A69
+  folded the old `home.css`/`site.css`/`admin.css` into scoped component `<style>` blocks.)
+- **Marketing/info site = Svelte SSG (A69).** `index/howto/roadmap/changelog/legal/admin.html` are
+  hand-authored, marker-free **templates** (head meta + tokens link + `<div id="app"><!--ssg-outlet--></div>`
+  + a client-entry `<script>`). At build time [`vite-ssg.mjs`](vite-ssg.mjs) server-renders each page
+  component (`src/site/components/*.svelte`) into the outlet (static HTML for SEO + first paint), and
+  the client entry hydrates it. Edit the **components** (`src/site/components/` + shared
+  `src/site/lib/{Nav,Footer,SiteShell}.svelte`), not the HTML shells. NOT behind the app SPA shell
+  (ADR-001); no SvelteKit (A62). Keep CSP `style-src 'self'` — no inline `style=""`; use a CSSOM
+  action for dynamic styles (A55). admin stays Cloudflare Access–gated + noindex.
 - **Edit data through the `Store` interface only** (`app/store.js`) — never touch
   `indexedDB` directly. A future `CloudStore` implements the same interface.
 - **The user-facing changelog is hand-curated** in `data/changelog.json` (not raw
@@ -128,15 +137,15 @@ stale). So:
 > **Vite builds `src/` → `dist/` (ADR-001/A26; source-tree reorg A30); Pages serves `dist/`.** The
 > Vite **root is `src/`** (everything bundled/served) and **`static/` is the `publicDir`** (copied
 > verbatim to the `dist/` root — this retired `scripts/copy-static.mjs`). `functions/`, `scripts/`,
-> `partials/`, and tooling stay at the **repo root**, unserved. **URLs are preserved 1:1**: each HTML
+> and tooling stay at the **repo root**, unserved (`partials/` retired by A69). **URLs are preserved 1:1**: each HTML
 > entry's path *relative to `src/`* maps to its URL (`src/index.html` → `/`, `src/app/app.html` →
 > `/app/app.html`), and `static/` mirrors to the root (`static/data` → `/data`, `static/_headers` →
 > `/_headers`, `static/assets/og-image.png` → `/assets/og-image.png`). Source paths are **decoupled**
 > from URLs (guardrail **A18 retired** — superseded by A26 + A30). Renaming/moving a browser-served
 > file still changes its URL and must be kept in lockstep across `static/_redirects`,
 > `static/_headers`, `static/robots.txt`, `static/sitemap.xml` + page canonicals, the absolute
-> `/app//assets//data/` refs, `vite.config` (`root`/`publicDir`/`outDir`/`rollupOptions.input`), and
-> the `build-includes`/`build-manifest`/`bump-version` path assumptions. See
+> `/app//assets//data/` refs, `vite.config` (`root`/`publicDir`/`outDir`/`rollupOptions.input` +
+> the `ssg()` page list), and the `build-manifest`/`bump-version` path assumptions. See
 > [the deploy contract](docs/architecture.md#repository-layout--the-deploy-contract).
 
 ```
@@ -167,10 +176,12 @@ stale). So:
     components/         the 17 app components (<script lang="ts">)
     lib/                app-only glue (TS): modal.ts (a11y action), actions.ts (styleProps),
                         files.ts (readImage/downloadBlob — ex util.js, A76), flags.ts (APP_FLAGS — ex data.ts)
-  site/                 MARKETING + INFO support — Svelte after A69 (today: the page JS, still .js)
-    lib/                home.js, changelog.js, admin.js (A69 converts these to Svelte components)
+  site/                 MARKETING + INFO — Svelte SSG (A69; prerendered at build by vite-ssg.mjs, hydrated in place)
+    components/         Home / Howto / Roadmap / Changelog / Legal / Admin .svelte (the page components)
+    lib/                shared chrome: Nav.svelte, Footer.svelte, SiteShell.svelte (base/typography styles + globals)
+    entries/            per-page client entries (hydrate the prerendered component) — *.ts
   assets/               bundled chrome: favicon.svg, banner.svg, why-*.svg (Vite fingerprints these)
-  styles/               tokens.css (single source) + home.css / site.css / admin.css (A69 folds into components)
+  styles/               tokens.css (single source — colors + fonts; page CSS now lives in scoped component <style>, A69)
 /static/                Vite publicDir → copied verbatim to dist/ root (A30; retired copy-static.mjs)
   _headers              Cloudflare Pages security headers (CSP + hardening)  → /_headers
   _redirects  robots.txt  sitemap.xml
@@ -185,13 +196,12 @@ stale). So:
     backlog.json        engineering backlog (rendered read-only in admin.html)
     backlog_archive.json  done-item archive (doneNote record)
     changelog.json      curated, version-keyed release notes (hand-maintained)
-/partials/              shared HTML fragments injected at build time (nav.html, footer.html — retired by A69)
 /functions/             Cloudflare Pages Functions — TypeScript (A78) — PINNED at repo root — see functions/README.md
   _middleware.ts        key-gates /app/staging.html
   api/{geo,status,config,admin-key}.ts  geo · status · feature flags · admin token
   api/{me,checkout,webhook}.ts   Stripe/accounts scaffold
+/vite-ssg.mjs           A69 SSG plugin — server-renders the site components into their templates at build time
 /scripts/
-  build-includes.mjs    injects the nav/footer partials into the info pages under src/ (app mounts skipped)
   build-manifest.mjs    regenerates static/data/manifest.json content hashes
   bump-version.mjs      two-track version bump from a merge commit (run by CI; classifies src/ + static/ paths)
   test-*.mjs            the CI test suite (adapters / auth / version / flags / tax / demostore)

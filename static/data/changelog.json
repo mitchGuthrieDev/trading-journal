@@ -4,6 +4,17 @@
   "note": "Curated, user-facing release notes for the prod (main + demo) track. Keyed by the CH12 prod version. Add a new entry at the top of `releases` each time the prod version bumps (see chore(release) boundaries on main). Keep it readable — this is for users, not a git log.",
   "releases": [
     {
+      "version": "0.26.0",
+      "date": "2026-06-28",
+      "title": "The public site, rebuilt on the same modern foundation",
+      "summary": "The homepage, How-To, Roadmap, Changelog, and Legal pages now run on the same modern UI framework as the app — prerendered to static HTML so they stay fast and search-engine friendly. Nothing changes in what you see; this unifies the codebase behind the scenes and clears the way for richer pages ahead.",
+      "highlights": [
+        "One foundation everywhere: the marketing and info pages share the app's component model, with the nav and footer now a single source instead of duplicated markup.",
+        "Still fast, still private: every page is server-rendered at build time for instant first paint and SEO, then enhanced in the browser — and, as always, no trade data ever leaves your browser.",
+        "No action needed: every page looks and works exactly as before; links and bookmarks are unchanged."
+      ]
+    },
+    {
       "version": "0.25.0",
       "date": "2026-06-28",
       "title": "Rebuilt under the hood, with tighter security",

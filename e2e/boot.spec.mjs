@@ -29,7 +29,35 @@ const surfaces = [
       await expect(page.locator('#sv-app [data-card="net"] .value')).not.toBeEmpty();
     },
   },
-  { name: 'home', path: '/index.html', check: async () => {} },
+  // A69: the marketing/info site is the Svelte SSG (prerendered HTML that hydrates in place).
+  {
+    name: 'home',
+    path: '/index.html',
+    check: async page => {
+      await expect(page.locator('h2.h2').first()).toContainText('Everything in one private dashboard');
+    },
+  },
+  {
+    name: 'howto',
+    path: '/howto.html',
+    check: async page => {
+      await expect(page.locator('h1')).toContainText('How to use Blotterbook');
+    },
+  },
+  {
+    name: 'roadmap',
+    path: '/roadmap.html',
+    check: async page => {
+      await expect(page.locator('h1')).toContainText('Roadmap');
+    },
+  },
+  {
+    name: 'legal',
+    path: '/legal.html',
+    check: async page => {
+      await expect(page.locator('h1')).toContainText('Legal');
+    },
+  },
   {
     name: 'changelog',
     path: '/changelog.html',
@@ -37,7 +65,13 @@ const surfaces = [
       await expect(page.locator('#log .entry').first()).toBeVisible();
     },
   },
-  { name: 'admin', path: '/admin.html', check: async () => {} },
+  {
+    name: 'admin',
+    path: '/admin.html',
+    check: async page => {
+      await expect(page.locator('h1')).toContainText('Configuration');
+    },
+  },
 ];
 
 for (const s of surfaces) {
