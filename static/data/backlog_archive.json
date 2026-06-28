@@ -2187,6 +2187,28 @@
       "doneNote": "**Moot — not reproducible:** verified on staging via Playwright that clicking a calendar day does NOT highlight the performance graph. After a day-select the activeElement is the calendar cell (not the curve); `svg.equity` reports `:focus-visible` false and `outline: none`; only the intended `.sel` cross-link line (B37) draws. The old vanilla focus/outline bug is gone in the Svelte rewrite, and genuine keyboard focus styling on the graph remains intact."
     },
     {
+      "id": "A63",
+      "title": "Review PR history + backfill the changelog",
+      "category": "CHORE / REFACTOR",
+      "priority": "P2",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-06-28",
+      "partial": false,
+      "doneNote": "**Closed — audit shows no backfill warranted.** Reviewed the prod release history against static/data/changelog.json (PR #50). The changelog is current: the latest user-facing milestone, 0.26.0 (the A69 site→Svelte rebuild), is documented, and #50 reconciles versions.json up to it (prod 0.25.1→0.26.2). The recovered intermediate versions (0.25.1 reorg/TS, 0.26.1 any-free typing, 0.26.2 staging-gated tweaks) carry no prod-user-facing change, so per the curation policy they get no entry. The known 0.20.5→0.25.0 gap (versions 0.21–0.24) was the Vite-build + Svelte-staging DEVELOPMENT cycle (PRs #36–#39) — staging/infra work with no prod-user-facing features, comprehensively covered by the existing 0.25.0 'Rebuilt under the hood' entry; backfilling it would misrepresent internal work as user-facing. Going forward the bump job is fixed (#48), so new user-facing prod bumps get a curated entry at merge time as usual."
+    },
+    {
+      "id": "A83",
+      "title": "Resolve the svelte-check a11y warnings",
+      "category": "CHORE / REFACTOR",
+      "priority": "P2",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-28",
+      "partial": false,
+      "doneNote": "**Resolved — svelte-check reports 0 warnings (was 12).** Fixes: the Howto mock setup fields use `<span class=\"mfl\">` instead of misused `<label>` (×6, decorative — no real control); the homepage feature tablist moves its arrow/Home/End handler from the container onto the focusable tab buttons (correct roving-tabindex pattern); StatCard's conditionally-clickable card gets a justified svelte-ignore (role/tabindex/keydown are all gated on `onclick`); Panel's drag-reorder `<section>` gets a svelte-ignore (pointer-only enhancement — grip aria-hidden, collapse is a real keyboard button); the EquityCurve `<svg>` keeps role=\"img\" + aria-label with two stacked single-code svelte-ignores (svelte-check treats every `<svg>` as non-interactive regardless of role); and ManageData's conditionally-rendered `editShotInput` bind:this is now `$state`. Shipped in PR #52; this archive record was lost to a backlog-archive merge conflict and restored here. e2e 23/23 green."
+    },
+    {
       "id": "A79",
       "title": "Lint TypeScript with typescript-eslint once it supports ESLint 10",
       "category": "CHORE / REFACTOR",

@@ -12,6 +12,8 @@
   let { card = '', label = '', value = '', tone = '', sub = '', onclick = null }: Props = $props();
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex (role, tabindex and the keydown handler are all
+     gated on `onclick`: when focusable it is a real button; the static check can't see the pairing) -->
 <div
   class="card"
   class:clickable={!!onclick}
