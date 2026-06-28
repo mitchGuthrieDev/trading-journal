@@ -123,6 +123,8 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   // Manage data: open the modal, edit a trade's tags via the Store, and see them in the table.
   await page.click('.managebtn');
   await expect(page.locator('.modal table tbody tr').first()).toBeVisible();
+  // A38: the day-notes list shows the note saved earlier.
+  await expect(page.locator('.modal .daynotes')).toContainText('e2e day note');
   await page.locator('.modal .edit').first().click();
   await page.fill('.modal .etags', 'e2e, setup');
   await page.click('.modal .editrow .save');

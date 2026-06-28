@@ -292,7 +292,14 @@
   {/if}
 
   {#if manageOpen}
-    <ManageData onclose={() => (manageOpen = false)} onchanged={reloadAll} />
+    <ManageData
+      onclose={() => (manageOpen = false)}
+      onchanged={reloadAll}
+      onopenday={d => {
+        selectedDate = d;
+        manageOpen = false;
+      }}
+    />
   {/if}
 </main>
 
