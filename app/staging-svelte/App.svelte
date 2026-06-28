@@ -27,6 +27,7 @@
   import CostPanel from './components/CostPanel.svelte';
   import FilterBar from './components/FilterBar.svelte';
   import JournalEditor from './components/JournalEditor.svelte';
+  import DayTrades from './components/DayTrades.svelte';
   import ManageData from './components/ManageData.svelte';
   import ActivityTerminal from './components/ActivityTerminal.svelte';
   import Definitions from './components/Definitions.svelte';
@@ -185,6 +186,11 @@
   );
   const roots = $derived([...new Set(allTrades.map(t => t.root).filter(Boolean))].sort());
   const tags = $derived([...new Set([...tradeMeta.values()].flatMap(m => m.tags || []))].sort());
+  // A50: the active-filtered trades for the selected day → the read-only intraday trade table.
+  const dayTrades = $derived(selectedDate ? filtered.filter(t => t.date === selectedDate) : []);
+  const filtersActive = $derived(
+    !!(filters.from || filters.to || filters.root || filters.side || filters.session || filters.tag || filters.dows.length)
+  );
   // Cost/tax inputs derived from the setup (feed value is "name|cost"; rate from the STATES table).
   const costInputs = $derived({
     broker: setup.broker,
@@ -325,6 +331,10 @@
     savedFilters = savedFilters.filter(s => s.id !== id);
     await store.setMeta('savedFilters', $state.snapshot(savedFilters));
   }
+  async function renameView(id, name) {
+    savedFilters = savedFilters.map(s => (s.id === id ? { ...s, name } : s));
+    await store.setMeta('savedFilters', $state.snapshot(savedFilters));
+  }
 
   onMount(() => {
     boot().catch(e => {
@@ -401,6 +411,7 @@
           <CalendarMonth panel={panelBundle(key)} metrics={metricsAll} year={calYear} month={calMonth} onnav={navMonth} onjump={jumpToLatest} {selectedDate} {journalDates} onselect={d => (selectedDate = d)}>
             {#snippet extra()}
               {#if selectedDate}
+                <DayTrades date={selectedDate} trades={dayTrades} filtered={filtersActive} />
                 <JournalEditor date={selectedDate} onsaved={refreshNotes} onclose={() => (selectedDate = null)} />
               {/if}
             {/snippet}
@@ -448,11 +459,25 @@
         selectedDate = d;
         manageOpen = false;
       }}
+      {savedFilters}
+      onapplyview={sf => {
+        applyView(sf);
+        manageOpen = false;
+      }}
+      onrenameview={renameView}
+      ondeleteview={deleteView}
     />
   {/if}
 </main>
 
 <style>
+  /* A51: no horizontal page scroll on mobile (parity with vanilla app.css). Pin on BOTH html and
+     body so the viewport scroller can't scroll sideways regardless of overflow propagation. */
+  :global(html),
+  :global(body) {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
   :global(body) {
     margin: 0;
     background: var(--bg);
@@ -463,6 +488,11 @@
     max-width: 1100px;
     margin: 0 auto;
     padding: 20px 16px 48px;
+  }
+  @media (max-width: 560px) {
+    #sv-app {
+      padding: 14px 10px 40px;
+    }
   }
   .topbar {
     display: flex;

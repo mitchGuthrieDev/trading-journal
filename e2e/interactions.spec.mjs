@@ -117,6 +117,9 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
 
   // Day-notes journal: select a calendar day, write a note, save → a note dot appears + persists.
   await page.locator('#sv-app .calendar .calgrid .cell.traded').first().click();
+  // Per-day trade table (A50): selecting a traded day shows its intraday trades.
+  await expect(page.locator('#sv-app .daytrades .dttab tbody tr').first()).toBeVisible();
+  await expect(page.locator('#sv-app .daytrades .dtnet')).toContainText('$');
   await page.fill('#sv-app .journal textarea', 'e2e day note');
   await page.click('#sv-app .journal .save');
   await expect(page.locator('#sv-app .calendar .calgrid .cell .notedot').first()).toBeVisible();
@@ -172,6 +175,9 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   // Manage data: open the modal, edit a trade's tags via the Store, and see them in the table.
   await page.click('.managebtn');
   await expect(page.locator('.modal table tbody tr').first()).toBeVisible();
+  // Overview stats grid (A52): the modal shows trade count / date range / etc.
+  await expect(page.locator('.modal .summary .dmstat')).toHaveCount(5);
+  await expect(page.locator('.modal .summary')).toContainText('Trades');
   // A38: the day-notes list shows the note saved earlier.
   await expect(page.locator('.modal .daynotes')).toContainText('e2e day note');
   await page.locator('.modal .edit').first().click();
@@ -214,6 +220,14 @@ test('staging (Svelte): session filter narrows the dataset', async ({ page }) =>
   await page.fill('#sv-app .saved .vname', 'rth view');
   await page.click('#sv-app .saved .savebtn');
   await expect(page.locator('#sv-app .saved .chip .apply')).toContainText('rth view');
+
+  // Manage-data Saved-filters section (A53): the saved view is listed and can be renamed.
+  page.on('dialog', d => d.accept('renamed view')); // window.prompt for the new name
+  await page.click('.managebtn');
+  await page.click('.modal .savedfilters summary'); // expand the collapsed <details>
+  await expect(page.locator('.modal .savedfilters')).toContainText('rth view');
+  await page.locator('.modal .savedfilters .sfbtn').first().click();
+  await expect(page.locator('.modal .savedfilters')).toContainText('renamed view');
 });
 
 // A36: the dashboard panel system — collapse (with ARIA + persistence) and workspace templates.
@@ -273,6 +287,26 @@ test('staging (Svelte): per-trade delete removes the trade (A45)', async ({ page
   const before = await rows.count();
   await page.locator('.modal .del').first().click();
   await expect(rows).toHaveCount(before - 1);
+});
+
+// A51: on a phone viewport the dashboard must not scroll the PAGE horizontally (body overflow-x:
+// hidden + the calendar scrolls within its own panel, not the page).
+test('staging (Svelte): no horizontal page scroll on mobile (A51)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/app/staging.html', { waitUntil: 'networkidle' });
+  await expect(page.locator('#sv-app [data-card="net"] .value')).toContainText('$', { timeout: 5000 });
+  // Select a day so the calendar + day-trades + journal are all present (the widest content).
+  await page.locator('#sv-app .calendar .calgrid .cell.traded').first().click();
+  // body overflow-x:hidden means the page cannot scroll horizontally even if content is wider.
+  expect(await page.evaluate(() => getComputedStyle(document.body).overflowX)).toBe('hidden');
+  await page.evaluate(() => window.scrollTo(9999, 0));
+  expect(await page.evaluate(() => Math.round(window.scrollX))).toBe(0);
+  // The wide calendar scrolls within its own panel rather than the page.
+  const calScrolls = await page.evaluate(() => {
+    const el = document.querySelector('#sv-app .calendar');
+    return !!el && getComputedStyle(el).overflowX === 'auto';
+  });
+  expect(calScrolls).toBe(true);
 });
 
 // B41: toggle/collapse controls must expose ARIA state (aria-pressed / aria-expanded).

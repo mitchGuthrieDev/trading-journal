@@ -9,13 +9,25 @@
   import { readImage, downloadBlob } from '../util.js';
   import { modal } from '../modal.js';
 
-  let { onclose, onchanged, onopenday = () => {} } = $props();
+  let {
+    onclose,
+    onchanged,
+    onopenday = () => {},
+    savedFilters = [], // A53: saved views (from App) — applied/renamed/deleted here too
+    onapplyview = () => {},
+    onrenameview = () => {},
+    ondeleteview = () => {},
+  } = $props();
   const store = getContext('bb:store'); // A31: Store or DemoStore, chosen by App per mode
 
   let trades = $state([]);
   let metaMap = $state(new Map());
   let dayNotes = $state([]);
+  let localKb = $state('—'); // A52: approximate local footprint
   let search = $state('');
+
+  // A52: Overview stats (parity with vanilla #dm_summary).
+  const dmRange = $derived(trades.length ? `${trades[0].date} → ${trades[trades.length - 1].date}` : '—');
   let editing = $state(null); // trade id under edit
   let editTags = $state('');
   let editNote = $state('');
@@ -39,6 +51,11 @@
     const all = await store.allTradeMeta();
     metaMap = new Map(all.map(m => [m.id, m]));
     dayNotes = await store.getAllJournal();
+    try {
+      localKb = (new Blob([JSON.stringify(await store.exportAll())]).size / 1024).toFixed(1) + ' KB';
+    } catch (_) {
+      localKb = '—';
+    }
   }
 
   async function deleteDay(date) {
@@ -46,6 +63,11 @@
     await store.deleteJournal(date);
     await reload();
     onchanged();
+  }
+
+  function renameView(sf) {
+    const name = (window.prompt('Rename saved filter:', sf.name) || '').trim();
+    if (name && name !== sf.name) onrenameview(sf.id, name);
   }
 
   const metaOf = t => metaMap.get(store.tradeId(t)) || { tags: [], note: '', shots: [] };
@@ -144,6 +166,14 @@
       <button type="button" class="x" onclick={onclose} aria-label="Close">×</button>
     </div>
 
+    <div class="summary">
+      <div class="dmstat"><div class="dk">Trades</div><div class="dv">{trades.length}</div></div>
+      <div class="dmstat"><div class="dk">Date range</div><div class="dv mono">{dmRange}</div></div>
+      <div class="dmstat"><div class="dk">Day notes</div><div class="dv">{dayNotes.length}</div></div>
+      <div class="dmstat"><div class="dk">Tagged trades</div><div class="dv">{metaMap.size}</div></div>
+      <div class="dmstat"><div class="dk">Local size</div><div class="dv mono">{localKb}</div></div>
+    </div>
+
     <div class="toolbar">
       <button type="button" onclick={() => csvInput.click()}>Load CSV</button>
       <button type="button" onclick={exportBackup}>Export backup</button>
@@ -165,6 +195,22 @@
               <span class="dntext">{n.text || '(tags/screenshots only)'}</span>
               {#if (n.tags || []).length}<span class="dntags">{n.tags.join(', ')}</span>{/if}
               <button type="button" class="dndel" aria-label="Delete day note" onclick={() => deleteDay(n.date)}>×</button>
+            </li>
+          {/each}
+        </ul>
+      </details>
+    {/if}
+
+    {#if savedFilters.length}
+      <details class="savedfilters">
+        <summary>Saved filters ({savedFilters.length})</summary>
+        <ul>
+          {#each savedFilters as sf (sf.id)}
+            <li>
+              <button type="button" class="opends" onclick={() => onapplyview(sf)}>{sf.name}</button>
+              <span class="dntext"></span>
+              <button type="button" class="sfbtn" onclick={() => renameView(sf)}>Rename</button>
+              <button type="button" class="dndel" aria-label="Delete saved filter" onclick={() => ondeleteview(sf.id)}>×</button>
             </li>
           {/each}
         </ul>
@@ -263,6 +309,74 @@
     font-size: 22px;
     line-height: 1;
     cursor: pointer;
+  }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .dmstat {
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 7px 9px;
+  }
+  .dk {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--faint);
+  }
+  .dv {
+    margin-top: 3px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--txt);
+  }
+  .dv.mono {
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .sfbtn {
+    background: var(--panel2);
+    color: var(--dim);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 3px 9px;
+    font-size: 12px;
+    cursor: pointer;
+    flex: none;
+  }
+  .sfbtn:hover {
+    border-color: var(--hover-line);
+    color: var(--txt);
+  }
+  .savedfilters {
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .savedfilters summary {
+    font-size: 12px;
+    color: var(--faint);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+  }
+  .savedfilters ul {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+  }
+  .savedfilters li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
   }
   .toolbar {
     display: flex;
