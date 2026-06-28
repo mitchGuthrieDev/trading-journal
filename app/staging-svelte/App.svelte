@@ -156,7 +156,7 @@
   {:else if loaded}
     <FilterBar {filters} {roots} onclear={clearFilters} />
     <Overview metrics={metricsActive} tradeCount={metricsActive.n} />
-    <EquityCurve metrics={metricsAll} />
+    <EquityCurve metrics={metricsAll} {journalDates} {selectedDate} onselect={d => (selectedDate = d)} />
     <CalendarMonth
       metrics={metricsAll}
       year={calYear}
