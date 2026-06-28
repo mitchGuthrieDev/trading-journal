@@ -36,22 +36,18 @@ leaves the browser.** It deploys to Cloudflare Pages as static files plus
   [`docs/architecture.md`](docs/architecture.md#design-pillars).
 - **Must be served over http(s).** The app `fetch()`es `/data/*.json`, so opening
   files from disk breaks it. Use a static server.
-- **App scripts are native ES modules** (A20) — *(describes today's vanilla app; the
-  Vite + Svelte migration of ADR-001 changes this for the `/app/` surface — see A26/A27)*.
-  [`partials/app-scripts.html`](partials/app-scripts.html)
-  is a single module entry, `<script type="module" src="main.js">`; `main.js`
-  imports the rest. Each module `export`s what others use and `import`s what it
-  needs — no shared global scope, no fixed load order, no module-isolation
-  assumptions to break. The concern-split modules are
-  `core / render / data / ui / export / datamanager / widgets`, with `store`/`adapters`
-  as foundations and [`assets/util.js`](assets/util.js) shared by the app *and* the
-  info pages. Reassignable cross-module state lives on the shared
-  [`app/state.js`](app/state.js) object (`state.X`) — ESM import bindings are
-  read-only, so a plain shared object is the seam for reassignable state; the const
-  objects `FILTERS`/`curveSel` stay plain exports. Module scripts are deferred, so
-  `boot()` (in `main.js`) still runs after the DOM is parsed; `widgets.js` is a
-  side-effect import in `main.js` so its event-bus subscriptions register before
-  `boot()` emits `app:ready`.
+- **The `/app/` surface is a Svelte 5 SPA** (ADR-001; A26 Vite, A27 staging, A33 cutover). All three
+  surfaces — `app/app.html`, `app/demo.html`, `app/staging.html` — are hand-authored, marker-free
+  mount points (`<div id="app">` + `<script type="module" src="./staging-svelte/main.js">`, body
+  `data-mode="app|demo|staging"`). The Svelte app lives in `app/staging-svelte/` (App.svelte +
+  components/ + modal.js/util.js; dir rename is A30) and reuses the **pure-logic core verbatim**
+  (A29): `adapters` / `compute`+`costModel` in `core.js` / `store` / `sampledata` / `demostore` /
+  `curveseries` / `report`, with [`assets/util.js`](assets/util.js) shared by the app *and* the info
+  pages. Component CSS is scoped (Vite extracts it to a linked stylesheet); cross-component state is
+  Svelte runes (`$state`/`$derived`), not a shared globals object. The mode-aware store seam (context
+  `'bb:store'`) picks the real IndexedDB `Store` (app/staging) or the in-memory `DemoStore` (demo, so
+  **demo persists nothing** — by construction). *(The former vanilla view layer — render/ui/widgets/
+  datamanager/export/main/state.js + `partials/app-*.html` — was deleted in A33.)*
 - **The committed HTML and data manifest are generated artifacts** that must stay
   in sync with their sources — CI fails if they drift (see Commands).
 
@@ -108,17 +104,18 @@ stale). So:
 - **PR titles are conventional commits** and drive the version bump: `feat:` →
   minor, `fix:`/`chore:`/`refactor:` → patch, `feat!:` / `BREAKING CHANGE:` →
   major.
-- **App surfaces & their sources.** `app/app.html` + `app/demo.html` are still vanilla,
-  generated from `partials/app-*.html` via `<!--IF mode=app|demo-->` conditionals — edit the
-  partial, not the generated HTML. **`app/staging.html` is now the Svelte 5 app** (ADR-001/A27):
-  a hand-authored mount point with no include markers (build-includes skips it); its UI lives in
-  `app/staging-svelte/*.svelte` and reuses the pure-logic core verbatim (A29). Don't add staging
-  markup to the partials anymore — staging diverges until prod/demo also migrate (Phase 4).
-- **Demo must never mutate or persist.** Any data-writing control needs `disabled`
-  in its `<!--IF mode=demo-->` variant **and** a `DEMO_MODE` guard on the write
-  path. When adding a write, confirm it can't run under `DEMO_MODE`.
-- **Design tokens live only in `tokens.css`** — `site.css` and `app/app.css`
-  `@import` it; the homepage links it. Don't duplicate colors/fonts.
+- **App surfaces & their sources (A33).** All three — `app/app.html`, `app/demo.html`,
+  `app/staging.html` — are hand-authored, marker-free **Svelte mount points** that load
+  `app/staging-svelte/main.js` and differ only by `<body data-mode="app|demo|staging">`. Edit the
+  Svelte components in `app/staging-svelte/`, not the HTML shells. (The old `partials/app-*.html`
+  single-source shells were deleted in A33.)
+- **Demo must never mutate or persist.** Demo mounts the Svelte app with `data-mode="demo"` → the
+  in-memory `DemoStore`, so **nothing reaches IndexedDB or localStorage by construction**. On top of
+  that, every data-writing control is `disabled` when `PAGE_MODE === 'demo'` and each write path is
+  guarded (`if (isDemo) return;`). When adding a write, confirm both. (e2e asserts no Blotterbook
+  IndexedDB is created on demo.)
+- **Design tokens live only in `tokens.css`** — `site.css` `@import`s it; the app surfaces and the
+  homepage link it; Svelte components read the token CSS vars. Don't duplicate colors/fonts.
 - **Edit data through the `Store` interface only** (`app/store.js`) — never touch
   `indexedDB` directly. A future `CloudStore` implements the same interface.
 - **The user-facing changelog is hand-curated** in `data/changelog.json` (not raw
@@ -151,24 +148,21 @@ stale). So:
   admin.html            internal admin controls (Cloudflare Access–gated)
   site.css              shared styles for howto/roadmap/changelog/legal/admin (@imports tokens.css)
 /partials/              shared HTML fragments injected at build time (single source)
-  nav.html, footer.html the info-site nav + footer
-  app-*.html            the per-surface app fragments (source for app/{app,demo,staging}.html)
-/app/                   the journal app
-  app.html              app markup (served at /app/ via _redirects rewrite)
-  demo.html             demo on its own page (in-memory, never persists)
-  staging.html          key-gated sandbox clone of the app (isolated IndexedDB)
-  app.css               all app styles (shared by app/demo/staging)
-  state.js              shared mutable cross-module app state (the `state.X` object — ESM seam)
-  core.js               DOM helpers, metrics, formatting, cost model, ref-data loading, event bus
-  render.js             dashboard rendering (cards, curve, calendar, advanced, break-even) + scope/filter
-  data.js               CSV import, demo data, filters, day-notes journal, session restore, setup
-  ui.js                 collapsible/drag panels + download / setup-label helpers
-  export.js             condensed performance report (print → PDF)
-  datamanager.js        Manage-data modal + per-trade editor + backup/restore
-  widgets.js            activity terminal, session pill, workspace templates, stat-card modals
-  main.js               DOM event wiring + boot() — the ES-module ENTRY (imports the rest)
+  nav.html, footer.html the info-site nav + footer (the only partials left; app-*.html removed in A33)
+/app/                   the journal app — a Svelte 5 SPA (ADR-001; vanilla view layer removed in A33)
+  app.html              Svelte mount, data-mode="app" (served at /app/ via _redirects rewrite)
+  demo.html             Svelte mount, data-mode="demo" (in-memory DemoStore — never persists)
+  staging.html          Svelte mount, data-mode="staging" (key-gated, isolated IndexedDB)
+  staging-svelte/       the Svelte app (dir rename is A30): main.js entry, App.svelte, components/,
+                        modal.js (modal a11y action), util.js (readImage/downloadBlob)
+  core.js               metrics (compute), formatting, cost model, ref-data loading, event bus, shared
+                        pure helpers (sessionOf/isoWeek/niceTicks/axMoney/fmtDur/ratio/num)
+  data.js               client APP_FLAGS feature-flag defaults (A14 drift-guarded; ex-view module — A33)
+  report.js             pure performance-report builder (on-screen + markdown + email — A34)
+  sampledata.js         demo CSV sample data  ·  curveseries.js  pure daily gross/net/take series
+  demostore.js          in-memory Store implementation for demo (never persists)
   adapters.js           platform CSV adapters + format auto-detection + fills matcher
-  store.js              IndexedDB persistence (trades, journal, meta, trademeta)
+  store.js              IndexedDB persistence (trades, journal, meta, trademeta) + Store.local seam
   entitlements.js       storage-tier resolver (scaffold; not currently loaded)
   types.js              shared JSDoc @typedefs (dev-only types; never loaded at runtime — CH33)
 /data/                  reference data, fetched at runtime (each carries schemaVersion)

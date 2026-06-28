@@ -44,6 +44,30 @@
       "doneNote": null
     },
     {
+      "id": "A55",
+      "title": "Finish S18: CSP style-src 'self' (drop unsafe-inline)",
+      "category": "SECURITY",
+      "priority": "P2",
+      "effort": "medium",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From A33 (Phase 4c step 4, deferred). _headers CSP still allows style-src 'unsafe-inline'. To drop it: (1) convert the ~5 DYNAMIC inline style= attributes in app/staging-svelte/ (EquityCurve overlay swatch --sw + end-label fill; StatCardModal .seg flex/background + .fill width/background) to CSSOM via a small use: action that calls el.style.setProperty(), or to CSS custom properties set the same way — 'unsafe-inline' is NOT required for setProperty. (2) The export-report iframe (report.js reportHtmlDoc) uses an inline <style> in srcdoc, which inherits the page CSP — switch it to a blob: URL iframe (its own context) or otherwise avoid the inline <style>. (3) Move any remaining inline <style> on the marketing pages (index.html, admin.html) into linked CSS. (4) Then flip _headers to style-src 'self' and verify NO CSP violations on any surface (app/demo/staging/info pages + the export report + PNG raster). Done when: style-src is 'self' with no console CSP errors and the charts/export still render.",
+      "doneNote": null
+    },
+    {
+      "id": "A56",
+      "title": "Docs refresh for the A33 Svelte cutover",
+      "category": "COMMENTS / READABILITY",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From A33. The cutover deleted the vanilla view layer and moved all surfaces to the Svelte SPA; the key CLAUDE.md sections were updated, but sweep the rest for stale references: CLAUDE.md data-flow (render*/data) + event-bus (widgets.js) + the build-includes 'three app surfaces' note + 'Adding things' (a platform adapter/promotion checklist); README.md; docs/architecture.md (deploy contract, promotion/versioning narrative, design pillars) and docs/adr-001-vite-svelte-spa.md (mark Phase 4c done). Also bump-version.mjs/test-version.mjs comments that cite deleted files (app/render.js, app/widgets.js) as examples. Done when: no doc references the deleted vanilla modules/partials as current, and the architecture/ADR reflect the Svelte-on-all-surfaces end state.",
+      "doneNote": null
+    },
+    {
       "id": "A50",
       "title": "Phase 4 parity gap: per-day trade table on calendar/curve day-select (Svelte)",
       "category": "FEATURES",
@@ -633,15 +657,15 @@
       "prompt": "ADR-001 Phase 4b (docs/adr-001-vite-svelte-spa.md). Bring the Svelte app to FULL parity with the vanilla prod app BEFORE cutting prod/demo over (A33) — prod must not regress below today's features. These are the A27-deferred items, now required: (1) Equity curve — gross/net/take-home overlays (toggle), hover tooltip (aria-live), keyboard a11y, day note-dots, and the curve↔calendar day cross-link. (2) Journal — per-day tags + screenshots; per-trade screenshots in the editor (route ALL screenshots through Store.validShot's base64-image allow-list, S15/S18). (3) Filters — session filter + tag filter + saved-filter views (persisted via Store meta). (4) Landing/setup/CSV-load gate flow for 'app' mode (broker/feed/state required before Start; staging seeds instead). (5) costModel(inputs) refactor: replace the A27 DOM-input reuse with a clean param signature in core.js (behavior-preserving — default to the current DOM reads so any remaining vanilla caller is unchanged), then remove the DOM controls CostPanel.svelte renders only to feed costModel. Keep reusing the pure-logic core verbatim otherwise (A29). Done when: every vanilla prod dashboard feature has a Svelte equivalent, costModel takes inputs, and the staging Svelte app is at parity; tests + e2e green. STATUS (merged to main): CORE COMPLETE, NOT FULL PARITY. Shipped as sub-slices: costModel(inputs) refactor (CostPanel drops the DOM-id hack); curve interactivity (note-dots, cursor+aria-live tooltip, click-to-select); session/day-of-week/tag filters; saved-filter views; curve gross/net/take-home overlays (extracted pure app/curveseries.js shared with vanilla render.js; cost setup lifted to App); journal per-day tags+screenshots + per-trade screenshots (also fixed a Svelte $state-proxy → IndexedDB clone bug + closed a saveTradeMeta validShot gap); app-mode landing/CSV-load flow. CORRECTION: a post-merge feature-by-feature audit found parity is only ~65-70% — 'complete' was over-claimed. The remaining prod/demo features (export report, stat-card detail modals, panel collapse/drag/workspace system, Definitions & Caveats, plus Tier-2 items) are now tracked as A34-A38 and MUST land before A33 so prod doesn't regress. A33 stays blocked until A34-A38 close."
     },
     {
-      "completedDate": null,
-      "partial": false,
-      "doneNote": null,
+      "completedDate": "2026-06-28",
+      "partial": true,
+      "doneNote": "Phase 4c cutover. Phase 1: app/app.html + app/demo.html are now hand-authored, marker-free Svelte mounts (data-mode app/demo) loading staging-svelte/main.js, like staging.html — build-includes skips them. Demo-never-persists is enforced by construction (DemoStore in-memory; App layout now uses the mode store's .local) AND by isDemo guards + disabled write controls; e2e asserts no Blotterbook IndexedDB is created on demo. Phase 2: deleted the vanilla view layer (render/ui/widgets/datamanager/export/main/state.js + app.css) and the partials/app-*.html shells; app/data.js stripped to just the APP_FLAGS client defaults (A14 test still reads it); build-includes simplified to nav/footer. Pure-logic core kept verbatim (A29). build/npm test (34)/e2e (14)/drift all green. DEFERRED: Phase 4 S18 (flip CSP style-src 'self') → split out as A55 — the app still has 5 dynamic inline style= attributes + the export iframe's inline <style>, which need CSSOM/blob-URL refactors first; CSP is unchanged from pre-cutover (no regression). Docs refresh beyond the key CLAUDE.md sections → A56. Dir rename staging-svelte→svelte stays A30.",
       "id": "A33",
       "title": "Phase 4c: cut prod + demo over to Svelte, delete the vanilla view layer, finish S18",
       "category": "ARCHITECTURE / DUPLICATION",
       "priority": "P2",
       "effort": "large",
-      "status": "open",
+      "status": "done",
       "prompt": "ADR-001 Phase 4c (docs/adr-001-vite-svelte-spa.md). FINAL prod/demo cutover — do AFTER A31 + A32 AND the parity gaps A34-A38 (a post-merge audit found A32 only reached ~65-70% parity; cutting over before A34-A38 close would regress prod). (1) Convert app/app.html + app/demo.html into hand-authored Svelte mounts of the shared app/svelte/ app (like staging.html), each with its data-mode; remove the partials/app-*.html include markers from them. (2) DELETE the vanilla view layer once nothing references it: app/render.js, app/ui.js, app/datamanager.js, app/widgets.js, app/export.js, app/main.js, and the view-only parts of app/data.js (keep feature-flag defaults if still used by the Svelte app). KEEP the pure-logic core: app/adapters.js, compute/costModel in app/core.js, app/store.js, app/sampledata.js, assets/util.js, app/types.js — and the node test suites covering them. (3) Update scripts/build-includes.mjs (drop the app-shell assembly; keep nav/footer for the info pages) and scripts/bump-version.mjs (app surfaces are now Svelte mounts). Remove the now-dead partials/app-*.html. (4) Finish S18: Svelte scoped CSS removes the app inline styles; move the marketing pages' inline <style> (index.html, admin.html) into linked CSS; then flip _headers CSP to style-src 'self' (drop 'unsafe-inline'). (5) VERIFY all surfaces — app: landing→load CSV→Start→dashboard→reload restores from IndexedDB; demo: explore + ASSERT nothing written to IndexedDB + write controls disabled (the demo-never-persists invariant); staging: unchanged. Done when: all three surfaces are Svelte, the vanilla view modules + app partials are deleted, build-includes/bump-version updated, style-src is 'self' with no CSP violations, and the full e2e suite (incl. the demo no-persist check) is green. Then A30 (source-tree reorg) can follow."
     },
     {
