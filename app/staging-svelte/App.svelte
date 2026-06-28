@@ -39,16 +39,23 @@
   // Day-notes journal: the selected calendar day + the set of dates carrying a saved note.
   let selectedDate = $state(null);
   let journalDates = $state(new Set());
+  // Per-trade metadata (id -> {tags,note,...}) for the tag filter + manage-data table.
+  let tradeMeta = $state(new Map());
 
   // Filters drive the whole dashboard (a shared reactive object). scope = all-time vs the
   // calendar's current month. The cursor (calYear/calMonth) lives here so scope can read it.
-  let filters = $state({ scope: 'all', from: '', to: '', root: '', side: '' });
+  let filters = $state({ scope: 'all', from: '', to: '', root: '', side: '', session: '', tag: '', dows: [] });
   let calYear = $state(new Date().getFullYear());
   let calMonth = $state(new Date().getMonth());
 
   const inMonth = (t, y, m) => {
     const d = new Date(t.date + 'T00:00:00');
     return d.getFullYear() === y && d.getMonth() === m;
+  };
+  // RTH = 09:30–16:00 by the exported clock time, else ETH (matches render.js sessionOf).
+  const sessionOf = t => {
+    const hm = (t.time || '').slice(11, 16);
+    return hm && hm >= '09:30' && hm < '16:00' ? 'rth' : 'eth';
   };
 
   function applyFilters(trades, f) {
@@ -57,6 +64,12 @@
       if (f.to && t.date > f.to) return false;
       if (f.root && t.root !== f.root) return false;
       if (f.side && t.side !== f.side) return false;
+      if (f.session && sessionOf(t) !== f.session) return false;
+      if (f.tag) {
+        const m = tradeMeta.get(store.tradeId(t));
+        if (!m || !(m.tags || []).includes(f.tag)) return false;
+      }
+      if (f.dows.length && !f.dows.includes(new Date(t.date + 'T00:00:00').getDay())) return false;
       return true;
     });
   }
@@ -70,6 +83,7 @@
     filters.scope === 'month' ? compute(filtered.filter(t => inMonth(t, calYear, calMonth))) : metricsAll
   );
   const roots = $derived([...new Set(allTrades.map(t => t.root).filter(Boolean))].sort());
+  const tags = $derived([...new Set([...tradeMeta.values()].flatMap(m => m.tags || []))].sort());
   const dateRange = $derived(allTrades.length ? `${allTrades[0].date} → ${allTrades[allTrades.length - 1].date}` : '');
 
   // Seed the dataset once if the backend is empty (seeded surfaces only: staging + demo).
@@ -90,6 +104,7 @@
     const trades = await store.getAllTrades();
     allTrades = trades;
     journalDates = await store.journalDates();
+    tradeMeta = new Map((await store.allTradeMeta()).map(m => [m.id, m]));
     const last = trades.length ? trades[trades.length - 1].date : null;
     calYear = last ? +last.slice(0, 4) : new Date().getFullYear();
     calMonth = last ? +last.slice(5, 7) - 1 : new Date().getMonth();
@@ -107,6 +122,7 @@
   async function reloadAll() {
     allTrades = await store.getAllTrades();
     journalDates = await store.journalDates();
+    tradeMeta = new Map((await store.allTradeMeta()).map(m => [m.id, m]));
   }
 
   function navMonth(delta) {
@@ -129,6 +145,9 @@
     filters.to = '';
     filters.root = '';
     filters.side = '';
+    filters.session = '';
+    filters.tag = '';
+    filters.dows = [];
   }
 
   onMount(() => {
@@ -154,7 +173,7 @@
   {#if error}
     <p class="msg error" role="alert">Could not start the staging app: {error}</p>
   {:else if loaded}
-    <FilterBar {filters} {roots} onclear={clearFilters} />
+    <FilterBar {filters} {roots} {tags} onclear={clearFilters} />
     <Overview metrics={metricsActive} tradeCount={metricsActive.n} />
     <EquityCurve metrics={metricsAll} {journalDates} {selectedDate} onselect={d => (selectedDate = d)} />
     <CalendarMonth

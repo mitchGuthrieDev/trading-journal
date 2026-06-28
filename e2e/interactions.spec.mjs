@@ -118,6 +118,17 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   expect(errors, errors.join('\n')).toHaveLength(0);
 });
 
+// A32: the staging filter bar's session (RTH/ETH) filter narrows the active dataset.
+test('staging (Svelte): session filter narrows the dataset', async ({ page }) => {
+  await page.goto('/app/staging.html', { waitUntil: 'networkidle' });
+  const trades = page.locator('#sv-app [data-card="trades"] .value');
+  const all = Number(((await trades.textContent()) || '').trim());
+  expect(all).toBeGreaterThan(0);
+  await page.getByLabel('Session').selectOption('rth');
+  await expect(trades).not.toHaveText(String(all)); // RTH-only is a strict subset
+  expect(Number(((await trades.textContent()) || '').trim())).toBeLessThan(all);
+});
+
 // B41: toggle/collapse controls must expose ARIA state (aria-pressed / aria-expanded).
 test('toggle + collapse controls expose ARIA state (B41)', async ({ page }) => {
   await page.goto('/app/demo.html', { waitUntil: 'networkidle' });

@@ -3,12 +3,19 @@
   // set and recomputes metrics. `filters` is a shared reactive object (mutated in place — Svelte 5
   // deep reactivity propagates to App's deriveds). Scope = all-time vs the calendar's current month.
   // Session + tag filters and saved-filter views from the vanilla bar are deferred to a later slice.
-  let { filters, roots, onclear } = $props();
+  let { filters, roots, tags = [], onclear } = $props();
   const SIDES = [
     ['', 'Both sides'],
     ['long', 'Long'],
     ['short', 'Short'],
   ];
+  const SESSIONS = [
+    ['', 'All sessions'],
+    ['rth', 'RTH'],
+    ['eth', 'ETH'],
+  ];
+  const DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const toggleDow = d => (filters.dows = filters.dows.includes(d) ? filters.dows.filter(x => x !== d) : [...filters.dows, d]);
 </script>
 
 <section class="filterbar">
@@ -29,6 +36,24 @@
       {#each SIDES as [v, l] (v)}<option value={v}>{l}</option>{/each}
     </select>
   </label>
+  <label>Session
+    <select bind:value={filters.session}>
+      {#each SESSIONS as [v, l] (v)}<option value={v}>{l}</option>{/each}
+    </select>
+  </label>
+  {#if tags.length}
+    <label>Tag
+      <select bind:value={filters.tag}>
+        <option value="">All tags</option>
+        {#each tags as tg (tg)}<option value={tg}>{tg}</option>{/each}
+      </select>
+    </label>
+  {/if}
+  <div class="dows" role="group" aria-label="Day of week">
+    {#each DOW as d, i (d)}
+      <button type="button" class:on={filters.dows.includes(i)} aria-pressed={filters.dows.includes(i)} onclick={() => toggleDow(i)}>{d}</button>
+    {/each}
+  </div>
   <button type="button" class="clear" onclick={onclear}>Clear</button>
 </section>
 
@@ -90,6 +115,27 @@
   select:focus {
     outline: none;
     border-color: var(--accent);
+  }
+  .dows {
+    display: flex;
+    gap: 3px;
+    align-self: flex-end;
+  }
+  .dows button {
+    background: var(--panel2);
+    color: var(--dim);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 6px 7px;
+    font-size: 11px;
+    font-family: var(--mono);
+    cursor: pointer;
+  }
+  .dows button.on {
+    background: var(--accent);
+    color: #0d1014;
+    border-color: var(--accent);
+    font-weight: 700;
   }
   .clear {
     background: transparent;
