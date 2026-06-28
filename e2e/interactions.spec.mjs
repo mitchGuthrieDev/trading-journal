@@ -79,6 +79,11 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   // Break-even/cost panel reuses costModel() verbatim against the seeded setup → take-home shows.
   await expect(page.locator('#sv-app .costpanel [data-cost-takehome]')).toContainText('$');
 
+  // Filters/scope: switching to the calendar-month scope narrows the active trade count.
+  await page.click('#sv-app .filterbar .scope button:last-child');
+  const monthText = await page.locator('#sv-app [data-card="trades"] .value').textContent();
+  expect(Number((monthText || '').trim())).toBeLessThan(seededCount);
+
   // Reload: the isolated staging DB already has the seed, so the count is identical (no re-seed
   // duplication) and the app still boots clean from persisted data.
   await page.reload({ waitUntil: 'networkidle' });

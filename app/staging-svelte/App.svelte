@@ -13,12 +13,44 @@
   import CalendarMonth from './components/CalendarMonth.svelte';
   import AdvancedStats from './components/AdvancedStats.svelte';
   import CostPanel from './components/CostPanel.svelte';
+  import FilterBar from './components/FilterBar.svelte';
 
-  let metrics = $state(null);
-  let tradeCount = $state(0);
-  let dateRange = $state('');
+  let allTrades = $state([]);
+  let loaded = $state(false);
   let status = $state('Loading…');
   let error = $state('');
+
+  // Filters drive the whole dashboard (a shared reactive object). scope = all-time vs the
+  // calendar's current month. The cursor (calYear/calMonth) lives here so scope can read it.
+  let filters = $state({ scope: 'all', from: '', to: '', root: '', side: '' });
+  let calYear = $state(new Date().getFullYear());
+  let calMonth = $state(new Date().getMonth());
+
+  const inMonth = (t, y, m) => {
+    const d = new Date(t.date + 'T00:00:00');
+    return d.getFullYear() === y && d.getMonth() === m;
+  };
+
+  function applyFilters(trades, f) {
+    return trades.filter(t => {
+      if (f.from && t.date < f.from) return false;
+      if (f.to && t.date > f.to) return false;
+      if (f.root && t.root !== f.root) return false;
+      if (f.side && t.side !== f.side) return false;
+      return true;
+    });
+  }
+
+  // metricsAll = filtered, all-time → feeds the curve + calendar (calendar colors ignore scope).
+  // metricsActive = metricsAll, or just the calendar month when scope='month' → feeds the cards,
+  // advanced stats, and cost panel. Mirrors the vanilla baseTrades()/activeMetrics() split.
+  const filtered = $derived(applyFilters(allTrades, filters));
+  const metricsAll = $derived(compute(filtered));
+  const metricsActive = $derived(
+    filters.scope === 'month' ? compute(filtered.filter(t => inMonth(t, calYear, calMonth))) : metricsAll
+  );
+  const roots = $derived([...new Set(allTrades.map(t => t.root).filter(Boolean))].sort());
+  const dateRange = $derived(allTrades.length ? `${allTrades[0].date} → ${allTrades[allTrades.length - 1].date}` : '');
 
   // Seed the isolated staging DB once (same dataset + setup as the vanilla seedStagingIfEmpty).
   async function seedIfEmpty() {
@@ -36,10 +68,34 @@
     await Store.init();
     await seedIfEmpty();
     const trades = await Store.getAllTrades();
-    tradeCount = trades.length;
-    metrics = compute(trades);
-    dateRange = trades.length ? `${metrics.firstDate} → ${metrics.lastDate}` : '';
+    allTrades = trades;
+    const last = trades.length ? trades[trades.length - 1].date : null;
+    calYear = last ? +last.slice(0, 4) : new Date().getFullYear();
+    calMonth = last ? +last.slice(5, 7) - 1 : new Date().getMonth();
+    loaded = true;
     status = '';
+  }
+
+  function navMonth(delta) {
+    let m = calMonth + delta;
+    let y = calYear;
+    if (m < 0) {
+      m = 11;
+      y--;
+    }
+    if (m > 11) {
+      m = 0;
+      y++;
+    }
+    calMonth = m;
+    calYear = y;
+  }
+
+  function clearFilters() {
+    filters.from = '';
+    filters.to = '';
+    filters.root = '';
+    filters.side = '';
   }
 
   onMount(() => {
@@ -63,15 +119,17 @@
 
   {#if error}
     <p class="msg error" role="alert">Could not start the staging app: {error}</p>
-  {:else if metrics}
-    <Overview {metrics} {tradeCount} />
-    <EquityCurve {metrics} />
-    <CalendarMonth {metrics} />
-    <AdvancedStats {metrics} />
-    <CostPanel {metrics} />
+  {:else if loaded}
+    <FilterBar {filters} {roots} onclear={clearFilters} />
+    <Overview metrics={metricsActive} tradeCount={metricsActive.n} />
+    <EquityCurve metrics={metricsAll} />
+    <CalendarMonth metrics={metricsAll} year={calYear} month={calMonth} onnav={navMonth} />
+    <AdvancedStats metrics={metricsActive} />
+    <CostPanel metrics={metricsActive} />
     <p class="note">
       Migration in progress (A27): Overview, performance curve, trading calendar, advanced
-      statistics and break-even/cost are live in Svelte. Day-notes journal and manage-data are next.
+      statistics, break-even/cost and filters/scope are live in Svelte. Day-notes journal,
+      manage-data and the activity terminal are next.
     </p>
   {:else}
     <p class="msg">{status}</p>

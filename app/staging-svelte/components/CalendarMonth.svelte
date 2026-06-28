@@ -4,14 +4,13 @@
   // dashboard scoping, and the curve cross-link from the vanilla calendar come in later A27 slices.
   import { pad2, usd, money } from '../../core.js';
 
-  let { metrics } = $props();
+  // year/month are owned by App (so the all-time/month scope toggle can read the same cursor);
+  // onnav(delta) asks App to shift the month. metrics here is the FILTERED all-time set, so the
+  // grid colors reflect the active filters regardless of scope.
+  let { metrics, year, month, onnav } = $props();
 
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  const last = metrics && /^\d{4}-\d{2}-\d{2}$/.test(metrics.lastDate || '') ? metrics.lastDate : null;
-  let year = $state(last ? +last.slice(0, 4) : new Date().getFullYear());
-  let month = $state(last ? +last.slice(5, 7) - 1 : new Date().getMonth());
 
   const byDate = $derived(new Map((metrics && metrics.days ? metrics.days : []).map(d => [d.date, d])));
   const cells = $derived(buildCells(year, month, byDate));
@@ -32,30 +31,15 @@
 
   // Compact whole-dollar label for a cell (the full value is in the title tooltip).
   const compact = v => (v < 0 ? '-' : '+') + '$' + Math.abs(Math.round(v)).toLocaleString('en-US');
-
-  function shift(delta) {
-    let m = month + delta;
-    let y = year;
-    if (m < 0) {
-      m = 11;
-      y--;
-    }
-    if (m > 11) {
-      m = 0;
-      y++;
-    }
-    month = m;
-    year = y;
-  }
 </script>
 
 <section class="panel calendar">
   <div class="phead">
     <h2>Trading Calendar</h2>
     <div class="nav">
-      <button type="button" aria-label="Previous month" onclick={() => shift(-1)}>‹</button>
+      <button type="button" aria-label="Previous month" onclick={() => onnav(-1)}>‹</button>
       <span class="label">{MONTHS[month]} {year}</span>
-      <button type="button" aria-label="Next month" onclick={() => shift(1)}>›</button>
+      <button type="button" aria-label="Next month" onclick={() => onnav(1)}>›</button>
     </div>
     <span class="mnet" class:neg={monthNet < 0}>{usd(monthNet)}</span>
   </div>
