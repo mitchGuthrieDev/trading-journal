@@ -42,6 +42,7 @@
   let manageOpen = $state(false);
   let landingMsg = $state('');
   let online = $state(typeof navigator === 'undefined' ? true : navigator.onLine); // A38 session pill
+  let pillOpen = $state(false); // A49 session-pill legend popup
   let cardModalKey = $state(null); // A35 stat-card detail modal
   let exportOpen = $state(false); // A34 performance-report export
 
@@ -251,6 +252,7 @@
     allTrades = await store.getAllTrades();
     journalDates = await store.journalDates();
     tradeMeta = new Map((await store.allTradeMeta()).map(m => [m.id, m]));
+    savedFilters = (await store.getMeta('savedFilters')) || []; // A49: a backup-restore can replace these
   }
 
   // App-mode landing: parse + persist a CSV, then the dashboard takes over (allTrades non-empty).
@@ -341,6 +343,8 @@
   });
 </script>
 
+<svelte:window onclick={() => (pillOpen = false)} />
+
 <main id="sv-app">
   <header class="topbar">
     <div class="brand">
@@ -350,7 +354,30 @@
       Svelte&nbsp;5 proving ground · isolated local data{#if dateRange} · {dateRange}{/if}
     </div>
     <div class="topactions">
-      <span class="pill" class:off={!online} title={online ? 'Online' : 'Offline'}>{online ? 'online' : 'offline'}</span>
+      <div class="sesswrap">
+        <button
+          type="button"
+          class="pill"
+          class:off={!online}
+          aria-haspopup="true"
+          aria-expanded={pillOpen}
+          title={online ? 'Online' : 'Offline'}
+          onclick={e => {
+            e.stopPropagation();
+            pillOpen = !pillOpen;
+          }}>{online ? 'online' : 'offline'}</button>
+        {#if pillOpen}
+          <div class="sesspop" role="dialog" aria-label="Session status legend">
+            <p class="pophd">Session status</p>
+            <ul>
+              <li><span class="sdot on"></span> <b>Online</b> — ref-data &amp; functions reachable.</li>
+              <li><span class="sdot off"></span> <b>Offline</b> — no network; the app keeps working on your local data.</li>
+              <li><span class="sdot deg"></span> <b>Degraded</b> — reserved for partial connectivity.</li>
+            </ul>
+            <p class="popnote">Compute always stays in your browser — status never gates your data.</p>
+          </div>
+        {/if}
+      </div>
       <a class="link" href="../changelog.html">Changelog</a>
       <a class="link" href="mailto:contact@blotterbook.com?subject=Blotterbook">Contact</a>
       {#if loaded && allTrades.length}<button type="button" class="exportbtn" onclick={() => (exportOpen = true)}>Export report</button>{/if}
@@ -473,13 +500,18 @@
     align-items: center;
     gap: 10px;
   }
+  .sesswrap {
+    position: relative;
+  }
   .pill {
     font-size: 11px;
     font-family: var(--mono);
     color: var(--green);
+    background: transparent;
     border: 1px solid var(--line);
     border-radius: 999px;
     padding: 3px 9px;
+    cursor: pointer;
   }
   .pill::before {
     content: '';
@@ -496,6 +528,65 @@
   }
   .pill.off::before {
     background: var(--faint);
+  }
+  .sesspop {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 40;
+    width: 260px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 10px 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    text-align: left;
+  }
+  .pophd {
+    margin: 0 0 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--faint);
+    font-weight: 700;
+  }
+  .sesspop ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+  }
+  .sesspop li {
+    font-size: 12px;
+    color: var(--dim);
+    line-height: 1.4;
+  }
+  .sesspop b {
+    color: var(--txt);
+  }
+  .sdot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .sdot.on {
+    background: var(--green);
+  }
+  .sdot.off {
+    background: var(--faint);
+  }
+  .sdot.deg {
+    background: var(--warn);
+  }
+  .popnote {
+    margin: 8px 0 0;
+    font-size: 11px;
+    color: var(--faint);
+    line-height: 1.4;
   }
   .link {
     font-size: 13px;

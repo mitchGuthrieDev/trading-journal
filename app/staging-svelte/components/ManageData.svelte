@@ -7,6 +7,7 @@
   import { Adapters } from '../../adapters.js';
   import { usd, money, emit } from '../../core.js';
   import { readImage, downloadBlob } from '../util.js';
+  import { modal } from '../modal.js';
 
   let { onclose, onchanged, onopenday = () => {} } = $props();
   const store = getContext('bb:store'); // A31: Store or DemoStore, chosen by App per mode
@@ -67,6 +68,17 @@
     else msg = 'Only image screenshots are allowed.';
   }
 
+  async function deleteTrade(t) {
+    const id = store.tradeId(t);
+    if (!confirm(`Delete this ${t.symbol} trade on ${t.date}? This also removes its tags, note and screenshots.`)) return;
+    await store.deleteTrade(id);
+    await store.deleteTradeMeta(id); // B40: don't orphan the trade's tags/note/screenshots
+    if (editing === id) editing = null;
+    emit('trade:deleted', { id });
+    await reload();
+    onchanged();
+  }
+
   async function saveEdit() {
     const tags = [...new Set(editTags.split(',').map(s => s.trim().toLowerCase()).filter(Boolean))];
     await store.saveTradeMeta(editing, { tags, note: editNote, shots: editShots });
@@ -124,14 +136,9 @@
   }
 </script>
 
-<svelte:window
-  onkeydown={e => {
-    if (e.key === 'Escape') (editing ? (editing = null) : onclose());
-  }}
-/>
-
 <div class="overlay" role="presentation" onclick={e => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Manage data">
+  <!-- Escape cancels an open per-trade editor first, otherwise closes the modal (A42). -->
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Manage data" tabindex="-1" use:modal={{ onclose: () => (editing ? (editing = null) : onclose()) }}>
     <div class="head">
       <h2>Manage data</h2>
       <button type="button" class="x" onclick={onclose} aria-label="Close">×</button>
@@ -181,7 +188,10 @@
               <td class="r" class:pos={t.pnl > 0} class:neg={t.pnl < 0}>{usd(t.pnl)}</td>
               <td class="tags">{(m.tags || []).join(', ')}</td>
               <td class="note dim">{m.note || ''}</td>
-              <td class="r"><button type="button" class="edit" onclick={() => openEdit(t)}>Edit</button></td>
+              <td class="r actions">
+                <button type="button" class="edit" onclick={() => openEdit(t)}>Edit</button>
+                <button type="button" class="del" aria-label="Delete trade" onclick={() => deleteTrade(t)}>Delete</button>
+              </td>
             </tr>
             {#if editing === id}
               <tr class="editor">
@@ -395,7 +405,11 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .edit {
+  td.actions {
+    white-space: nowrap;
+  }
+  .edit,
+  .del {
     background: var(--panel2);
     color: var(--txt);
     border: 1px solid var(--line);
@@ -403,6 +417,14 @@
     padding: 3px 10px;
     font-size: 12px;
     cursor: pointer;
+  }
+  .del {
+    color: var(--red);
+    margin-left: 6px;
+  }
+  .del:hover {
+    border-color: rgba(240, 74, 74, 0.5);
+    background: var(--red-bg);
   }
   tr.editing td {
     border-bottom: 0;

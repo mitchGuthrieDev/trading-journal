@@ -79,14 +79,28 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   await expect(page.locator('.modal[aria-label="Avg Win / Loss"]')).toContainText('Win distribution');
   await page.click('.modal[aria-label="Avg Win / Loss"] .x');
 
+  // Win-rate modal: proportional wins/losses/scratch split bar (A46).
+  await page.click('#sv-app [data-card="win"]');
+  await expect(page.locator('.modal[aria-label="Win Rate"] .split .seg').first()).toBeVisible();
+  await page.click('.modal[aria-label="Win Rate"] .x');
+  // Profit-factor modal: by-symbol table with PF + net columns (A46).
+  await page.click('#sv-app [data-card="pf"]');
+  await expect(page.locator('.modal[aria-label="Profit Factor"] .symtab tbody tr').first()).toBeVisible();
+  await page.click('.modal[aria-label="Profit Factor"] .x');
+
   // Performance equity curve renders an SVG path from compute()'s m.curve.
   const curve = page.locator('#sv-app svg.equity path.line');
   await expect(curve).toHaveAttribute('d', /^M[\d.]+,[\d.]+ L/);
+  // Axis furniture (A43): y-axis $ tick labels + end-of-line value labels render.
+  await expect(page.locator('#sv-app svg.equity .ylab').first()).toBeVisible();
+  await expect(page.locator('#sv-app svg.equity .endlab').first()).toBeVisible();
 
   // Trading calendar renders day cells, including traded (colored) days from m.days.
   await expect(page.locator('#sv-app .calendar .calgrid .cell.traded').first()).toBeVisible();
   // Calendar Week column (A40): each row carries an ISO week number + weekly P&L.
   await expect(page.locator('#sv-app .calendar .calgrid .wkcell .wkno').first()).toContainText('Wk');
+  // Per-day trade count + win% in each traded cell (A44).
+  await expect(page.locator('#sv-app .calendar .calgrid .cell.traded .dmeta').first()).toContainText('tr');
 
   // Advanced statistics panel renders its metric rows from compute().
   await expect(page.locator('#sv-app .advstats .row').first()).toBeVisible();
@@ -94,6 +108,7 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   // Break-even/cost panel reuses costModel() verbatim against the seeded setup → take-home shows.
   await expect(page.locator('#sv-app .costpanel [data-cost-takehome]')).toContainText('$');
   await expect(page.locator('#sv-app .costpanel .caveats summary')).toBeVisible(); // A38
+  await expect(page.locator('#sv-app .costpanel .bysym thead')).toContainText('$/RT'); // A48 round-turn column
 
   // Filters/scope: switching to the calendar-month scope narrows the active trade count.
   await page.click('#sv-app .filterbar .scope button:last-child');
@@ -150,6 +165,9 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   await expect(page.locator('#sv-app .filterbar .count')).toContainText('trade');
   await expect(page.locator('#sv-app .pill')).toBeVisible();
   await expect(page.locator('#sv-app .panel[data-key="cal"] .nav .today')).toBeVisible();
+  // Session-pill legend popup (A49): clicking the pill opens the status legend.
+  await page.click('#sv-app .pill');
+  await expect(page.locator('#sv-app .sesspop')).toContainText('Online');
 
   // Manage data: open the modal, edit a trade's tags via the Store, and see them in the table.
   await page.click('.managebtn');
@@ -230,6 +248,31 @@ test('staging (Svelte): panel collapse persists + workspace templates (A36)', as
   // Reloading the default layout selection → loads my saved template back (perf collapsed again).
   await page.selectOption('#sv-app .wsbar select', 'My Layout');
   await expect(page.locator('#sv-app .panel[data-key="perf"] .chev')).toHaveAttribute('aria-expanded', 'false');
+});
+
+// A42: a modal locks body scroll while open and closes on Escape, releasing the lock.
+test('staging (Svelte): modal locks scroll + closes on Escape (A42)', async ({ page }) => {
+  await page.goto('/app/staging.html', { waitUntil: 'networkidle' });
+  await expect(page.locator('#sv-app [data-card="net"] .value')).toContainText('$', { timeout: 5000 });
+  await page.click('#sv-app [data-card="net"]');
+  await expect(page.locator('.modal[aria-label="Net PnL"]')).toBeVisible();
+  expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).toBe('hidden'); // B36 scroll-lock
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.modal[aria-label="Net PnL"]')).toHaveCount(0);
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe(''); // lock released
+});
+
+// A45: a trade can be deleted from the manage-data table (with its meta), shrinking the row count.
+test('staging (Svelte): per-trade delete removes the trade (A45)', async ({ page }) => {
+  await page.goto('/app/staging.html', { waitUntil: 'networkidle' });
+  await expect(page.locator('#sv-app [data-card="net"] .value')).toContainText('$', { timeout: 5000 });
+  page.on('dialog', d => d.accept()); // confirm()
+  await page.click('.managebtn');
+  const rows = page.locator('.modal table tbody tr');
+  await expect(rows.first()).toBeVisible();
+  const before = await rows.count();
+  await page.locator('.modal .del').first().click();
+  await expect(rows).toHaveCount(before - 1);
 });
 
 // B41: toggle/collapse controls must expose ARIA state (aria-pressed / aria-expanded).
