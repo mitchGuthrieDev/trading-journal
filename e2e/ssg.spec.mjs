@@ -8,7 +8,11 @@ import { test, expect } from '@playwright/test';
 const PAGES = [
   {
     path: '/index.html',
-    must: ['Everything in one private dashboard', 'Bring trades from the platform you already use', 'Free for everyone. Support if it helps.'],
+    must: [
+      'Everything in one private dashboard',
+      'Bring trades from the platform you already use',
+      'Free for everyone. Support if it helps.',
+    ],
   },
   { path: '/howto.html', must: ['How to use Blotterbook', 'Importing by platform', 'Tradovate'] },
   { path: '/roadmap.html', must: ['Available now', 'In progress', 'Numbers you can trust to the cent'] },

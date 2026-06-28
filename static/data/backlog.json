@@ -441,18 +441,6 @@
       "doneNote": null
     },
     {
-      "id": "A69",
-      "title": "Convert the homepage, admin, and info site to Svelte",
-      "category": "ARCHITECTURE / DUPLICATION",
-      "priority": "P2",
-      "effort": "large",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "Convert the remaining static surfaces - homepage (index.html + home.css), admin (admin.html + admin.css + assets/admin.js), and the info site (howto/roadmap/changelog/legal + site.css, partials/nav+footer, assets/changelog.js) - to Svelte under the Vite build, unifying the shared chrome (nav/footer) and the changelog/admin rendering with the app's component model. GATES NOW RESOLVED: the SvelteKit decision (A62) is DEFERRED — build these as plain Svelte components under the existing Vite MPA build (each marketing page is a static/prerendered HTML entry that compiles Svelte, NOT pulled behind the app SPA shell — ADR-001). The target structure is DECIDED in docs/structure-reorg-plan.md (A70): author the site components into the prepared src/site/ homes (Home/Howto/Roadmap/Changelog/Legal/Admin.svelte; Nav/Footer.svelte in src/site/lib/; changelog/admin renderers from assets/*.js), which RETIRES partials/ + scripts/build-includes.mjs (and the include half of the drift gate). Constraints: marketing pages MUST stay fast + SEO-friendly (prerendered/static output); URLs preserved 1:1 (A26); CSP stays style-src 'self' (A55); tokens.css remains the single source; fold page CSS into scoped component styles. COORDINATE WITH A30 so the reorg lands ONCE and is final (do A69+A30 as one pass, or A69 immediately before A30) per docs/structure-reorg-plan.md. Done when: every page renders identically, URLs + SEO intact, partials/build-includes retired, drift/e2e green.",
-      "doneNote": null
-    },
-    {
       "id": "A71",
       "title": "(staging) Top module headers clickable with a menu popup",
       "category": "FEATURES",

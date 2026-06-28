@@ -14,7 +14,7 @@ CH16, F13, F14, S19, R1, …) are backlog item ids from
 - [Design pillars](#design-pillars)
 - [Repository layout & the deploy contract](#repository-layout--the-deploy-contract)
 - [Architecture & data flow](#architecture--data-flow)
-- [Shared chrome: tokens + partials](#shared-chrome-tokens--partials)
+- [Shared chrome: tokens + Svelte components](#shared-chrome-tokens--svelte-components)
 - [Input: the CSV](#input-the-csv)
 - [Platform adapters & auto-detection](#platform-adapters--auto-detection)
 - [Cost model](#cost-model)
@@ -82,7 +82,7 @@ from there). See [`docs/structure-reorg-plan.md`](structure-reorg-plan.md) for t
 `/assets/…`) and rewrites the HTML references; the verbatim-static set (`static/data/*.json`,
 `static/_headers`, `static/_redirects`, `static/robots.txt`, `static/sitemap.xml`,
 `static/assets/og-image.png`) is copied by Vite's `publicDir` (this retired `scripts/copy-static.mjs`).
-`functions/`, `scripts/`, `partials/`, and tooling stay at the repo root, unserved.
+`functions/`, `scripts/`, and tooling stay at the repo root, unserved (`partials/` retired by A69).
 
 **Pinned at the deploy root** (Cloudflare Pages requires it — these cannot move):
 
@@ -103,13 +103,15 @@ page), update *all* of:
 | `static/_headers` | CSP `connect-src 'self'` assumes same-origin `/api`, `/data`, `/app` |
 | `static/robots.txt` / `static/sitemap.xml` | `/app/`, `/admin.html`, and the public-page canonical URLs (CH5/CH6) |
 | Page `<link rel="canonical">` + OG tags | the canonical URL of each marketing page (CH5) |
-| `vite.config.mjs` | `root: 'src'`, `publicDir: static/`, `outDir: dist/`, the 9 `rollupOptions.input` entry paths |
-| `scripts/build-includes.mjs` | scans `src/` for `*.html`; reads `partials/` |
+| `vite.config.mjs` | `root: 'src'`, `publicDir: static/`, `outDir: dist/`, the 9 `rollupOptions.input` entry paths + the `ssg()` page list (A69) |
+| `vite-ssg.mjs` | maps each site page's URL → its `src/site/components/*.svelte` component (A69 prerender) |
 | `scripts/build-manifest.mjs` | hashes `static/data/*.json`, with an explicit filename exclude-set |
 | `scripts/bump-version.mjs` | classifies prod-shipping surfaces by the `src/app/`, `src/lib/`, `src/site/`, `src/assets/`, `static/data/` prefixes + specific filenames |
 
-`dist/` is gitignored; CI's drift gate proves the build-time tooling (`build-includes` /
-`build-manifest`) didn't leave committed sources stale.
+`dist/` is gitignored; CI's drift gate proves the build-time tooling (`build-manifest`) didn't leave
+committed sources stale. (A69 retired `scripts/build-includes.mjs` and its drift-gate half — the
+nav/footer partials became `Nav.svelte`/`Footer.svelte` and the site pages are prerendered, so no
+committed HTML is generated from partials anymore.)
 
 ## Architecture & data flow
 
@@ -155,31 +157,30 @@ The activity terminal, session pill, and workspace templates are now Svelte comp
 (`app:ready`, `data:loaded`, `data:imported`, `note:saved`, `trade:deleted`, `backup:created`,
 `data:erased`) over an `EventTarget` for any listener; it stays a no-op when nothing subscribes.
 
-## Shared chrome: tokens + partials
+## Shared chrome: tokens + Svelte components
 
 To kill copy-paste drift across the info site, two things are single-sourced:
 
-- **Design tokens** live only in [`tokens.css`](../tokens.css). `site.css`
-  `@import`s it, the app surfaces and the bespoke homepage link it directly, and the
-  Svelte components read its CSS custom properties. Change a color or font in one place.
-- **Shared HTML lives in `partials/`** and
-  [`scripts/build-includes.mjs`](../scripts/build-includes.mjs) injects the
-  **info-site nav + footer**
-  ([`partials/nav.html`](../partials/nav.html) /
-  [`partials/footer.html`](../partials/footer.html)) into each info page via
-  `<!-- include:nav active=… -->` / `<!-- include:footer -->` markers
-  (`active=KEY` highlights the matching `data-nav` link). This is the **only**
-  partial family left — the per-surface `partials/app-*.html` fragments were
-  deleted in the A33 cutover. The three app surfaces (`app/{app,demo,staging}.html`)
-  are now hand-authored Svelte mount points with no include markers; they differ
-  only by `<body data-mode="…">`, and all mode-gating (a control `disabled` on
-  demo, a staging-only affordance) lives in the Svelte app.
+- **Design tokens** live only in [`tokens.css`](../tokens.css). Every page links it directly (the app
+  surfaces, the bespoke homepage, and the info/admin pages), and the Svelte components read its CSS
+  custom properties. Change a color or font in one place.
+- **Shared chrome is Svelte components (A69).** The info-site nav + footer are
+  [`Nav.svelte`](../src/site/lib/Nav.svelte) / [`Footer.svelte`](../src/site/lib/Footer.svelte), and
+  [`SiteShell.svelte`](../src/site/lib/SiteShell.svelte) composes them around the page content and
+  owns the site-wide base styles (resets, typography, `.note`/`.panel`) once — so each page component
+  carries only its own page-specific CSS. An `active` prop highlights the current nav link, and a
+  `variant="admin"` renders the trimmed, marketing-free admin chrome (A9). This replaced
+  `partials/{nav,footer}.html` + `scripts/build-includes.mjs` (retired by A69); the per-surface
+  `partials/app-*.html` fragments were already deleted in the A33 cutover.
 
-It's **idempotent** — re-run it after editing `nav.html`/`footer.html`:
-`node scripts/build-includes.mjs`. The committed info-page HTML already contains the
-rendered output, so the deploy works with or without running it. The **homepage,
-admin, and the app surfaces keep their own HTML** by design — the info pages share
-nav/footer; every surface shares the tokens.
+The marketing/info pages are a **build-time Svelte SSG** (no SvelteKit; A62 deferred):
+[`vite-ssg.mjs`](../vite-ssg.mjs) server-renders each page component (`svelte/server` `render()`)
+into its committed template's `<!--ssg-outlet-->` so every page ships as static, fully-rendered HTML
+(SEO + first paint) and then hydrates in place via a small client entry — **NOT** pulled behind the
+app SPA shell (ADR-001). The three app surfaces (`app/{app,demo,staging}.html`) are likewise
+hand-authored Svelte mount points; they differ only by `<body data-mode="…">`, and all mode-gating
+lives in the Svelte app. The **homepage and admin keep their own bespoke chrome** by design (A9) —
+the info pages share `Nav`/`Footer`/`SiteShell`; every surface shares the tokens.
 
 ## Input: the CSV
 
@@ -414,12 +415,14 @@ commit:
    → minor, `fix:`/`chore:`/`refactor:`/etc → patch, `feat!:` or a `BREAKING
    CHANGE:` footer → major, untyped → patch. (See the `commitConvention` field in
    `data/backlog.json`.)
-2. **Which track** from the changed paths — any **prod-shipping** file (the pure-logic
-   core `app/*.js`, the Svelte SPA `app/staging-svelte/**` `.js`/`.svelte`,
-   `app/app.html`/`demo.html`, `partials/*`, `assets/*`, `tokens.css`, `data/*`
-   except versions/backlog json) bumps **both** prod and staging; **only** `app/staging.html`
-   bumps staging alone; info pages + `site.css` bump prod alone; everything else (admin,
-   README, `.github`, scripts, functions) bumps nothing.
+2. **Which track** from the changed paths (A30 paths; A69 site) — any **prod-shipping** file (the
+   pure-logic core `src/lib/*.ts`, the Svelte SPA `src/app/**` `.ts`/`.svelte`,
+   `src/app/app.html`/`demo.html`, `src/assets/*`, `src/styles/tokens.css`, `static/data/*`
+   except versions/backlog/changelog json) bumps **both** prod and staging; **only**
+   `src/app/staging.html` bumps staging alone; the marketing/info site (`src/index.html` +
+   `src/{howto,roadmap,changelog,legal}.html` + their `src/site/**` Svelte components, shared chrome,
+   and client entries — A69) bumps prod alone; everything else (the internal admin page —
+   `src/admin.html`/`Admin.svelte`/`admin.ts` — README, `.github`, scripts, functions) bumps nothing.
 
 It writes `data/versions.json` and commits it back to `main` as
 `chore(release): … [skip ci]` (so it doesn't re-trigger itself). **Requires** the
