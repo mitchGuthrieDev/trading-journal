@@ -1015,8 +1015,7 @@
     outline-offset: 2px;
   }
   /* F26 (staging): the grid modules lined up parallel. auto-fit fits as many ≥360px columns as the
-     (now full-width — L8) row allows, dropping to a single column on narrow/mobile. align-items:start
-     keeps each column independent height (a collapsed module doesn't stretch its neighbours). */
+     (now full-width — L8) row allows, dropping to a single column on narrow/mobile. */
   .modgrid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
@@ -1025,11 +1024,12 @@
        the negative space below the shorter modules is reclaimed into the module itself. */
     align-items: stretch;
   }
-  /* min-width:0 lets a column shrink below its content's intrinsic width (no grid blowout); the
-     panels fill their stretched cell height (content stays top-aligned via normal block flow). */
+  /* min-width:0 lets a column shrink below its content's intrinsic width (no grid blowout). The panels
+     reach a common height via the grid's align-items:stretch alone — do NOT also set height:100% here:
+     the panel's own margin-top would then push its 100%-tall box past the cell bottom and overlap the
+     full-width module below it (the Trade Blotter). */
   .modgrid > :global(.panel) {
     min-width: 0;
-    height: 100%;
   }
   /* R12 (staging): the "Add module" control sits beside the workspace bar. */
   .wsrow {

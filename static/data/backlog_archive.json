@@ -2723,7 +2723,7 @@
       "status": "done",
       "completedDate": "2026-06-29",
       "partial": false,
-      "doneNote": "Fixed value clipping/overflow in the Calendar + Break-even modules at narrow F26-grid widths. Panel.svelte: .phead flex-wraps and .pactions/h2 get min-width:0 so a heavy header (the calendar month nav) wraps instead of overflowing/clipping the panel. CalendarMonth: .nav wraps; the 8-col grid now always scrolls WITHIN the panel (.calendar overflow-x:auto + .calgrid min-width:480px) so day values never clip or spill past the border. CSS hardening; verified at ~1440px (13in MacBook) and narrower."
+      "doneNote": "Fixed value clipping/overflow in the Calendar + Break-even modules at narrow F26-grid widths. The calendar's heavy month nav was the worst offender, so it MOVED out of the cramped panel header into a body toolbar (CalendarMonth .caltoolbar — nav left, month-net right, wraps on narrow); the header is now just title + menu + chevron and never wraps, which also keeps the collapse chevron reachable (A121). The 8-col grid always scrolls WITHIN the panel (.calendar overflow-x:auto + .calgrid min-width:480px) so day values never clip or spill past the border. Panel.svelte .phead/.pactions/h2 also flex-wrap + min-width:0 as a general safety net. CSS hardening; verified at ~1440px (13in MacBook) and narrower."
     },
     {
       "id": "A124",
@@ -2789,7 +2789,7 @@
       "status": "done",
       "completedDate": "2026-06-29",
       "partial": false,
-      "doneNote": ".modgrid now uses align-items:stretch (+ the grid panels height:100%) so the three grid modules (Calendar / Break-even / Advanced Stats) share a common height and their bottoms align, reclaiming the negative space below the shorter ones. e2e asserts the three grid panels are equal height. Staging-gated pending CH16."
+      "doneNote": ".modgrid uses align-items:stretch so the three grid modules (Calendar / Break-even / Advanced Stats) share a common height and their bottoms align, reclaiming the negative space below the shorter ones. NOTE the first cut also set the grid panels to height:100% which, combined with the panel's own margin-top:16px, pushed each panel 16px past its grid cell and OVERLAPPED the Trade Blotter below — fixed by removing height:100% (align-items:stretch already equalizes height accounting for the margin, no overlap). e2e asserts the three grid panels are equal height. Staging-gated pending CH16."
     }
   ]
 }

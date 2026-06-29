@@ -80,7 +80,10 @@
 </script>
 
 <Panel {...panel} title="Trading Calendar">
-  {#snippet actions()}
+  <!-- A123: the month nav lives in a body TOOLBAR (not the panel header) so a narrow F26-grid column
+       can't cram the header — the header stays light (title + menu + chevron) and never wraps, keeping
+       the collapse chevron reachable (A121). -->
+  <div class="caltoolbar">
     <div class="nav">
       <button type="button" aria-label="Previous month" title="Previous month" onclick={() => onnav(-1)}>‹</button>
       <span class="label">{MONTHS[month]} {year}</span>
@@ -88,7 +91,7 @@
       <button type="button" class="today" title="Jump to the latest trade's month" onclick={() => onjump()}>Latest</button>
     </div>
     <span class="mnet" class:neg={monthNet < 0}>{usd(monthNet)}</span>
-  {/snippet}
+  </div>
 
   <div class="calendar">
     <div class="calgrid">
@@ -145,11 +148,21 @@
     line-height: 1.45;
     color: var(--dim);
   }
+  /* A123: the month nav + month-net toolbar sits at the top of the calendar body (was the panel
+     header). justify-between puts the nav on the left and the month net on the right; it wraps on a
+     narrow column instead of overflowing. */
+  .caltoolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
   .nav {
     display: flex;
     align-items: center;
     gap: 10px;
-    /* A123: in the narrow F26 grid column the nav must wrap rather than overflow the panel header. */
     flex-wrap: wrap;
   }
   .nav button {
