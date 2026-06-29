@@ -1,6 +1,7 @@
-/* Blotterbook design tokens — the single source of truth for colors + fonts.
-   Imported by site.css (info/admin pages) and app/app.css (the app), and linked
-   directly by the bespoke homepage (index.html). Edit values ONLY here. */
+/* Blotterbook design tokens — the single source of truth for colors + fonts. Linked directly by every
+   surface: the app mount points (app/demo/staging) and the prerendered marketing/info + admin pages.
+   Page/component styling lives in scoped component <style> blocks now (A69/A30); only the design tokens
+   live here. Edit values ONLY here. */
 :root {
   --bg: #0d1014;
   --panel: #151a21;

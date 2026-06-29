@@ -3,7 +3,7 @@
   "title": "Blotterbook — improvement backlog (paste-ready prompts)",
   "intro": "From the 2026-06-25 audit. Each item is a self-contained prompt: scope, goal, constraints, \"done when\".",
   "tags": "Tags: P1 do-soon · P2 durable win · P3 polish. Send them one at a time (one surface/concern per turn).",
-  "updated": "2026-06-29 (shipped F27/F28, A121–A126, L9/L10 to staging → archived)",
+  "updated": "2026-06-29 (CH36 CSS de-dup done: shared Caveats component + tokens comment)",
   "note": "Committed source of truth for the ACTIVE engineering backlog (open + guardrail items; replaces the retired .claude/backlog.md). Completed (Done) items are archived in data/backlog_archive.json to keep this file lean — the admin Backlog panel reads BOTH and merges them, so done items stay visible. The admin panel shows category/effort/status only; prompt + doneNote stay in the JSON.",
   "commitConvention": "Conventional-commit titles (enables CH12 automated versioning): when committing, and ESPECIALLY when titling a PR / squash-merge, lead the title with a conventional-commit type so the version bump can be derived automatically — `feat:` (new capability → minor), `fix:` (bug fix → patch), `chore:`/`refactor:`/`docs:`/`style:`/`test:`/`perf:` (→ patch), and append `!` (e.g. `feat!:`) or a `BREAKING CHANGE:` footer for a breaking change (→ major). Scope it when useful, e.g. `feat(staging): …`. Untyped/legacy titles default to a patch bump. Keep the existing Co-Authored-By and Claude-Session trailers on the commit body.",
   "donePolicy": "When an item's status is set to `done`, delete its `prompt` field and keep only the `doneNote` — the doneNote is the shipped record of what was actually done, so the original prompt is redundant and only bloats this file (the admin backlog panel never renders done-item prompts anyway). Keep `prompt` on `open` and `guardrail` items, since those are still the actionable spec. Applies retroactively: a done item should never carry a prompt. RECURRING ITEMS: an item with `recurring: true` (e.g. R1 repo audit, CH16 staging→prod promotion) is a perpetual driver — NEVER set its status to done, set completedDate, or strip its prompt; it stays open across every run and its prompt leads with a RECURRING/REPEATABLE marker. Each run ships its output as new items, not by closing the recurring item. ARCHIVE (post-split): completed items now live in `data/backlog_archive.json`. When you set an item to `done` and strip its prompt, MOVE the item object out of backlog.json into backlog_archive.json (the admin panel merges both). Recurring items never move — they stay open in backlog.json.",
@@ -78,18 +78,6 @@
       "completedDate": null,
       "partial": false,
       "prompt": "Scope the effort + requirements for a Trade Replay feature that lets users step through simulated market snapshots in time around a trade to review it for analysis. Cover: what data is needed (do current platform exports carry intra-trade price/time, or only fills? what extra market data would replay require and from where?), storage/perf implications for a client-side static-hosted app, the UI surface, and a phased build estimate. Done when: a written feasibility/effort estimate exists with concrete next-step items and open questions.",
-      "doneNote": null
-    },
-    {
-      "id": "R13",
-      "title": "Discussion & planning: realtime resizable + snapping modules",
-      "category": "REVIEW / AUDIT",
-      "priority": "P3",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "Scope realtime resizable modules with Quantower-style snapping (windows/modules freely resize and snap/dock together). Assess against the current drag-reorder/collapse layout system and the CSS layout it uses, what a resize+snap engine needs (library vs custom), mobile implications, layout persistence, and perf. Done when: a written effort estimate + requirements + next-step items + open questions exist.",
       "doneNote": null
     },
     {
@@ -309,18 +297,6 @@
       "doneNote": null
     },
     {
-      "id": "A104",
-      "title": "Discussion: styling/stylesheet strategy vs modern conventions",
-      "category": "REVIEW / AUDIT",
-      "priority": "P3",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "DISCUSSION/ANALYSIS. Survey how this app handles CSS today and whether it matches modern web-dev convention. Current approach: a single design-token source (src/styles/tokens.css) linked by every surface; per-component scoped <style> blocks that Vite extracts to a linked stylesheet; the marketing SSG pages' CSS folded into scoped component styles (A69); a strict `style-src 'self'` CSP (S18/A55) — NO inline style=\"\", with dynamic styles applied via the CSSOM `styleProps` action. Assess: tokens-as-CSS-vars vs alternatives, scoped-component CSS vs utility/global, the no-inline-style constraint's ergonomics, dead/duplicated CSS, and whether anything should change. Weigh each against A28 (deps) and the CSP constraint. Done when: a written assessment with a recommendation (keep/change) and any spun-off items is delivered.",
-      "doneNote": null
-    },
-    {
       "id": "A105",
       "title": "Create a feedback form",
       "category": "FEATURES",
@@ -354,18 +330,6 @@
       "completedDate": null,
       "partial": false,
       "prompt": "Improve the How-To wiki (src/site/components/Howto.svelte) so a new user can reliably export the right CSV from each supported platform. Add per-platform screenshots of the export flow and tighten the step-by-step instructions (where the export lives, which option to pick, common gotchas). Images go through Vite's asset pipeline (src/assets/ or co-located, fingerprinted) and must respect the CSP/img-src; keep the page prerendered (SSG, A69) and the bundle lean (A28/size-budget). Done when: each supported platform has clear instructions + at least one screenshot, and the page builds + prerenders cleanly.",
-      "doneNote": null
-    },
-    {
-      "id": "A108",
-      "title": "Discussion: self-contained dashboard modules for maintainability/scaling",
-      "category": "ARCHITECTURE / DUPLICATION",
-      "priority": "P2",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "DISCUSSION/ANALYSIS. Review how dashboard modules are wired today: App.svelte owns DEFAULT_ORDER + MODULE_LABELS + the render switch (`{#if key === ...}`) + per-module props/derived state, while each panel lives in src/app/components/*.svelte. Adding a module touches several places in App.svelte (the F23 Trade Blotter is a recent example). Explore making modules more self-contained — e.g. a module registry/manifest (key, label, surface-gating, component, data selector) so a module declares itself and App just iterates — for better maintainability/stability/scaling. Weigh churn vs benefit, fit with A29 (verbatim core), runes-only state, and the per-surface gating (PAGE_MODE/isStaging). Adjacent: A80 (deeper runes / .svelte.ts state). Done when: a written design + recommendation (and any spun-off implementation items) is delivered.",
       "doneNote": null
     },
     {
@@ -414,6 +378,30 @@
       "completedDate": null,
       "partial": false,
       "prompt": "DISCUSSION/EVALUATION. Survey free static-analysis (SAST) tools we could add to CI (.github/workflows/ci.yml) for this stack (TS + Svelte + Cloudflare Functions): e.g. GitHub CodeQL (free for the repo's visibility tier), Semgrep OSS, npm/osv dependency scanning, and any Svelte/TS-aware linters beyond the current ESLint. For each: setup cost, signal/noise, false-positive burden, runtime in CI, and fit with A28 (no heavy/unpinned tooling) and the existing gates. Recommend which (if any) to adopt and how to wire them (a separate workflow vs a CI step, fail vs report). Done when: a written shortlist with a recommendation is delivered (adoption spun off as its own item).",
+      "doneNote": null
+    },
+    {
+      "id": "R20",
+      "title": "Evaluate gridstack.js vs a custom build for the resizable tiling grid (CSP/A28)",
+      "category": "REVIEW / AUDIT",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "EVALUATION (spun off from R13; the chosen direction is a TILING dashboard grid, library-vs-custom undecided). Evaluate gridstack.js (and any equivalent framework-agnostic grid lib) for the resizable/snapping dashboard grid against THIS repo's constraints: (1) the `style-src 'self'` CSP (S18/A55) — does the lib inject inline style=\"\" attributes or a <style> element (CSP-VIOLATING), or apply geometry via the CSSOM (element.style.setProperty, which CSP allows)? This is the make-or-break test. (2) A28 dependency discipline — bundle size vs the size-budget (A96), pinned + audited + SRI-able, and the local-compute/no-egress gate (no telemetry). (3) fit with Svelte 5 runes + the existing Panel / Store.local / workspace-template system (does it own the DOM in a way that fights Svelte's reactivity or the A108 registry?). (4) mobile degradation + a11y (keyboard move/resize). Compare against a CUSTOM minimal grid built on our drag-reorder + styleProps + Store.local primitives. Done when: a written recommendation (gridstack vs custom, with the explicit CSP verdict) + the concrete phase-1 scope for F29 is delivered.",
+      "doneNote": null
+    },
+    {
+      "id": "F29",
+      "title": "(staging) Resizable tiling dashboard grid — phase 1: column width + snap",
+      "category": "FEATURES",
+      "priority": "P3",
+      "effort": "large",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "(STAGING) Resizable tiling dashboard grid — PHASE 1 (spun off from R13; gated on the R20 library-vs-custom eval). First increment toward Quantower-style resizable/snapping modules, scoped tight: make the F26 parallel-grid columns (cal/cost/adv) RESIZABLE by WIDTH — drag a column edge, SNAP to a fixed track grid (e.g. 12-col), neighbors reflow — building on the existing primitives (Panel drag, the .modgrid in App.svelte, the styleProps CSSOM action for CSP-clean dimensions, the A108 module registry, and the Store.local seam for persistence). Persist per-module width (extend the staging-namespaced layout keys + workspace templates; migrate the old 1-D order). MUST: degrade to the current single-column stack on narrow/mobile; stay CSP-clean (no inline style=\"\" — geometry via styleProps / CSS grid spans, A55); rAF-throttle the resize drag; keep compute() untouched (resize changes layout, not data); a11y keyboard fallback for resize. Staging-gated (STAGING_PAGE) until promoted (CH16). Later phases (height resize, full snap/reflow, drag-between-cells) are SEPARATE items. Done when: grid columns resize + snap + persist on staging, mobile degrades cleanly, build + npm test + e2e green.",
       "doneNote": null
     }
   ],

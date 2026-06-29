@@ -2790,6 +2790,50 @@
       "completedDate": "2026-06-29",
       "partial": false,
       "doneNote": ".modgrid uses align-items:stretch so the three grid modules (Calendar / Break-even / Advanced Stats) share a common height and their bottoms align, reclaiming the negative space below the shorter ones. NOTE the first cut also set the grid panels to height:100% which, combined with the panel's own margin-top:16px, pushed each panel 16px past its grid cell and OVERLAPPED the Trade Blotter below — fixed by removing height:100% (align-items:stretch already equalizes height accounting for the margin, no overlap). e2e asserts the three grid panels are equal height. Staging-gated pending CH16."
+    },
+    {
+      "id": "A108",
+      "title": "Discussion: self-contained dashboard modules for maintainability/scaling",
+      "category": "ARCHITECTURE / DUPLICATION",
+      "priority": "P2",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-06-29",
+      "partial": false,
+      "doneNote": "Implemented a dashboard MODULE REGISTRY (src/app/lib/modules.ts). Each module now declares itself in one place — key, label, F26 grid membership, surface gate, component, and a pure props selector from a shared DashCtx — and App.svelte ITERATES it, replacing the four hand-synced structures (DEFAULT_ORDER + MODULE_LABELS + GRID_KEYS) and the per-module {#if key===…} render switch (the pre-A108 wiring where adding a module touched 5 disjoint spots). DEFAULT_ORDER/MODULE_LABELS/GRID_KEYS are now DERIVED from the registry; rendering dispatches dynamically via <Comp {panel} {...def.props(ctx)} /> (the calendar's `extra` day-trades/journal child snippet is the one special-case kept in App). App exposes `ctx` via getters so selectors stay fine-grained reactive (reading ctx.metricsAll tracks only that $derived, like the old explicit metrics={…}). A mod<P>() factory type-checks each selector against its component's REAL props — the only `any` is the erased heterogeneous component field. Adding a module = one registry entry + the component. Behavior-preserving: registry-derived order/gating verified IDENTICAL (staging: cal/cost/adv grid + blotter/term, defs footer; demo: full stack with defs panel), npm test + 45 e2e green, bundle within budget. Deliberately did NOT bundle the A80 .svelte.ts shared-state extraction (kept the blast radius small; they compose)."
+    },
+    {
+      "id": "R13",
+      "title": "Discussion & planning: realtime resizable + snapping modules",
+      "category": "REVIEW / AUDIT",
+      "priority": "P3",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-06-29",
+      "partial": false,
+      "doneNote": "Discussion/planning delivered (analysis in-session). Assessed realtime resizable + snapping modules against the CURRENT layout system: Panel collapse + native HTML5 drag-REORDER of a 1-D panelOrder, the F26 parallel grid (auto-fit columns, align-items:stretch), Store.local persistence + workspace templates, the style-src 'self' CSP with the styleProps CSSOM action for dynamic styles, and NO drag/resize library (A28). Two model families weighed: (A) a TILING dashboard grid — each module owns {x,y,w,h} on a column grid, resize+snap to tracks, neighbors reflow; bounded complexity, maps to CSS Grid spans (CSP-clean via styleProps), compact persistence, responsive, builds on existing primitives — vs (B) FREE-FLOATING dock/magnet windows (literal Quantower) — a windowing toolkit (dock-tree serialization, z-index/overlap), heavy, desktop-only, a11y/mobile-hostile. RECOMMENDATION: do NOT build free-floating docking (wrong cost/benefit for a journal); pursue a tiling grid, PHASED (width-resize within the F26 grid → height → snap+reflow → maybe drag-between-cells), prefer a CUSTOM minimal build (A28/CSP-clean by construction) but evaluate gridstack.js first. Mobile degrades to today's single-column stack; persistence extends the Store.local seam ({key→{x,y,w,h}} replacing the 1-D order, with migration from tj_order); perf via rAF-throttled resize that updates grid spans only (compute() is data-derived, not size-derived, so metrics don't recompute on resize). USER DECISIONS captured: target the tiling grid; evaluate gridstack first. Spun off R20 (gridstack-vs-custom eval, CSP/A28) and F29 (phase-1 resizable grid POC, gated on R20)."
+    },
+    {
+      "id": "A104",
+      "title": "Discussion: styling/stylesheet strategy vs modern conventions",
+      "category": "REVIEW / AUDIT",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-29",
+      "partial": false,
+      "doneNote": "Styling-strategy assessment delivered (in-session). Verdict: KEEP the current approach — it already matches modern convention AND is ahead of the curve on security; no architecture change. Per dimension: (1) design tokens as CSS custom properties (src/styles/tokens.css, ~20 vars linked by every surface) — the modern idiom (Tailwind v4 CSS-first tokens / shadcn); a token PIPELINE (Style Dictionary) or Sass vars would add a dep (A28) for ~20 tokens and lose runtime theme-ability — not worth it. (2) scoped per-component <style> (Svelte SFC, Vite-extracted; 27 blocks) — idiomatic component-CSS; utility-first (Tailwind) = large dep + paradigm shift against A28, and the scoped model is clean/colocated. (3) no inline style + the styleProps CSSOM action under style-src 'self' (S18/A55; 7 sites in EquityCurve/StatCardModal) — STRICTER CSP than most apps (which ship 'unsafe-inline'); styleProps is a clean contained workaround; keep (nonce/hash inline styles would be more complex). (4) dead/duplicated CSS — svelte-check catches per-component unused selectors (0 today); cross-component duplication is minor but real. Every alternative was weighed against A28 (each is an unneeded dependency) and the CSP (the current model is built FOR strict style-src; utility/CSS-in-JS would fight it). FINDINGS spun into CH36: the .caveats <details> block is near-identical in AdvancedStats + CostPanel; the 'secondary control' button idiom (panel2 bg / --line border / radius / --hover-line hover) is hand-repeated across ~6 components (border:1px solid var(--line) appears 77x); and tokens.css carries a STALE header comment (references site.css/app.css/'bespoke index.html', all retired by A69/A30)."
+    },
+    {
+      "id": "CH36",
+      "title": "CSS de-duplication cleanups (from the A104 styling audit)",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-29",
+      "partial": false,
+      "doneNote": "(1) Extracted a shared Caveats.svelte component — the 'Assumptions & caveats' <details> block (summary + ul + the li/b/em/i styling) lives once now; AdvancedStats.svelte + CostPanel.svelte render <Caveats>{li bullets}</Caveats> and dropped their duplicate ~25-line .caveats CSS. The bullets pass as the children snippet (the caller's scope), so their li/b/em/i styling uses :global scoped under the Caveats-owned .caveats/ul — CSP-clean (no inline styles), verified identical rendering (li=--dim 12px, b=--txt, em/i italic). (2) Button-idiom DECISION: KEEP the scoped repetition — do NOT introduce a Button.svelte primitive now. Rationale: the ~6-8 'secondary control' buttons vary (size/padding; donate/accent vs panel2-secondary tones), so a shared component needs a variant API that outweighs the small per-site duplication; refactoring 8 call sites across 5 components is disproportionate churn/risk for a P3 cleanup; and A104 favors colocated scoped CSS over utility/global classes (a global .btn utility would contradict it). A Button primitive earns its weight better as the UI grows (e.g. alongside the F29 resizable-grid work) — left for then. (3) Fixed the stale tokens.css header comment (referenced site.css / app.css / the 'bespoke homepage index.html', all retired by A69/A30) to describe the current reality. npm test + 45 e2e green; bundle 175.8/200 KiB."
     }
   ]
 }
