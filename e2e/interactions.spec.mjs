@@ -141,8 +141,12 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   // Activity terminal logs bus events — the note save above should appear.
   await expect(page.locator('#sv-app .terminal .log')).toContainText('note saved');
 
-  // Definitions & Caveats panel (A37) renders its glossary.
-  await expect(page.locator('#sv-app .defs')).toContainText('Win / Loss / Scratch');
+  // A97 (R18): on staging the Definitions panel is trimmed to the cross-cutting PARSING caveats; the
+  // per-metric definitions moved into the panels/modals that own each number.
+  await expect(page.locator('#sv-app .defs')).toContainText('Trade = one closed position');
+  await expect(page.locator('#sv-app .defs')).not.toContainText('Win / Loss / Scratch');
+  // The Advanced Statistics panel now carries its own "Assumptions & caveats" (mirror of CostPanel).
+  await expect(page.locator('#sv-app .panel[data-key="adv"] .caveats')).toContainText('Payoff Ratio');
 
   // Equity curve interactivity (A32): the journaled day shows a note-dot on the curve, and the
   // keyboard cursor fills the aria-live tooltip (B33).
@@ -334,6 +338,35 @@ test('staging (Svelte): module-header menu hides + re-adds a module (A71/R12)', 
   await page.locator('#sv-app .addmodbtn').click();
   await page.locator('#sv-app .addmenu button').first().click();
   await expect(panels).toHaveCount(start);
+});
+
+// F23 (staging-only): the Trade Blotter module lists every trade in a scrollable, read-only table
+// below the calendar; the Note column is inline-editable and persists via the shared trademeta path.
+test('staging (Svelte): Trade Blotter lists trades + inline note persists (F23)', async ({ page }) => {
+  await page.goto('/app/staging.html', { waitUntil: 'networkidle' });
+  await expect(page.locator('#sv-app [data-card="net"] .value')).toContainText('$', { timeout: 5000 });
+  const blotter = page.locator('#sv-app .panel[data-key="blotter"]');
+  await expect(blotter).toBeVisible();
+  // Default position: directly below the Trading Calendar module.
+  const keys = await page.locator('#sv-app .dash section.panel').evaluateAll(els => els.map(e => e.getAttribute('data-key')));
+  expect(keys.indexOf('blotter')).toBe(keys.indexOf('cal') + 1);
+  // Read-only table with rows + the eight columns.
+  await expect(blotter.locator('.bltab tbody tr').first()).toBeVisible();
+  await expect(blotter.locator('.bltab thead th')).toHaveCount(8);
+  // Inline note: editable, persists across a reload via Store.saveTradeMeta (trademeta).
+  const note = blotter.locator('.bltab tbody tr .note').first();
+  await note.fill('e2e blotter note');
+  await note.blur();
+  await expect(page.locator('#sv-app .terminal .log')).toContainText('trade metadata updated');
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(page.locator('#sv-app .panel[data-key="blotter"] .bltab tbody tr .note').first()).toHaveValue('e2e blotter note');
+});
+
+// F23: the Trade Blotter is staging-only — it must NOT appear on demo or the prod app surface.
+test('demo (Svelte): no Trade Blotter module (F23 is staging-only)', async ({ page }) => {
+  await page.goto('/app/demo.html', { waitUntil: 'networkidle' });
+  await expect(page.locator('#sv-app [data-card="net"] .value')).toContainText('$', { timeout: 5000 });
+  await expect(page.locator('#sv-app .panel[data-key="blotter"]')).toHaveCount(0);
 });
 
 // A71/R12 promoted to all surfaces (CH16): demo now also has the module-header menu.

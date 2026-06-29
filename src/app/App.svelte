@@ -38,6 +38,7 @@
   import ActivityTerminal from './components/ActivityTerminal.svelte';
   import Definitions from './components/Definitions.svelte';
   import StatCardModal from './components/StatCardModal.svelte';
+  import TradeBlotter from './components/TradeBlotter.svelte';
   import ExportReport from './components/ExportReport.svelte';
   import WorkspaceBar from './components/WorkspaceBar.svelte';
   import Landing from './components/Landing.svelte';
@@ -70,11 +71,17 @@
   // collapsible panels; order + collapsed map persist through the Store.local seam under a
   // staging-namespaced key (so staging layout never leaks into prod/demo). Workspace templates
   // snapshot {order, collapsed} under WS_KEY. DEFAULT_ORDER mirrors vanilla DEFAULT_DASH_ORDER.
-  const DEFAULT_ORDER = ['perf', 'cal', 'cost', 'adv', 'defs', 'term'];
+  // F23 (staging-only): the Trade Blotter sits directly below the Trading Calendar by default. It's
+  // absent from prod/demo (sanitizeOrder drops unknown keys, and the LS namespace is separate), so the
+  // module only exists on staging until promoted.
+  const DEFAULT_ORDER = isStaging
+    ? ['perf', 'cal', 'blotter', 'cost', 'adv', 'defs', 'term']
+    : ['perf', 'cal', 'cost', 'adv', 'defs', 'term'];
   // R12/A71: human labels for the module menus (the names otherwise live only inside each <Panel title>).
   const MODULE_LABELS: Record<string, string> = {
     perf: 'Performance',
     cal: 'Trading Calendar',
+    blotter: 'Trade Blotter',
     cost: 'Break-even & Cost',
     adv: 'Advanced Statistics',
     defs: 'Definitions & Caveats',
@@ -536,6 +543,8 @@
               {/if}
             {/snippet}
           </CalendarMonth>
+        {:else if key === 'blotter'}
+          <TradeBlotter panel={panelBundle(key)} trades={filtered} {tradeMeta} broker={setup.broker} filtered={filtersActive} onchanged={reloadAll} />
         {:else if key === 'cost'}
           <CostPanel panel={panelBundle(key)} metrics={breakEvenMetrics} {setup} {costInputs} allTime={true} disabled={isDemo} />
         {:else if key === 'adv'}

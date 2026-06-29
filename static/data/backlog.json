@@ -153,18 +153,6 @@
       "doneNote": null
     },
     {
-      "id": "F23",
-      "title": "(staging) New module: Trade Blotter (full-width scrollable trades table)",
-      "category": "FEATURES",
-      "priority": "P2",
-      "effort": "large",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "Staging-only — gate to the staging surface; do NOT change prod/demo. Add a new dashboard module, 'Trade Blotter': a full-horizontal-width panel containing a scrollable list of ALL trades — essentially the Manage data → Trades table surfaced on the dashboard. Default dashboard position: directly BELOW the Trading Calendar module (and it must respect drag-reorder/collapse + workspace layout templates). Columns per row: Date/time, Symbol, Instrument name, Contract quantity, Price, Commission, Note, PnL. Rows are READ-ONLY except the Note field, which is inline-editable and persists via the shared annotation/Store path (annTextField / trademeta) — all other editing stays in the Manage data menu. Reuse the existing trade-row rendering + the shared commission helper (commSymRows/costModel) rather than recomputing. Add the markup to partials/app-dash.html behind a `<!--IF mode=staging-->` conditional, render gated by STAGING_PAGE, register its data-key in DEFAULT_DASH_ORDER (in app-dash order), then rebuild with build-includes. Confirm whether the blotter should respect the active filter set/scope like other panels (default: yes). Done when: staging shows a full-width Trade Blotter below the calendar with the eight columns, scrollable, the Note field editable inline and everything else read-only; prod/demo are unchanged; build idempotent and tests green.",
-      "doneNote": null
-    },
-    {
       "id": "A15",
       "title": "(infra guardrail) Rate-data scraper must stay within the 50-subrequest free-tier cap",
       "category": "ARCHITECTURE / DUPLICATION",
@@ -307,18 +295,6 @@
       "partial": false,
       "prompt": "Spun off from A64 + A67. Low-risk build/CI hygiene, all A28-clean (dev-only): (1) set an explicit Vite build.target (e.g. es2022, matching tsconfig) for deterministic output — do NOT add @vitejs/plugin-legacy (polyfills/deps against A28 for a modern-browser audience). (2) Add a dev-only bundle size-budget check (a small script asserting the /app/ entry JS stays under a byte ceiling, or rollup-plugin-visualizer as a dev devDep) so bundle regressions fail loudly. (3) De-duplicate the CI double-build: ci.yml runs `npm run build` AND test:e2e's Playwright webServer also runs `npm run build` — either drop the standalone build step (e2e proves the build) or point the e2e webServer at the already-built dist/ (serve, don't rebuild). (4) Optional: cache the Playwright browser (actions/cache keyed on the pinned @playwright/test version) and add a CI concurrency group (cancel-in-progress superseded PR runs). Done when: build.target + size budget shipped and the CI build de-dup decided/applied.",
       "doneNote": "All four shipped, zero new deps (A28). (1) vite.config build.target:'es2022' matching tsconfig — no plugin-legacy. (2) scripts/check-bundle-size.mjs (npm run size-budget): zero-dep script sums the JS the built /app/ shell loads and fails over a 200 KiB ceiling (baseline ~166.6 KiB → ~33 KiB headroom); wired into CI right after the build. (3) De-dup'd via option (b): the Playwright webServer now serves the already-built dist/ in CI (process.env.CI ? serve-only : build+serve) so CI builds once (its own step, which also feeds the size budget) while local `npm run test:e2e` stays one command. (4) Added a concurrency group (cancel-in-progress on non-main refs) and an actions/cache for ~/.cache/ms-playwright keyed on the resolved @playwright/test version (install-deps-only on cache hit). Verified: build, size-budget, full npm test, and all 28 e2e (via the CI serve-only path) green."
-    },
-    {
-      "id": "A97",
-      "title": "(staging) Implement R18: distribute Definitions & Caveats into the owning panels",
-      "category": "REVIEW / AUDIT",
-      "priority": "P3",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "Implementation spun off from the R18 design review (see docs/backlog-reviews-2026-06-29.md for the full per-item mapping). STAGING-FIRST (proving-ground) until promoted. Apply the HYBRID recommendation: (1) Add an 'Assumptions & caveats' collapsible <details> to AdvancedStats.svelte, mirroring CostPanel's F6/F10 pattern verbatim, holding the Payoff-ratio/Avg-winner-loser, Profit-concentration, Sortino-vs-Sharpe, Win/Loss-streak and Best/Worst-weekday definitions + the thin-sample and Sharpe-daily warnings. (2) Extend the four F14 stat-card modals (StatCardModal.svelte: net/win/wl/dd) with their headline definitions — incl. moving 'Max Drawdown is REALIZED only' into the dd drill-down. (3) Route the cost/commission/tax notes into CostPanel's existing Assumptions (reconcile with what's already there). (4) Put the one-liners on their controls: performance-graph note on EquityCurve, calendar-day grouping on CalendarMonth, scope note on the scope toggle. (5) Trim Definitions.svelte down to the cross-cutting PARSING caveats only (Trade = one closed position; US-dates/Eastern-time assumed) — or relocate them behind a Help/About affordance — since those gate every grouping and need one discoverable home. Keep all three surfaces in sync (A33: one SPA) and demo non-mutating. Done when: the distribution ships on staging with no content lost and the standalone panel trimmed; promote per CH16.",
-      "doneNote": null
     }
   ],
   "howToDrive": [

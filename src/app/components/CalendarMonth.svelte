@@ -2,7 +2,7 @@
   // Sunday-first month calendar of daily P&L, derived from compute()'s m.days (A29 — no
   // recomputation). The cursor starts on the latest trade's month. Includes day-note dots, day
   // selection → dashboard scoping + curve cross-link, and the left ISO-Week column (A40).
-  import { pad2, usd, money, usdWhole, isoWeek } from '../../lib/core.ts';
+  import { pad2, usd, money, usdWhole, isoWeek, PAGE_MODE } from '../../lib/core.ts';
   import type { Metrics } from '../../lib/core.ts';
   import type { PanelBundle } from '../../lib/types.ts';
   import type { Snippet } from 'svelte';
@@ -29,6 +29,10 @@
 
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  // A97 (R18, staging-first): the calendar-day grouping caveat sits on the calendar it describes,
+  // distributed from the standalone Definitions panel. Staging-only until promoted (CH16).
+  const isStaging = PAGE_MODE === 'staging';
 
   const byDate = $derived(new Map((metrics && metrics.days ? metrics.days : []).map(d => [d.date, d])));
   // Weeks of the displayed month, each carrying its ISO week no. + weekly P&L + traded-day count
@@ -130,10 +134,20 @@
       {/each}
     </div>
   </div>
+  {#if isStaging}
+    <p class="cnote">Days are grouped by the literal date in the Time column, not the CME session day.</p>
+  {/if}
   {@render extra?.()}
 </Panel>
 
 <style>
+  /* A97: the calendar grouping caveat, distributed here from the standalone Definitions panel. */
+  .cnote {
+    margin: 12px 0 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--dim);
+  }
   .nav {
     display: flex;
     align-items: center;
