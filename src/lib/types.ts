@@ -222,6 +222,15 @@ export interface PanelBundle {
   onreorderstart: () => void;
   onreorderend: () => void;
   onreorderover: (e: DragEvent, key?: string) => void;
+  /* R12/A71 (staging): the per-module header menu (move/hide). `menu` enables it; `isFirst`/`isLast`
+     disable the move actions at the ends; the callbacks reorder/hide the module. Optional so prod/demo
+     (where the menu is off) and existing callers stay unaffected. */
+  menu?: boolean;
+  isFirst?: boolean;
+  isLast?: boolean;
+  onmoveup?: () => void;
+  onmovedown?: () => void;
+  onhide?: () => void;
 }
 
 /* ---- reference-data shapes (data/*.json, loaded by loadRefData) ---- */

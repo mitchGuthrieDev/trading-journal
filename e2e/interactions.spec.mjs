@@ -293,6 +293,37 @@ test('staging (Svelte): Manage-data trades table paginates (A73)', async ({ page
   await expect(rows).toHaveCount(50);
 });
 
+// A71/R12: the staging dashboard module headers have a menu popup (move/hide); hidden modules can be
+// re-spawned from the "Add module" menu.
+test('staging (Svelte): module-header menu hides + re-adds a module (A71/R12)', async ({ page }) => {
+  await page.goto('/app/staging.html', { waitUntil: 'networkidle' });
+  await expect(page.locator('#sv-app [data-card="net"] .value')).toContainText('$', { timeout: 5000 });
+  const panels = page.locator('#sv-app .dash section.panel');
+  const start = await panels.count();
+  expect(start).toBeGreaterThan(1);
+  // Open the first module's header menu → accessible popup with the expected actions.
+  await page.locator('#sv-app .dash section.panel .pmenubtn').first().click();
+  const pop = page.locator('#sv-app .dash .pmenupop').first();
+  await expect(pop).toBeVisible();
+  await expect(pop.locator('button')).toHaveCount(4); // Collapse / Move up / Move down / Hide
+  // Hide it → panel count drops and the "Add module" control appears.
+  await pop.locator('button', { hasText: 'Hide module' }).click();
+  await expect(panels).toHaveCount(start - 1);
+  await expect(page.locator('#sv-app .addmodbtn')).toBeVisible();
+  // Re-spawn it from the Add-module menu → back to the original count.
+  await page.locator('#sv-app .addmodbtn').click();
+  await page.locator('#sv-app .addmenu button').first().click();
+  await expect(panels).toHaveCount(start);
+});
+
+// A71/R12: prod/demo keep the plain header (no module menu) — staging-only.
+test('demo (Svelte): dashboard module headers have no menu (A71)', async ({ page }) => {
+  await page.goto('/app/demo.html', { waitUntil: 'networkidle' });
+  await expect(page.locator('#sv-app [data-card="net"] .value')).toContainText('$', { timeout: 5000 });
+  await expect(page.locator('#sv-app .dash section.panel').first()).toBeVisible();
+  await expect(page.locator('#sv-app .dash .pmenubtn')).toHaveCount(0);
+});
+
 // A73: demo (and prod) render the full table with no pager — staging-only change.
 test('demo (Svelte): Manage-data trades table is not paginated (A73)', async ({ page }) => {
   await page.goto('/app/demo.html', { waitUntil: 'networkidle' });
