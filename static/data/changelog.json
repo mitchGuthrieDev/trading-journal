@@ -4,6 +4,19 @@
   "note": "Curated, user-facing release notes for the prod (main + demo) track. Keyed by the CH12 prod version. Add a new entry at the top of `releases` each time the prod version bumps (see chore(release) boundaries on main). Keep it readable — this is for users, not a git log.",
   "releases": [
     {
+      "version": "0.34.0",
+      "date": "2026-06-29",
+      "title": "Trade Blotter, in-context help, and more accurate cost estimates",
+      "summary": "The Trade Blotter graduates from the staging sandbox to the main app and demo, every metric now explains itself right where it lives, and the cost model gets more honest about subscriptions and unfamiliar contracts. As always, your trade data stays local to your browser.",
+      "highlights": [
+        "Trade Blotter module: a full-width, scrollable table of every trade — date, symbol, side, quantity, modeled commission, and P&L — with an inline Note you can edit per trade. It tracks your active filters and scope like every other panel, and sits just below the Trading Calendar by default.",
+        "Definitions, in context: each metric's definition and caveats now ride in the panel or drill-down that owns it (Advanced Statistics, the stat-card pop-ups, the cost panel, the curve, the calendar), so the explanation is where you need it. The standalone Definitions panel is trimmed to the cross-cutting parsing caveats.",
+        "Truer subscription costs: fixed platform + data-feed fees are now counted for every calendar month from your first to your last trade — including months you didn't trade — since those fees bill whether or not you're active.",
+        "Unknown-contract warning: if an import contains a futures contract we don't yet have a contract size for, its P&L is flagged as estimated (instead of silently mis-priced) so you know to double-check it.",
+        "Behind the scenes: a correctness pass over the calculation engine tightened how distinct same-second trades and multi-lot exits are handled."
+      ]
+    },
+    {
       "version": "0.31.0",
       "date": "2026-06-29",
       "title": "Dashboard upgrades graduate from the staging sandbox",

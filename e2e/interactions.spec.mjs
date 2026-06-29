@@ -362,11 +362,30 @@ test('staging (Svelte): Trade Blotter lists trades + inline note persists (F23)'
   await expect(page.locator('#sv-app .panel[data-key="blotter"] .bltab tbody tr .note').first()).toHaveValue('e2e blotter note');
 });
 
-// F23: the Trade Blotter is staging-only — it must NOT appear on demo or the prod app surface.
-test('demo (Svelte): no Trade Blotter module (F23 is staging-only)', async ({ page }) => {
+// F23 promoted to all surfaces (CH16): the Trade Blotter now appears on demo too, directly below the
+// Trading Calendar — and stays NON-MUTATING on demo (the inline Note input is disabled).
+test('demo (Svelte): Trade Blotter module present + non-mutating (F23, promoted)', async ({ page }) => {
   await page.goto('/app/demo.html', { waitUntil: 'networkidle' });
   await expect(page.locator('#sv-app [data-card="net"] .value')).toContainText('$', { timeout: 5000 });
-  await expect(page.locator('#sv-app .panel[data-key="blotter"]')).toHaveCount(0);
+  const blotter = page.locator('#sv-app .panel[data-key="blotter"]');
+  await expect(blotter).toBeVisible();
+  const keys = await page.locator('#sv-app .dash section.panel').evaluateAll(els => els.map(e => e.getAttribute('data-key')));
+  expect(keys.indexOf('blotter')).toBe(keys.indexOf('cal') + 1);
+  await expect(blotter.locator('.bltab tbody tr').first()).toBeVisible();
+  // Demo must not mutate: the inline Note input is disabled.
+  await expect(blotter.locator('.bltab tbody tr .note').first()).toBeDisabled();
+});
+
+// A97 (R18) promoted to all surfaces (CH16): the Definitions panel is trimmed to the parsing caveats
+// on demo too, and the per-metric definitions now ride in the panels that own each number.
+test('demo (Svelte): definitions distributed + Definitions panel trimmed (A97, promoted)', async ({ page }) => {
+  await page.goto('/app/demo.html', { waitUntil: 'networkidle' });
+  await expect(page.locator('#sv-app [data-card="net"] .value')).toContainText('$', { timeout: 5000 });
+  // Definitions panel trimmed: keeps the parsing caveat, drops the full glossary.
+  await expect(page.locator('#sv-app .defs')).toContainText('Trade = one closed position');
+  await expect(page.locator('#sv-app .defs')).not.toContainText('Win / Loss / Scratch');
+  // The per-metric definition now lives in the Advanced Statistics panel's own caveats.
+  await expect(page.locator('#sv-app .panel[data-key="adv"] .caveats')).toContainText('Payoff Ratio');
 });
 
 // A71/R12 promoted to all surfaces (CH16): demo now also has the module-header menu.

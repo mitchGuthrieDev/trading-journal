@@ -7,7 +7,7 @@
   //
   // The viewBox WIDTH tracks the measured pixel width (like vanilla renderCurve) so the SVG text
   // labels aren't horizontally stretched — height is fixed, so both axes render at ~1:1.
-  import { usd, money, axMoney, niceTicks, linePath, blendedRateFor, PAGE_MODE } from '../../lib/core.ts';
+  import { usd, money, axMoney, niceTicks, linePath, blendedRateFor } from '../../lib/core.ts';
   import type { Metrics } from '../../lib/core.ts';
   import { dailySeries } from '../../lib/curveseries.ts';
   import type { DailyPoint } from '../../lib/curveseries.ts';
@@ -25,9 +25,8 @@
   }
   let { metrics, costInputs, journalDates = new Set(), selectedDate = null, onselect = () => {}, panel = {} as PanelBundle }: Props = $props();
 
-  // A97 (R18, staging-first): the "Performance graph" definition is shown on the chart it describes
-  // rather than in the standalone Definitions panel. Staging-only until promoted (CH16).
-  const isStaging = PAGE_MODE === 'staging';
+  // A97 (R18 — promoted to all surfaces, CH16): the "Performance graph" definition is shown on the
+  // chart it describes rather than in the standalone Definitions panel.
 
   /** One overlay series descriptor; `key` indexes into a curve point's numeric fields. */
   type SeriesKey = 'gross' | 'net' | 'take';
@@ -262,9 +261,7 @@
     <div class="axis">
       <span class="tip" aria-live="polite">{tip || 'cumulative P&L'}</span>
     </div>
-    {#if isStaging}
-      <p class="gnote">X axis is the calendar date (the selected month's first to last day, or the full sample in All-time scope); Y axis is cumulative PnL. Toggle the Gross / Net / Take-home overlays above; clicking a calendar day marks it here.</p>
-    {/if}
+    <p class="gnote">X axis is the calendar date (the selected month's first to last day, or the full sample in All-time scope); Y axis is cumulative PnL. Toggle the Gross / Net / Take-home overlays above; clicking a calendar day marks it here.</p>
   {:else}
     <p class="empty">Not enough trades to plot a curve.</p>
   {/if}

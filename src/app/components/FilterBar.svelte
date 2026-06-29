@@ -3,7 +3,6 @@
   // set and recomputes metrics. `filters` is a shared reactive object (mutated in place — Svelte 5
   // deep reactivity propagates to App's deriveds). Scope = all-time vs the calendar's current month.
   // Session + tag filters and saved-filter views from the vanilla bar are deferred to a later slice.
-  import { PAGE_MODE } from '../../lib/core.ts';
   import type { FilterState, SavedFilter } from '../../lib/types.ts';
 
   interface Props {
@@ -36,15 +35,14 @@
   const DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
   const toggleDow = (d: number) => (filters.dows = filters.dows.includes(d) ? filters.dows.filter(x => x !== d) : [...filters.dows, d]);
 
-  // A97 (R18, staging-first): the scope-toggle definition rides on the control as a tooltip,
-  // distributed from the standalone Definitions panel. Staging-only until promoted (CH16).
-  const isStaging = PAGE_MODE === 'staging';
+  // A97 (R18 — promoted to all surfaces, CH16): the scope-toggle definition rides on the control as a
+  // tooltip, distributed from the standalone Definitions panel.
   const SCOPE_HELP =
     'All time covers every trade; Calendar month restricts the cards, graph, and statistics to the month shown on the calendar. The calendar always shows the navigated month.';
 </script>
 
 <section class="filterbar">
-  <div class="scope" role="group" aria-label="Scope" title={isStaging ? SCOPE_HELP : null}>
+  <div class="scope" role="group" aria-label="Scope" title={SCOPE_HELP}>
     <button type="button" class:on={filters.scope === 'all'} aria-pressed={filters.scope === 'all'} onclick={() => (filters.scope = 'all')}>All time</button>
     <button type="button" class:on={filters.scope === 'month'} aria-pressed={filters.scope === 'month'} onclick={() => (filters.scope = 'month')}>Calendar month</button>
   </div>

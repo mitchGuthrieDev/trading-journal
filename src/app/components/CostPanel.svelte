@@ -2,7 +2,7 @@
   // Break-even & cost (A27; A32). REUSES costModel() verbatim (A29). The cost setup is now owned by
   // App and shared with the curve overlays — this panel binds its form to the shared `setup` object
   // and renders the breakdown from costModel(metrics, costInputs). No DOM-id coupling; App persists.
-  import { costModel, BROKERS, BROKER_ORDER, BROKER_FEEDS, STATES, usd, money, PAGE_MODE } from '../../lib/core.ts';
+  import { costModel, BROKERS, BROKER_ORDER, BROKER_FEEDS, STATES, usd, money } from '../../lib/core.ts';
   import type { Metrics } from '../../lib/core.ts';
   import type { AppSetup, CostInputs, PanelBundle, StateRow } from '../../lib/types.ts';
   import Panel from './Panel.svelte';
@@ -19,10 +19,9 @@
   }
   let { metrics, setup, costInputs, allTime = false, disabled = false, panel = {} as PanelBundle }: Props = $props();
 
-  // A97 (R18, staging-first): the cost/tax notes from the standalone Definitions panel are folded into
-  // this panel's existing Assumptions here (the take-home definition + the "commissions modeled, not
-  // exported" caveat, which weren't already covered). Staging-only until promoted (CH16).
-  const isStaging = PAGE_MODE === 'staging';
+  // A97 (R18 — promoted to all surfaces, CH16): the cost/tax notes from the standalone Definitions panel
+  // are folded into this panel's Assumptions (the Net PnL / take-home definition). The "raw PnL is gross"
+  // caveat is already covered by the always-on "Costs assume gross P&L" bullet (A119).
 
   const feedGroups = $derived(BROKER_FEEDS[setup.broker] || {});
   const stateOpts = $derived(STATES.slice().sort((a: StateRow, b: StateRow) => (a[2] < b[2] ? -1 : 1)));
@@ -118,10 +117,7 @@
         <li><b>Costs assume gross P&amp;L.</b> The model treats the export's P&amp;L as <i>before</i> commissions and overlays the broker rates — if your platform already reports P&amp;L net of fees, commissions are double-counted. And a close-event export with no per-trade quantity (e.g. TradingView) is billed as a <i>single contract</i>, so a multi-contract position's commission is under-stated.</li>
         <li><b>Tax = blended 1256 rate:</b> 60% × 15% long-term + 40% × 24% ordinary (assumed bracket) + your state's top rate, applied only when net profit is positive.</li>
         <li><b>Break-even / trade</b> = total period costs ÷ trade count: the average gross each trade needed to clear costs.</li>
-        {#if isStaging}
-          <li><b>Net PnL &amp; take-home.</b> Net PnL = gross − per-symbol commissions − full-month subscriptions. Take-home is Net PnL after the estimated Section 1256 tax, shown on the Net PnL card and here in the Break-even panel.</li>
-          <li><b>Commissions modeled, not exported.</b> The export carries no fees, so raw PnL is gross. Commissions are overlaid from the broker rate model and may drift as brokers update their schedules.</li>
-        {/if}
+        <li><b>Net PnL &amp; take-home.</b> Net PnL = gross − per-symbol commissions − subscriptions. Take-home is Net PnL after the estimated Section 1256 tax, shown on the Net PnL card and here in the Break-even panel.</li>
       </ul>
     </details>
   {/if}

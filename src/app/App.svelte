@@ -72,12 +72,9 @@
   // collapsible panels; order + collapsed map persist through the Store.local seam under a
   // staging-namespaced key (so staging layout never leaks into prod/demo). Workspace templates
   // snapshot {order, collapsed} under WS_KEY. DEFAULT_ORDER mirrors vanilla DEFAULT_DASH_ORDER.
-  // F23 (staging-only): the Trade Blotter sits directly below the Trading Calendar by default. It's
-  // absent from prod/demo (sanitizeOrder drops unknown keys, and the LS namespace is separate), so the
-  // module only exists on staging until promoted.
-  const DEFAULT_ORDER = isStaging
-    ? ['perf', 'cal', 'blotter', 'cost', 'adv', 'defs', 'term']
-    : ['perf', 'cal', 'cost', 'adv', 'defs', 'term'];
+  // F23 (promoted to all surfaces, CH16): the Trade Blotter sits directly below the Trading Calendar
+  // by default on every surface (it stays non-mutating on demo — the inline Note input is disabled).
+  const DEFAULT_ORDER = ['perf', 'cal', 'blotter', 'cost', 'adv', 'defs', 'term'];
   // R12/A71: human labels for the module menus (the names otherwise live only inside each <Panel title>).
   const MODULE_LABELS: Record<string, string> = {
     perf: 'Performance',
