@@ -177,18 +177,6 @@
       "doneNote": null
     },
     {
-      "id": "F22",
-      "title": "(staging) Break-even & Cost Budget always computes from All Time (ignore filters/scope)",
-      "category": "FEATURES",
-      "priority": "P2",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "Staging-only — gate to the staging surface; do NOT change prod/demo. The Break-even & Cost Budget panel currently recomputes against the active scope toggle + filter bar like the rest of the dashboard. On staging, make it ALWAYS calculate from All Time — independent of scope and filters — so it reads as a stable, account-level cost budget rather than a filtered slice. Source it from the unfiltered trade set (not applyFilters()/SCOPE) inside renderCalc/costModel behind STAGING_PAGE, and update the panel copy to state it's all-time. Leave every other panel filter-driven. Done when: on staging, changing scope/filters does not change the Break-even & Cost Budget figures; prod/demo keep the current filter-aware behavior; no console errors.",
-      "doneNote": null
-    },
-    {
       "id": "F23",
       "title": "(staging) New module: Trade Blotter (full-width scrollable trades table)",
       "category": "FEATURES",

@@ -186,6 +186,10 @@
   const metricsActive = $derived(
     filters.scope === 'month' ? compute(filtered.filter(t => inMonth(t, calYear, calMonth))) : metricsAll
   );
+  // F22 (staging-only): the Break-even & Cost Budget panel reads as a stable, account-level budget,
+  // so on staging it computes from the FULL unfiltered dataset (all-time) — independent of the scope
+  // toggle and filter bar. Prod/demo keep the filter-driven metricsActive.
+  const breakEvenMetrics = $derived(STAGING_PAGE ? compute(allTrades) : metricsActive);
   const roots = $derived([...new Set(allTrades.map(t => t.root).filter(Boolean))].sort());
   const tags = $derived([...new Set([...tradeMeta.values()].flatMap(m => m.tags || []))].sort());
   // A50: the active-filtered trades for the selected day → the read-only intraday trade table.
@@ -422,7 +426,7 @@
             {/snippet}
           </CalendarMonth>
         {:else if key === 'cost'}
-          <CostPanel panel={panelBundle(key)} metrics={metricsActive} {setup} {costInputs} />
+          <CostPanel panel={panelBundle(key)} metrics={breakEvenMetrics} {setup} {costInputs} allTime={STAGING_PAGE} />
         {:else if key === 'adv'}
           <AdvancedStats panel={panelBundle(key)} metrics={metricsActive} />
         {:else if key === 'defs'}
