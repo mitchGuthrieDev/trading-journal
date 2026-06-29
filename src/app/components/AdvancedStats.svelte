@@ -2,10 +2,15 @@
   // Advanced statistics — the deeper compute() metrics not shown in the Overview, presented as
   // label/value rows (A29: pure presentation of the existing metrics object). DOW_LABEL/usd/cls
   // are imported verbatim from the core.
-  import { usd, cls, ratio, num, fmtDur, DOW_LABEL } from '../../lib/core.ts';
+  import { usd, cls, ratio, num, fmtDur, DOW_LABEL, PAGE_MODE } from '../../lib/core.ts';
   import type { Metrics } from '../../lib/core.ts';
   import type { PanelBundle } from '../../lib/types.ts';
   import Panel from './Panel.svelte';
+
+  // A97 (R18, staging-first): the definitions for the rows below + their thin-sample / Sharpe-basis
+  // warnings now live here, next to the figures they qualify (mirroring CostPanel's F6/F10 pattern),
+  // instead of in the standalone Definitions panel. Staging-only until promoted (CH16).
+  const isStaging = PAGE_MODE === 'staging';
 
   interface Props {
     metrics: Metrics;
@@ -59,6 +64,20 @@
       </div>
     {/each}
   </div>
+
+  {#if isStaging}
+    <details class="caveats">
+      <summary>Assumptions &amp; caveats</summary>
+      <ul>
+        <li><b>Avg Winner / Loser &amp; Payoff Ratio.</b> Avg Winner = gross profit ÷ winning trades; Avg Loser = gross loss ÷ losing trades. Payoff Ratio = Avg Winner ÷ |Avg Loser| — the average win expressed in average-loss units. Above 1 means your winners are bigger than your losers; pair it with win rate to read the edge.</li>
+        <li><b>Profit Concentration.</b> Share of total NET profit delivered by your five largest winning trades. High values — or above 100%, which means the rest of the book nets a loss — flag reliance on a few outlier trades. Shown as "—" when there's no net profit to attribute.</li>
+        <li><b>Sortino vs Sharpe.</b> Both divide mean daily PnL by a volatility measure; Sharpe uses the spread of <em>all</em> days, Sortino only the <em>downside</em> (losing-day) deviation. Sortino rewards strategies whose variance is mostly upside. Same daily, non-annualized basis as Sharpe — which uses population std and is near-meaningless on a handful of days.</li>
+        <li><b>Largest Win / Loss Streak ($).</b> The most a single uninterrupted run of winning (or losing) trades added or subtracted, in dollars. A scratch (exactly 0) breaks the run. The Max Consecutive figures count trades in the longest run; these total the dollars.</li>
+        <li><b>Best / Worst Weekday.</b> The active weekday with the highest / lowest AVERAGE PnL per trade (the trade count is shown alongside). Averaging — not total PnL — keeps days comparable regardless of how often you trade each one.</li>
+        <li><b>Weekday &amp; streak samples are thin.</b> Best/Worst Weekday averages and the streak dollars are only as stable as the trades behind them — a single weekday or run with a handful of trades swings easily. Read them as hints, not verdicts, on small samples.</li>
+      </ul>
+    </details>
+  {/if}
 </Panel>
 
 <style>
@@ -91,5 +110,36 @@
   }
   .v.neg {
     color: var(--red);
+  }
+  /* A97: the "Assumptions & caveats" block mirrors CostPanel's F6/F10 pattern verbatim. */
+  .caveats {
+    margin-top: 14px;
+    border-top: 1px solid var(--line);
+    padding-top: 10px;
+  }
+  .caveats summary {
+    font-size: 12px;
+    color: var(--faint);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+  }
+  .caveats ul {
+    margin: 10px 0 0;
+    padding-left: 18px;
+  }
+  .caveats li {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--dim);
+    margin-bottom: 6px;
+  }
+  .caveats b {
+    color: var(--txt);
+  }
+  .caveats em {
+    color: var(--txt);
+    font-style: italic;
   }
 </style>

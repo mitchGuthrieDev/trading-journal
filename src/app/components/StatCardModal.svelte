@@ -2,7 +2,7 @@
   // Stat-card detail modal (A35 — parity with vanilla widgets.js CARD_VIEWS / openCardModal, F14).
   // Clicking a headline Overview card opens this drill-down. All data comes from compute() metrics +
   // costModel (A29 — reuses dowBuckets/DOW_LABEL/minMax from core); charts are small inline SVG/bars.
-  import { usd, money, cls, ratio, minMax, linePath, dowBuckets, DOW_LABEL } from '../../lib/core.ts';
+  import { usd, money, cls, ratio, minMax, linePath, dowBuckets, DOW_LABEL, PAGE_MODE } from '../../lib/core.ts';
   import type { Metrics } from '../../lib/core.ts';
   import type { CostModel, Trade } from '../../lib/types.ts';
   import { modal } from '../lib/modal.ts';
@@ -22,6 +22,10 @@
     color?: string;
     n?: number;
   }
+  // A102: named aliases for the snippet/return shapes below (was inline anonymous object types).
+  type SplitSeg = { value: number; color: string; label: string };
+  type SymPfRow = { root: string; n: number; pf: number; net: number };
+  type RenderedBar = { label: string; value: number; pct: number; tone: string };
   // Signed horizontal bars scaled to the max abs value.
   function bars(rows: BarRow[]) {
     const max = Math.max(1, ...rows.map(r => Math.abs(r.value)));
@@ -49,7 +53,7 @@
     return bins.map((n, i) => ({ pct: (n / max) * 100, lo: lo + (span * i) / 8, n }));
   }
   // Per-symbol gross profit factor + net (parity with vanilla cmSymPf — table, not bars).
-  function symPfRows(trades: Trade[]) {
+  function symPfRows(trades: Trade[]): SymPfRow[] {
     const map = new Map<string, { gp: number; gl: number; n: number }>();
     for (const t of trades) {
       const r = t.root || '?';
@@ -63,6 +67,10 @@
       .map(([root, o]) => ({ root, n: o.n, pf: o.gl !== 0 ? o.gp / Math.abs(o.gl) : Infinity, net: o.gp + o.gl }))
       .sort((a, b) => b.net - a.net);
   }
+
+  // A97 (R18, staging-first): each headline definition now lives in the drill-down modal that owns the
+  // card (net/win/wl/dd), pulled from the trimmed Definitions panel. Staging-only until promoted (CH16).
+  const isStaging = PAGE_MODE === 'staging';
 
   const title = $derived(
     { net: 'Net PnL', win: 'Win Rate', pf: 'Profit Factor', wl: 'Avg Win / Loss', dd: 'Max Drawdown' }[cardKey] || 'Detail'
@@ -83,6 +91,7 @@
           <span><b class={cls(c.netPreTax)}>{usd(c.netPreTax)}</b> Net (pre-tax)</span>
           <span><b class={cls(c.afterTax)}>{usd(c.afterTax)}</b> Take-home</span>
         </div>
+        {#if isStaging}<p class="defn">Net PnL = gross − per-symbol commissions − full-month subscriptions. Take-home is Net PnL after the estimated Section 1256 tax.</p>{/if}
         {#if ddCurve}<svg class="curve" viewBox="0 0 {ddCurve.W} {ddCurve.H}" preserveAspectRatio="none"><path d={ddCurve.d} fill="none" /></svg>{/if}
         <h3>Gross → net → take-home</h3>
         {@render barList(bars([
@@ -99,6 +108,7 @@
           <span><b class="neg">{m.losses}</b> Losses</span>
           <span><b>{m.scratch}</b> Break-even</span>
         </div>
+        {#if isStaging}<p class="defn">Win = realized PnL &gt; 0, Loss = &lt; 0, Scratch = exactly 0. Win Rate = wins ÷ total trades (scratches stay in the denominator).</p>{/if}
         {@render splitBar([
           { value: m.wins, color: 'var(--green)', label: 'Wins' },
           { value: m.losses, color: 'var(--red)', label: 'Losses' },
@@ -126,6 +136,7 @@
           <span><b class="neg">{usd(m.avgL)}</b> Avg loss</span>
           <span><b>{ratio(m.wl)}</b> Ratio</span>
         </div>
+        {#if isStaging}<p class="defn">Avg Winner = gross profit ÷ winning trades; Avg Loser = gross loss ÷ losing trades. Payoff Ratio = Avg Winner ÷ |Avg Loser| — above 1 means your winners are bigger than your losers; pair it with win rate to read the edge.</p>{/if}
         <h3>Win distribution</h3>
         {@render histChart(m.pnls.filter(p => p > 0), 'var(--green)')}
         <h3>Loss distribution (absolute)</h3>
@@ -136,6 +147,7 @@
           <span><b>{ratio(m.recovery)}</b> Recovery factor</span>
           <span><b class={cls(m.net)}>{usd(m.net)}</b> Net PnL</span>
         </div>
+        {#if isStaging}<p class="defn warn">Max Drawdown is REALIZED only — computed on the closed-trade equity curve, peak-to-trough. The % is peak-relative and the duration counts trades from that peak to the trough. It does NOT capture open-position heat between entry and exit, and the % is undefined until the curve first goes positive.</p>{/if}
         {#if ddCurve}
           <h3>Equity curve · peak → trough</h3>
           <svg class="curve" viewBox="0 0 {ddCurve.W} {ddCurve.H}" preserveAspectRatio="none">
@@ -151,7 +163,7 @@
   </div>
 </div>
 
-{#snippet splitBar(segs: Array<{ value: number; color: string; label: string }>)}
+{#snippet splitBar(segs: SplitSeg[])}
   <div class="split">
     {#each segs.filter(s => s.value > 0) as s, i (i)}
       <span class="seg" use:styleProps={{ flex: s.value, background: s.color }} title="{s.label}: {s.value}">{s.value}</span>
@@ -159,7 +171,7 @@
   </div>
 {/snippet}
 
-{#snippet symPfTable(rows: Array<{ root: string; n: number; pf: number; net: number }>)}
+{#snippet symPfTable(rows: SymPfRow[])}
   <table class="symtab">
     <thead><tr><th>Symbol</th><th>Trades</th><th>PF</th><th>Net</th></tr></thead>
     <tbody>
@@ -186,7 +198,7 @@
   {/if}
 {/snippet}
 
-{#snippet barList(rows: Array<{ label: string; value: number; pct: number; tone: string }>)}
+{#snippet barList(rows: RenderedBar[])}
   <div class="bars">
     {#each rows as r, i (i)}
       <div class="bar">
@@ -314,6 +326,17 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--faint);
+  }
+  /* A97: the card's headline definition, distributed here from the standalone Definitions panel. */
+  .defn {
+    margin: 0 0 14px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--dim);
+  }
+  .defn.warn {
+    border-left: 2px solid var(--warn);
+    padding-left: 10px;
   }
   .curve {
     width: 100%;

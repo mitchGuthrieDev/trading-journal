@@ -153,18 +153,6 @@
       "doneNote": null
     },
     {
-      "id": "F23",
-      "title": "(staging) New module: Trade Blotter (full-width scrollable trades table)",
-      "category": "FEATURES",
-      "priority": "P2",
-      "effort": "large",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "Staging-only — gate to the staging surface; do NOT change prod/demo. Add a new dashboard module, 'Trade Blotter': a full-horizontal-width panel containing a scrollable list of ALL trades — essentially the Manage data → Trades table surfaced on the dashboard. Default dashboard position: directly BELOW the Trading Calendar module (and it must respect drag-reorder/collapse + workspace layout templates). Columns per row: Date/time, Symbol, Instrument name, Contract quantity, Price, Commission, Note, PnL. Rows are READ-ONLY except the Note field, which is inline-editable and persists via the shared annotation/Store path (annTextField / trademeta) — all other editing stays in the Manage data menu. Reuse the existing trade-row rendering + the shared commission helper (commSymRows/costModel) rather than recomputing. Add the markup to partials/app-dash.html behind a `<!--IF mode=staging-->` conditional, render gated by STAGING_PAGE, register its data-key in DEFAULT_DASH_ORDER (in app-dash order), then rebuild with build-includes. Confirm whether the blotter should respect the active filter set/scope like other panels (default: yes). Done when: staging shows a full-width Trade Blotter below the calendar with the eight columns, scrollable, the Note field editable inline and everything else read-only; prod/demo are unchanged; build idempotent and tests green.",
-      "doneNote": null
-    },
-    {
       "id": "A15",
       "title": "(infra guardrail) Rate-data scraper must stay within the 50-subrequest free-tier cap",
       "category": "ARCHITECTURE / DUPLICATION",
@@ -309,15 +297,15 @@
       "doneNote": "All four shipped, zero new deps (A28). (1) vite.config build.target:'es2022' matching tsconfig — no plugin-legacy. (2) scripts/check-bundle-size.mjs (npm run size-budget): zero-dep script sums the JS the built /app/ shell loads and fails over a 200 KiB ceiling (baseline ~166.6 KiB → ~33 KiB headroom); wired into CI right after the build. (3) De-dup'd via option (b): the Playwright webServer now serves the already-built dist/ in CI (process.env.CI ? serve-only : build+serve) so CI builds once (its own step, which also feeds the size budget) while local `npm run test:e2e` stays one command. (4) Added a concurrency group (cancel-in-progress on non-main refs) and an actions/cache for ~/.cache/ms-playwright keyed on the resolved @playwright/test version (install-deps-only on cache hit). Verified: build, size-budget, full npm test, and all 28 e2e (via the CI serve-only path) green."
     },
     {
-      "id": "A97",
-      "title": "(staging) Implement R18: distribute Definitions & Caveats into the owning panels",
+      "id": "A103",
+      "title": "Verify the 9 beta CSV adapters against real exports",
       "category": "REVIEW / AUDIT",
       "priority": "P3",
-      "effort": "medium",
+      "effort": "large",
       "status": "open",
       "completedDate": null,
       "partial": false,
-      "prompt": "Implementation spun off from the R18 design review (see docs/backlog-reviews-2026-06-29.md for the full per-item mapping). STAGING-FIRST (proving-ground) until promoted. Apply the HYBRID recommendation: (1) Add an 'Assumptions & caveats' collapsible <details> to AdvancedStats.svelte, mirroring CostPanel's F6/F10 pattern verbatim, holding the Payoff-ratio/Avg-winner-loser, Profit-concentration, Sortino-vs-Sharpe, Win/Loss-streak and Best/Worst-weekday definitions + the thin-sample and Sharpe-daily warnings. (2) Extend the four F14 stat-card modals (StatCardModal.svelte: net/win/wl/dd) with their headline definitions — incl. moving 'Max Drawdown is REALIZED only' into the dd drill-down. (3) Route the cost/commission/tax notes into CostPanel's existing Assumptions (reconcile with what's already there). (4) Put the one-liners on their controls: performance-graph note on EquityCurve, calendar-day grouping on CalendarMonth, scope note on the scope toggle. (5) Trim Definitions.svelte down to the cross-cutting PARSING caveats only (Trade = one closed position; US-dates/Eastern-time assumed) — or relocate them behind a Help/About affordance — since those gate every grouping and need one discoverable home. Keep all three surfaces in sync (A33: one SPA) and demo non-mutating. Done when: the distribution ships on staging with no content lost and the standalone panel trimmed; promote per CH16.",
+      "prompt": "Spun off from the R1 audit (2026-06-29). Only the TradingView adapter is verified; the other adapters in src/lib/adapters.ts (Tradovate, Rithmic, SierraChart, TradeStation, MotiveWave, Webull, IBKR, Schwab) are marked beta. Validate each against a REAL export from that platform — symbol/root, side, qty, PnL, date/time, and (for fills exports) the FIFO round-trip pairing + holdMs — and add a representative fixture to scripts/test-adapters.mjs for each verified format. Drop the beta flag per adapter only once validated, and note it in data/changelog.json. Needs real statements (external dependency); ship incrementally, one adapter per pass. Done when: at least one more adapter is verified end-to-end with a fixture and its beta flag cleared.",
       "doneNote": null
     }
   ],
