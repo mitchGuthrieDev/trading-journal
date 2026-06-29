@@ -357,18 +357,6 @@
       "doneNote": null
     },
     {
-      "id": "A73",
-      "title": "(staging) Paginate the Manage-data trades table",
-      "category": "FEATURES",
-      "priority": "P2",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "(staging) Optimize the Manage data panel: the loaded-trades table renders the entire dataset at once. Add paging (page through chunks, or windowed/virtualized rendering) so large imports don't render thousands of rows at once, while keeping search + filter working across the FULL dataset, not just the visible page. Pure presentation over the already-loaded data (ManageData.svelte); keep demo non-mutating. Consider sharing the windowing approach with the F23 Trade Blotter. Done when: the table loads in pages/windows, search+filter still span all trades, large imports stay responsive, and an e2e covers paging + filtered search.",
-      "doneNote": null
-    },
-    {
       "id": "A80",
       "title": "Discuss/explore: deeper Svelte 5 runes + reactivity adoption",
       "category": "REVIEW / AUDIT",
