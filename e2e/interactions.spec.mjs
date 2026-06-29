@@ -270,11 +270,36 @@ test('staging (Svelte): per-trade delete removes the trade (A45)', async ({ page
   await expect(page.locator('#sv-app [data-card="net"] .value')).toContainText('$', { timeout: 5000 });
   page.on('dialog', d => d.accept()); // confirm()
   await page.click('.managebtn');
-  const rows = page.locator('.modal table tbody tr');
-  await expect(rows.first()).toBeVisible();
-  const before = await rows.count();
+  // The trades table is paginated on staging (A73), so a delete refills the visible page — assert the
+  // removal via the true total in the Manage-data summary, not the rendered row count.
+  const total = page.locator('.modal .summary .dmstat').first().locator('.dv');
+  await expect(total).toBeVisible();
+  const before = parseInt((await total.textContent()).trim(), 10);
   await page.locator('.modal .del').first().click();
-  await expect(rows).toHaveCount(before - 1);
+  await expect(total).toHaveText(String(before - 1));
+});
+
+// A73: the staging Manage-data trades table is paginated (50/page); search spans all trades.
+test('staging (Svelte): Manage-data trades table paginates (A73)', async ({ page }) => {
+  await page.goto('/app/staging.html', { waitUntil: 'networkidle' });
+  await expect(page.locator('#sv-app [data-card="net"] .value')).toContainText('$', { timeout: 5000 });
+  await page.click('.managebtn');
+  const rows = page.locator('.modal .tablewrap tbody tr');
+  await expect(rows.first()).toBeVisible();
+  await expect(rows).toHaveCount(50);
+  await expect(page.locator('.modal .pginfo')).toContainText('1–50 of');
+  await page.locator('.modal .pager button', { hasText: 'Next' }).click();
+  await expect(page.locator('.modal .pginfo')).toContainText('51–100 of');
+  await expect(rows).toHaveCount(50);
+});
+
+// A73: demo (and prod) render the full table with no pager — staging-only change.
+test('demo (Svelte): Manage-data trades table is not paginated (A73)', async ({ page }) => {
+  await page.goto('/app/demo.html', { waitUntil: 'networkidle' });
+  await expect(page.locator('#sv-app [data-card="net"] .value')).toContainText('$', { timeout: 5000 });
+  await page.click('.managebtn');
+  await expect(page.locator('.modal .tablewrap tbody tr').first()).toBeVisible();
+  await expect(page.locator('.modal .pager')).toHaveCount(0);
 });
 
 // A51: on a phone viewport the dashboard must not scroll the PAGE horizontally (body overflow-x:

@@ -5,7 +5,7 @@
   // are deferred. Operations that change the dataset call onchanged() so App recomputes the dashboard.
   import { onMount, getContext } from 'svelte';
   import { Adapters } from '../../lib/adapters.ts';
-  import { usd, money, emit, PAGE_MODE } from '../../lib/core.ts';
+  import { usd, money, emit, PAGE_MODE, STAGING_PAGE } from '../../lib/core.ts';
   import type { Trade, TradeMeta, StoredJournal, StoredTradeMeta, SavedFilter, StoreLike } from '../../lib/types.ts';
   import { readImage, downloadBlob } from '../lib/files.ts';
   import { modal } from '../lib/modal.ts';
@@ -55,6 +55,23 @@
       ? trades.filter(t => (t.symbol + ' ' + t.date).toLowerCase().includes(search.trim().toLowerCase()))
       : trades
   );
+
+  // A73 (staging-only): page the trades table so a large import doesn't render thousands of rows at
+  // once. Search runs over the FULL `filtered` set; only the rendered window is sliced. Prod/demo
+  // render the whole table as before.
+  const PAGE_SIZE = 50;
+  const paged = STAGING_PAGE;
+  let page = $state(0);
+  const pageCount = $derived(Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)));
+  const visible = $derived(paged ? filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE) : filtered);
+  // A new search jumps back to the first page; a delete that shrinks the set keeps `page` in range.
+  $effect(() => {
+    search;
+    page = 0;
+  });
+  $effect(() => {
+    if (page > pageCount - 1) page = Math.max(0, pageCount - 1);
+  });
 
   onMount(reload);
 
@@ -246,7 +263,7 @@
           <tr><th>Date</th><th>Time</th><th>Symbol</th><th class="r">Qty</th><th class="r">P&L</th><th>Tags</th><th>Note</th><th></th></tr>
         </thead>
         <tbody>
-          {#each filtered as t (store.tradeId(t))}
+          {#each visible as t (store.tradeId(t))}
             {@const m = metaOf(t)}
             {@const id = store.tradeId(t)}
             <tr class:editing={editing === id}>
@@ -288,6 +305,13 @@
         </tbody>
       </table>
       {#if !filtered.length}<p class="empty">No trades{search ? ' match the search' : ''}.</p>{/if}
+      {#if paged && filtered.length > PAGE_SIZE}
+        <div class="pager">
+          <button type="button" disabled={page === 0} onclick={() => (page -= 1)}>‹ Prev</button>
+          <span class="pginfo">{page * PAGE_SIZE + 1}–{Math.min(filtered.length, (page + 1) * PAGE_SIZE)} of {filtered.length}</span>
+          <button type="button" disabled={page >= pageCount - 1} onclick={() => (page += 1)}>Next ›</button>
+        </div>
+      {/if}
     </div>
   </div>
 </div>
@@ -669,5 +693,27 @@
     color: var(--dim);
     padding: 20px 4px;
     font-size: 13px;
+  }
+  .pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .pager button {
+    background: var(--panel2);
+    color: var(--txt);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .pginfo {
+    font-variant-numeric: tabular-nums;
   }
 </style>
