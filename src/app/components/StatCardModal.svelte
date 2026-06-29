@@ -2,7 +2,7 @@
   // Stat-card detail modal (A35 — parity with vanilla widgets.js CARD_VIEWS / openCardModal, F14).
   // Clicking a headline Overview card opens this drill-down. All data comes from compute() metrics +
   // costModel (A29 — reuses dowBuckets/DOW_LABEL/minMax from core); charts are small inline SVG/bars.
-  import { usd, money, cls, ratio, minMax, linePath, dowBuckets, DOW_LABEL, PAGE_MODE } from '../../lib/core.ts';
+  import { usd, money, cls, ratio, minMax, linePath, dowBuckets, DOW_LABEL } from '../../lib/core.ts';
   import type { Metrics } from '../../lib/core.ts';
   import type { CostModel, Trade } from '../../lib/types.ts';
   import { modal } from '../lib/modal.ts';
@@ -68,9 +68,8 @@
       .sort((a, b) => b.net - a.net);
   }
 
-  // A97 (R18, staging-first): each headline definition now lives in the drill-down modal that owns the
-  // card (net/win/wl/dd), pulled from the trimmed Definitions panel. Staging-only until promoted (CH16).
-  const isStaging = PAGE_MODE === 'staging';
+  // A97 (R18 — promoted to all surfaces, CH16): each headline definition lives in the drill-down modal
+  // that owns the card (net/win/wl/dd), pulled from the trimmed Definitions panel.
 
   const title = $derived(
     { net: 'Net PnL', win: 'Win Rate', pf: 'Profit Factor', wl: 'Avg Win / Loss', dd: 'Max Drawdown' }[cardKey] || 'Detail'
@@ -91,7 +90,7 @@
           <span><b class={cls(c.netPreTax)}>{usd(c.netPreTax)}</b> Net (pre-tax)</span>
           <span><b class={cls(c.afterTax)}>{usd(c.afterTax)}</b> Take-home</span>
         </div>
-        {#if isStaging}<p class="defn">Net PnL = gross − per-symbol commissions − full-month subscriptions. Take-home is Net PnL after the estimated Section 1256 tax.</p>{/if}
+        <p class="defn">Net PnL = gross − per-symbol commissions − subscriptions (a full month per calendar month in your date range). Take-home is Net PnL after the estimated Section 1256 tax.</p>
         {#if ddCurve}<svg class="curve" viewBox="0 0 {ddCurve.W} {ddCurve.H}" preserveAspectRatio="none"><path d={ddCurve.d} fill="none" /></svg>{/if}
         <h3>Gross → net → take-home</h3>
         {@render barList(bars([
@@ -108,7 +107,7 @@
           <span><b class="neg">{m.losses}</b> Losses</span>
           <span><b>{m.scratch}</b> Break-even</span>
         </div>
-        {#if isStaging}<p class="defn">Win = realized PnL &gt; 0, Loss = &lt; 0, Scratch = exactly 0. Win Rate = wins ÷ total trades (scratches stay in the denominator).</p>{/if}
+        <p class="defn">Win = realized PnL &gt; 0, Loss = &lt; 0, Scratch = exactly 0. Win Rate = wins ÷ total trades (scratches stay in the denominator).</p>
         {@render splitBar([
           { value: m.wins, color: 'var(--green)', label: 'Wins' },
           { value: m.losses, color: 'var(--red)', label: 'Losses' },
@@ -136,7 +135,7 @@
           <span><b class="neg">{usd(m.avgL)}</b> Avg loss</span>
           <span><b>{ratio(m.wl)}</b> Ratio</span>
         </div>
-        {#if isStaging}<p class="defn">Avg Winner = gross profit ÷ winning trades; Avg Loser = gross loss ÷ losing trades. Payoff Ratio = Avg Winner ÷ |Avg Loser| — above 1 means your winners are bigger than your losers; pair it with win rate to read the edge.</p>{/if}
+        <p class="defn">Avg Winner = gross profit ÷ winning trades; Avg Loser = gross loss ÷ losing trades. Payoff Ratio = Avg Winner ÷ |Avg Loser| — above 1 means your winners are bigger than your losers; pair it with win rate to read the edge.</p>
         <h3>Win distribution</h3>
         {@render histChart(m.pnls.filter(p => p > 0), 'var(--green)')}
         <h3>Loss distribution (absolute)</h3>
@@ -147,7 +146,7 @@
           <span><b>{ratio(m.recovery)}</b> Recovery factor</span>
           <span><b class={cls(m.net)}>{usd(m.net)}</b> Net PnL</span>
         </div>
-        {#if isStaging}<p class="defn warn">Max Drawdown is REALIZED only — computed on the closed-trade equity curve, peak-to-trough. The % is peak-relative and the duration counts trades from that peak to the trough. It does NOT capture open-position heat between entry and exit, and the % is undefined until the curve first goes positive.</p>{/if}
+        <p class="defn warn">Max Drawdown is REALIZED only — computed on the closed-trade equity curve, peak-to-trough. The % is peak-relative and the duration counts trades from that peak to the trough. It does NOT capture open-position heat between entry and exit, and the % is undefined until the curve first goes positive.</p>
         {#if ddCurve}
           <h3>Equity curve · peak → trough</h3>
           <svg class="curve" viewBox="0 0 {ddCurve.W} {ddCurve.H}" preserveAspectRatio="none">

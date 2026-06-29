@@ -1,12 +1,12 @@
 <script lang="ts">
-  // Trade Blotter (F23 — staging-only). A full-width dashboard module surfacing ALL trades in one
+  // Trade Blotter (F23 — promoted to all surfaces, CH16). A full-width dashboard module surfacing ALL trades in one
   // scrollable, read-only table (the Manage data → Trades list, brought onto the dashboard). It tracks
   // the active filter set/scope like every other panel (App passes the already-filtered `trades`).
   // Every column is READ-ONLY except the Note, which is inline-editable and persists through the same
   // per-trade annotation path as Manage data (Store.saveTradeMeta / trademeta) — all other editing
   // stays in the Manage data menu. Commission reuses the core `rateFor()` helper (the same round-turn
-  // model costModel() uses) rather than recomputing fees. Gated to staging in App; the isDemo guard is
-  // belt-and-suspenders (A87) since the module never mounts on demo.
+  // model costModel() uses) rather than recomputing fees. On demo the inline Note input is disabled and
+  // saveNote() is guarded by isDemo (A87), so the module stays non-mutating there.
   import { getContext } from 'svelte';
   import { usd, money, cls, rateFor, emit, PAGE_MODE } from '../../lib/core.ts';
   import type { Trade, StoredTradeMeta, StoreLike, PanelBundle } from '../../lib/types.ts';
