@@ -11,9 +11,11 @@
     metrics: Metrics;
     setup: AppSetup;
     costInputs: CostInputs;
+    /** F22 (staging): figures are all-time / account-level, independent of scope + filters. */
+    allTime?: boolean;
     panel?: PanelBundle;
   }
-  let { metrics, setup, costInputs, panel = {} as PanelBundle }: Props = $props();
+  let { metrics, setup, costInputs, allTime = false, panel = {} as PanelBundle }: Props = $props();
 
   const feedGroups = $derived(BROKER_FEEDS[setup.broker] || {});
   const stateOpts = $derived(STATES.slice().sort((a: StateRow, b: StateRow) => (a[2] < b[2] ? -1 : 1)));
@@ -61,6 +63,9 @@
   </div>
 
   {#if cost}
+    {#if allTime}
+      <p class="allnote">Account-level budget — computed from <b>all trades (all-time)</b>, independent of the scope toggle and filter bar.</p>
+    {/if}
     <div class="breakdown">
       <div class="takehome" class:neg={cost.afterTax < 0}>
         <span class="lbl">Estimated take-home</span>
@@ -102,7 +107,7 @@
       <ul>
         <li><b>Round-turn commission, per contract.</b> Each trade is a closed position; the round-turn commission — 2 × the symbol's per-side rate — is charged once per contract (× the trade's quantity).</li>
         <li><b>Per-symbol commissions.</b> The symbol root is priced as the selected broker's commission plus the contract's CME exchange/clearing/NFA fee. Symbols without a known exchange fee use a fallback and are flagged with *. All rates are editable estimates — verify against your account.</li>
-        <li><b>Subscriptions are not prorated.</b> A full month of platform + data fee is charged for every distinct calendar month in the active scope.</li>
+        <li><b>Subscriptions are not prorated.</b> A full month of platform + data fee is charged for every distinct calendar month in the {allTime ? 'full dataset (all-time)' : 'active scope'}.</li>
         <li><b>Tax = blended 1256 rate:</b> 60% × 15% long-term + 40% × 24% ordinary (assumed bracket) + your state's top rate, applied only when net profit is positive.</li>
         <li><b>Break-even / trade</b> = total period costs ÷ trade count: the average gross each trade needed to clear costs.</li>
       </ul>
@@ -112,6 +117,16 @@
 </Panel>
 
 <style>
+  .allnote {
+    margin: 0 0 12px;
+    padding: 7px 10px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--dim);
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
   .setup {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
