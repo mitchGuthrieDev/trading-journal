@@ -2790,6 +2790,28 @@
       "completedDate": "2026-06-29",
       "partial": false,
       "doneNote": ".modgrid uses align-items:stretch so the three grid modules (Calendar / Break-even / Advanced Stats) share a common height and their bottoms align, reclaiming the negative space below the shorter ones. NOTE the first cut also set the grid panels to height:100% which, combined with the panel's own margin-top:16px, pushed each panel 16px past its grid cell and OVERLAPPED the Trade Blotter below — fixed by removing height:100% (align-items:stretch already equalizes height accounting for the margin, no overlap). e2e asserts the three grid panels are equal height. Staging-gated pending CH16."
+    },
+    {
+      "id": "A108",
+      "title": "Discussion: self-contained dashboard modules for maintainability/scaling",
+      "category": "ARCHITECTURE / DUPLICATION",
+      "priority": "P2",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-06-29",
+      "partial": false,
+      "doneNote": "Implemented a dashboard MODULE REGISTRY (src/app/lib/modules.ts). Each module now declares itself in one place — key, label, F26 grid membership, surface gate, component, and a pure props selector from a shared DashCtx — and App.svelte ITERATES it, replacing the four hand-synced structures (DEFAULT_ORDER + MODULE_LABELS + GRID_KEYS) and the per-module {#if key===…} render switch (the pre-A108 wiring where adding a module touched 5 disjoint spots). DEFAULT_ORDER/MODULE_LABELS/GRID_KEYS are now DERIVED from the registry; rendering dispatches dynamically via <Comp {panel} {...def.props(ctx)} /> (the calendar's `extra` day-trades/journal child snippet is the one special-case kept in App). App exposes `ctx` via getters so selectors stay fine-grained reactive (reading ctx.metricsAll tracks only that $derived, like the old explicit metrics={…}). A mod<P>() factory type-checks each selector against its component's REAL props — the only `any` is the erased heterogeneous component field. Adding a module = one registry entry + the component. Behavior-preserving: registry-derived order/gating verified IDENTICAL (staging: cal/cost/adv grid + blotter/term, defs footer; demo: full stack with defs panel), npm test + 45 e2e green, bundle within budget. Deliberately did NOT bundle the A80 .svelte.ts shared-state extraction (kept the blast radius small; they compose)."
+    },
+    {
+      "id": "R13",
+      "title": "Discussion & planning: realtime resizable + snapping modules",
+      "category": "REVIEW / AUDIT",
+      "priority": "P3",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-06-29",
+      "partial": false,
+      "doneNote": "Discussion/planning delivered (analysis in-session). Assessed realtime resizable + snapping modules against the CURRENT layout system: Panel collapse + native HTML5 drag-REORDER of a 1-D panelOrder, the F26 parallel grid (auto-fit columns, align-items:stretch), Store.local persistence + workspace templates, the style-src 'self' CSP with the styleProps CSSOM action for dynamic styles, and NO drag/resize library (A28). Two model families weighed: (A) a TILING dashboard grid — each module owns {x,y,w,h} on a column grid, resize+snap to tracks, neighbors reflow; bounded complexity, maps to CSS Grid spans (CSP-clean via styleProps), compact persistence, responsive, builds on existing primitives — vs (B) FREE-FLOATING dock/magnet windows (literal Quantower) — a windowing toolkit (dock-tree serialization, z-index/overlap), heavy, desktop-only, a11y/mobile-hostile. RECOMMENDATION: do NOT build free-floating docking (wrong cost/benefit for a journal); pursue a tiling grid, PHASED (width-resize within the F26 grid → height → snap+reflow → maybe drag-between-cells), prefer a CUSTOM minimal build (A28/CSP-clean by construction) but evaluate gridstack.js first. Mobile degrades to today's single-column stack; persistence extends the Store.local seam ({key→{x,y,w,h}} replacing the 1-D order, with migration from tj_order); perf via rAF-throttled resize that updates grid spans only (compute() is data-derived, not size-derived, so metrics don't recompute on resize). USER DECISIONS captured: target the tiling grid; evaluate gridstack first. Spun off R20 (gridstack-vs-custom eval, CSP/A28) and F29 (phase-1 resizable grid POC, gated on R20)."
     }
   ]
 }

@@ -26,19 +26,18 @@
   // A85: the topbar meta tagline is per-surface — only staging shows the "proving ground" copy, and
   // only staging shows the "Staging" badge. Prod app shows just the date range; demo flags the sample.
   const metaLead = isStaging ? 'Svelte 5 proving ground · isolated local data' : isDemo ? 'Interactive demo · sample data' : '';
+  // A108: the dashboard panels (perf/cal/blotter/cost/adv/defs/term) are wired through the MODULE
+  // registry (./lib/modules.ts) and rendered dynamically — App no longer imports them individually.
+  import { MODULES, MODULE_BY_KEY, type DashCtx } from './lib/modules.ts';
   import Overview from './components/Overview.svelte';
-  import EquityCurve from './components/EquityCurve.svelte';
-  import CalendarMonth from './components/CalendarMonth.svelte';
-  import AdvancedStats from './components/AdvancedStats.svelte';
-  import CostPanel from './components/CostPanel.svelte';
   import FilterBar from './components/FilterBar.svelte';
+  // JournalEditor + DayTrades are the calendar module's `extra` snippet content (rendered by App).
   import JournalEditor from './components/JournalEditor.svelte';
   import DayTrades from './components/DayTrades.svelte';
   import ManageData from './components/ManageData.svelte';
-  import ActivityTerminal from './components/ActivityTerminal.svelte';
+  // Definitions also renders as the F27 staging FOOTER (separate from its registry panel entry).
   import Definitions from './components/Definitions.svelte';
   import StatCardModal from './components/StatCardModal.svelte';
-  import TradeBlotter from './components/TradeBlotter.svelte';
   import ExportReport from './components/ExportReport.svelte';
   import WorkspaceBar from './components/WorkspaceBar.svelte';
   import Landing from './components/Landing.svelte';
@@ -71,28 +70,20 @@
   // Panel system (A36 — parity with vanilla ui.js/widgets.js). The dashboard's reorderable,
   // collapsible panels; order + collapsed map persist through the Store.local seam under a
   // staging-namespaced key (so staging layout never leaks into prod/demo). Workspace templates
-  // snapshot {order, collapsed} under WS_KEY. DEFAULT_ORDER mirrors vanilla DEFAULT_DASH_ORDER.
-  // F23 (promoted to all surfaces, CH16): the Trade Blotter sits directly below the Trading Calendar
-  // by default on every surface (it stays non-mutating on demo — the inline Note input is disabled).
-  // F27 (staging): the Definitions & Caveats module is relegated to a page footer, so 'defs' is NOT a
-  // dashboard module on staging; it stays a dashboard panel on prod/demo until promoted (CH16).
-  const DEFAULT_ORDER = isStaging
-    ? ['perf', 'cal', 'blotter', 'cost', 'adv', 'term']
-    : ['perf', 'cal', 'blotter', 'cost', 'adv', 'defs', 'term'];
+  // snapshot {order, collapsed} under WS_KEY.
+  // A108: DEFAULT_ORDER / MODULE_LABELS / GRID_KEYS are all DERIVED from the module registry now — a
+  // single source of truth (./lib/modules.ts) instead of three hand-synced structures. The registry's
+  // array order is the default order; per-module `gate` does the surface filtering (e.g. F27 keeps
+  // 'defs' off staging — it's a footer there); `grid` flags the F26 parallel-grid members.
+  const SURFACE = { isStaging, isDemo };
+  // F23 (CH16): Trade Blotter sits directly below the Trading Calendar by default on every surface
+  // (non-mutating on demo). F27 (staging): 'defs' is a page footer, gated out of the dashboard here.
+  const DEFAULT_ORDER = MODULES.filter(m => m.gate(SURFACE)).map(m => m.key);
   // R12/A71: human labels for the module menus (the names otherwise live only inside each <Panel title>).
-  const MODULE_LABELS: Record<string, string> = {
-    perf: 'Performance',
-    cal: 'Trading Calendar',
-    blotter: 'Trade Blotter',
-    cost: 'Break-even & Cost',
-    adv: 'Advanced Statistics',
-    defs: 'Definitions & Caveats',
-    term: 'Activity Terminal',
-  };
-  // F26 (staging): these three modules render side-by-side in a reorderable grid instead of stacked
-  // full-width rows. The user drags them (or uses the module menu's Move left/right) to reorder within
-  // the grid; the rest stay full-width. Off on prod/demo (everything stays stacked) until promoted (CH16).
-  const GRID_KEYS = ['cal', 'cost', 'adv'];
+  const MODULE_LABELS: Record<string, string> = Object.fromEntries(MODULES.map(m => [m.key, m.label]));
+  // F26 (staging): these modules render side-by-side in a reorderable grid instead of stacked full-width
+  // rows (drag, or the module menu's Move left/right, reorders within the grid). Off on prod/demo.
+  const GRID_KEYS = MODULES.filter(m => m.grid).map(m => m.key);
   const isGridKey = (k: string | null): boolean => !!k && isStaging && GRID_KEYS.includes(k);
   // F24 (staging): the donate button opens this Stripe page in a separate popup window so the user is
   // never navigated away from the dashboard. PLACEHOLDER — swap in the real Stripe Payment Link once it
@@ -522,6 +513,53 @@
     }
   }
 
+  // A108: the live dashboard context the module registry's prop-selectors read (see ./lib/modules.ts).
+  // Exposed via GETTERS so each selector stays fine-grained reactive — reading ctx.metricsAll inside a
+  // module's props() tracks only the underlying $derived, exactly like the old explicit `metrics={…}`.
+  const ctx: DashCtx = {
+    get metricsAll() {
+      return metricsAll;
+    },
+    get metricsActive() {
+      return metricsActive;
+    },
+    get breakEvenMetrics() {
+      return breakEvenMetrics;
+    },
+    get costInputs() {
+      return costInputs;
+    },
+    get journalDates() {
+      return journalDates;
+    },
+    get selectedDate() {
+      return selectedDate;
+    },
+    get calYear() {
+      return calYear;
+    },
+    get calMonth() {
+      return calMonth;
+    },
+    get filtered() {
+      return filtered;
+    },
+    get tradeMeta() {
+      return tradeMeta;
+    },
+    get filtersActive() {
+      return filtersActive;
+    },
+    get setup() {
+      return setup;
+    },
+    isDemo,
+    onselect: d => (selectedDate = selectedDate === d ? null : d),
+    navMonth,
+    jumpToLatest,
+    reloadAll,
+  };
+
   function clearFilters() {
     filters.from = '';
     filters.to = '';
@@ -688,30 +726,26 @@
         </div>
       {/if}
     </div>
-    <!-- One module's chrome+content, keyed. Rendered both full-width and inside the F26 grid, so the
-         per-key switch lives in a snippet (the `panel` bundle differs between the two contexts). -->
+    <!-- A108: one module's chrome+content, keyed. App iterates the registry and renders each module's
+         declared component with its selector props (the `panel` bundle differs between the full-width
+         and F26-grid contexts, so it's passed per-render). The calendar is the one module with a child
+         snippet (its `extra` day-trades + journal editor), so it's the single special-case below. -->
     {#snippet moduleBlock(key: string, panel: PanelBundle)}
-      {#if key === 'perf'}
-        <EquityCurve {panel} metrics={metricsAll} {costInputs} {journalDates} {selectedDate} onselect={d => (selectedDate = selectedDate === d ? null : d)} />
-      {:else if key === 'cal'}
-        <CalendarMonth {panel} metrics={metricsAll} year={calYear} month={calMonth} onnav={navMonth} onjump={jumpToLatest} {selectedDate} {journalDates} onselect={d => (selectedDate = selectedDate === d ? null : d)}>
-          {#snippet extra()}
-            {#if selectedDate}
-              <DayTrades date={selectedDate} trades={dayTrades} filtered={filtersActive} />
-              <JournalEditor date={selectedDate} onsaved={refreshNotes} onclose={() => (selectedDate = null)} />
-            {/if}
-          {/snippet}
-        </CalendarMonth>
-      {:else if key === 'blotter'}
-        <TradeBlotter {panel} trades={filtered} {tradeMeta} broker={setup.broker} filtered={filtersActive} onchanged={reloadAll} />
-      {:else if key === 'cost'}
-        <CostPanel {panel} metrics={breakEvenMetrics} {setup} {costInputs} allTime={true} disabled={isDemo} />
-      {:else if key === 'adv'}
-        <AdvancedStats {panel} metrics={metricsActive} />
-      {:else if key === 'defs'}
-        <Definitions {panel} />
-      {:else if key === 'term'}
-        <ActivityTerminal {panel} />
+      {@const def = MODULE_BY_KEY[key]}
+      {#if def}
+        {@const Comp = def.component}
+        {#if key === 'cal'}
+          <Comp {panel} {...def.props(ctx)}>
+            {#snippet extra()}
+              {#if selectedDate}
+                <DayTrades date={selectedDate} trades={dayTrades} filtered={filtersActive} />
+                <JournalEditor date={selectedDate} onsaved={refreshNotes} onclose={() => (selectedDate = null)} />
+              {/if}
+            {/snippet}
+          </Comp>
+        {:else}
+          <Comp {panel} {...def.props(ctx)} />
+        {/if}
       {/if}
     {/snippet}
     <div class="dash" role="region" aria-label="Dashboard panels">
