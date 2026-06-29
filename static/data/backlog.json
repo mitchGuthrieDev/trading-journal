@@ -81,18 +81,6 @@
       "doneNote": null
     },
     {
-      "id": "R12",
-      "title": "Discussion & planning: module menu (spawn modules onto the dashboard)",
-      "category": "REVIEW / AUDIT",
-      "priority": "P3",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "Scope a Quantower-inspired 'module menu': a menu listing all of the app's modules where the user clicks an item to spawn that module onto their dashboard. Assess fit with the current panel/widget system (data-key panels, drag-reorder/collapse, layout templates via ws_save), what spawnable/removable modules require vs today's fixed panel set, how user-composed layouts persist, and a phased estimate. Done when: a written effort estimate + requirements + next-step items exist.",
-      "doneNote": null
-    },
-    {
       "id": "R13",
       "title": "Discussion & planning: realtime resizable + snapping modules",
       "category": "REVIEW / AUDIT",
@@ -318,18 +306,6 @@
       "completedDate": null,
       "partial": false,
       "prompt": "Review .github/workflows/ (ci.yml, version-bump.yml) for correctness, coverage, and hygiene now that the build is Vite + Svelte (ADR-001). Check: node version matches .node-version (22); npm ci + caching; the full gate runs and fails closed (lint, typecheck, format, unit, build, e2e, and the include/manifest drift gate); version-bump triggers/permissions are correct (CH12) and don't self-retrigger ([skip ci]); Playwright uses the preinstalled Chromium rather than re-downloading; secrets handling; and any redundant or missing steps. Done when: a written review with concrete fixes (and any low-risk fixes applied) is delivered.",
-      "doneNote": null
-    },
-    {
-      "id": "A71",
-      "title": "(staging) Top module headers clickable with a menu popup",
-      "category": "FEATURES",
-      "priority": "P2",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "(staging) The module/panel headers along the top should be clickable to open a menu popup (per-module actions and/or add/spawn). Reconcile with R12 (module menu - spawn modules onto the dashboard) so the two don't diverge. Build in the Svelte app (app/staging-svelte/), gate to the right surface, keep demo non-mutating, and stay CSP-clean (no inline styles - use the styleProps action / utility classes per A55). Done when: clicking a top module opens an accessible menu popup with working actions, e2e covers open/close, and the scope is reconciled with R12.",
       "doneNote": null
     },
     {

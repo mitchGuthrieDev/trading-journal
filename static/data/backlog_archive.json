@@ -2273,6 +2273,28 @@
       "completedDate": "2026-06-29",
       "partial": false,
       "doneNote": "**Shipped (infra).** Edge-cached the rarely-changing public GETs to cut the per-visitor Function invocations + KV reads that count against the Workers free-tier cap (and the A17 KV budget). Added `cachedJson()` / `purgeCached()` helpers (functions/_lib/http.ts) over the colo Cache API (`caches.default`) + browser `Cache-Control`: GET /api/status edge-cached 30s, GET /api/config 60s (both visitor-independent; a brief stale read is harmless and an admin POST purges the entry so changes apply immediately); GET /api/geo gets `Cache-Control: private, max-age=1800` (the response is the visitor's OWN coarse region, so browser-only caching — no shared cache can hand one visitor's region to another). Admin POST writes stay `no-store` (json() default), rate-limited and auth-gated — never cached. All cache ops are best-effort/fail-safe (try/catch → fall through to a fresh build), and each endpoint already degrades gracefully when KV/cf is unbound (status→auto, config→APP_FLAGS defaults, geo→null prefill). Before: every visit fired ~1–3 uncached Function calls (homepage status pill, app-boot config, landing geo), each doing a KV read; after: status/config serve from the colo cache (skipping the KV read) and all three are browser-cacheable, so a session's repeat reads don't re-invoke. typecheck (incl tsc functions) + eslint (.ts linted since A79) + the 16 auth tests green. (Edge behavior verifies on the Cloudflare deploy — no local Workers runtime.)"
+    },
+    {
+      "id": "R12",
+      "title": "Discussion & planning: module menu (spawn modules onto the dashboard)",
+      "category": "REVIEW / AUDIT",
+      "priority": "P3",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-06-29",
+      "partial": false,
+      "doneNote": "**Done — design delivered and implemented.** Produced the module-menu design (docs/r12-module-menu-design.md): rather than a multi-instance 'spawn arbitrary modules' rewrite, R12 is realized as HIDE + RE-ADD over the existing fixed module registry (DEFAULT_ORDER), with a new `hiddenPanels` map persisted and workspace-snapshotted alongside order+collapsed. Built on it in A71 (the per-module header menu's Hide action + the dashboard '+ Add module' menu). Staging-only; prod/demo unchanged. Multi-instance modules (e.g. two calendars) were scoped out as a larger follow-up — refile if wanted. See A71."
+    },
+    {
+      "id": "A71",
+      "title": "(staging) Top module headers clickable with a menu popup",
+      "category": "FEATURES",
+      "priority": "P2",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-06-29",
+      "partial": false,
+      "doneNote": "**Shipped (staging-only).** Each dashboard module header now has a \"⋯\" menu opening an accessible `role=\"menu\"` popup with Collapse/Expand, Move up, Move down (disabled at the ends) and Hide module — wired to App via the panel bundle; closes on Escape / outside click / action. Hidden modules are re-spawned from a new \"+ Add module\" menu beside the workspace bar (R12). A new `hiddenPanels` map persists through Store.local under the staging-namespaced `tj_hidden_staging` key and is included in workspace snapshots (and cleared on revert-to-default). All staging-gated (`menu = STAGING_PAGE`); prod/demo render the plain header (drag + chevron) unchanged. CSP-clean (scoped CSS, no inline styles — A55). Verified in-browser: 6 header menus on staging with the 4 actions; Hide drops a module and reveals Add-module; re-add restores it; demo has 0 menus; no console errors. Reconciled with R12 (design in docs/r12-module-menu-design.md). typecheck 0/0; e2e 27/27 (+2 A71/R12 specs)."
     }
   ]
 }

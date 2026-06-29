@@ -15,6 +15,13 @@
     onreorderstart?: (key?: string) => void;
     onreorderend?: () => void;
     onreorderover?: (e: DragEvent, key?: string) => void;
+    // R12/A71 (staging): the per-module header menu (move/hide). Off by default → prod/demo unchanged.
+    menu?: boolean;
+    isFirst?: boolean;
+    isLast?: boolean;
+    onmoveup?: () => void;
+    onmovedown?: () => void;
+    onhide?: () => void;
     actions?: Snippet;
     children: Snippet;
   }
@@ -27,18 +34,29 @@
     onreorderstart = () => {},
     onreorderend = () => {},
     onreorderover = () => {},
+    menu = false,
+    isFirst = false,
+    isLast = false,
+    onmoveup = () => {},
+    onmovedown = () => {},
+    onhide = () => {},
     actions,
     children,
   }: Props = $props();
 
   let armed = $state(false); // grip pressed → the section is draggable for this gesture only
+  let menuOpen = $state(false); // A71 module-header menu popup
+  const runMenu = (fn: () => void) => {
+    fn();
+    menuOpen = false;
+  };
 
   function headClick(e: MouseEvent) {
-    // Toggle on a bare-header click only — never when the click lands on the grip, the chevron, or
-    // an interactive control in the actions area (overlays, calendar nav), which would otherwise
-    // collapse the panel out from under the user.
+    // Toggle on a bare-header click only — never when the click lands on the grip, the chevron, the
+    // module menu, or an interactive control in the actions area (overlays, calendar nav), which would
+    // otherwise collapse the panel out from under the user.
     const target = e.target as HTMLElement;
-    if (target.closest('.grip') || target.closest('.chev') || target.closest('.pactions')) return;
+    if (target.closest('.grip') || target.closest('.chev') || target.closest('.pactions') || target.closest('.pmenu')) return;
     ontoggle();
   }
   function onDragStart(e: DragEvent) {
@@ -58,6 +76,13 @@
   }
 </script>
 
+<svelte:window
+  onclick={() => (menuOpen = false)}
+  onkeydown={e => {
+    if (e.key === 'Escape') menuOpen = false;
+  }}
+/>
+
 <!-- svelte-ignore a11y_no_static_element_interactions (drag-to-reorder is a pointer-only enhancement;
      the grip is aria-hidden and collapse/expand has a real keyboard button — panel content is fully
      reachable without dragging) -->
@@ -72,6 +97,30 @@
     >⠿</span>
     <h2>{title}</h2>
     {#if actions}<div class="pactions">{@render actions()}</div>{/if}
+    {#if menu}
+      <!-- A71 (staging): clickable header menu — per-module actions (move / hide). -->
+      <div class="pmenu">
+        <button
+          type="button"
+          class="pmenubtn"
+          aria-haspopup="true"
+          aria-expanded={menuOpen}
+          aria-label="{title} module menu"
+          title="Module options"
+          onclick={e => {
+            e.stopPropagation();
+            menuOpen = !menuOpen;
+          }}>⋯</button>
+        {#if menuOpen}
+          <div class="pmenupop" role="menu" aria-label="{title} options">
+            <button type="button" role="menuitem" onclick={() => runMenu(ontoggle)}>{collapsed ? 'Expand' : 'Collapse'}</button>
+            <button type="button" role="menuitem" disabled={isFirst} onclick={() => runMenu(onmoveup)}>Move up</button>
+            <button type="button" role="menuitem" disabled={isLast} onclick={() => runMenu(onmovedown)}>Move down</button>
+            <button type="button" role="menuitem" class="danger" onclick={() => runMenu(onhide)}>Hide module</button>
+          </div>
+        {/if}
+      </div>
+    {/if}
     <button type="button" class="chev" aria-expanded={!collapsed} aria-label={collapsed ? 'Expand' : 'Collapse'} title={collapsed ? 'Expand' : 'Collapse'} onclick={ontoggle}>
       {collapsed ? '▸' : '▾'}
     </button>
@@ -139,5 +188,65 @@
   }
   .chev:hover {
     color: var(--txt);
+  }
+  /* A71 (staging): the module-header menu button + popup. */
+  .pmenu {
+    position: relative;
+    margin-left: auto;
+  }
+  .pactions + .pmenu {
+    margin-left: 0;
+  }
+  .pmenu + .chev {
+    margin-left: 0;
+  }
+  .pmenubtn {
+    background: transparent;
+    border: 0;
+    color: var(--dim);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 5px;
+  }
+  .pmenubtn:hover {
+    color: var(--txt);
+    background: var(--panel2);
+  }
+  .pmenupop {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 40;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+  .pmenupop button {
+    text-align: left;
+    background: transparent;
+    color: var(--txt);
+    border: 0;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .pmenupop button:hover:not(:disabled) {
+    background: var(--panel2);
+  }
+  .pmenupop button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .pmenupop button.danger {
+    color: var(--red);
   }
 </style>

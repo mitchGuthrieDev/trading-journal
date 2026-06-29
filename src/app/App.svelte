@@ -64,9 +64,19 @@
   // staging-namespaced key (so staging layout never leaks into prod/demo). Workspace templates
   // snapshot {order, collapsed} under WS_KEY. DEFAULT_ORDER mirrors vanilla DEFAULT_DASH_ORDER.
   const DEFAULT_ORDER = ['perf', 'cal', 'cost', 'adv', 'defs', 'term'];
+  // R12/A71: human labels for the module menus (the names otherwise live only inside each <Panel title>).
+  const MODULE_LABELS: Record<string, string> = {
+    perf: 'Performance',
+    cal: 'Trading Calendar',
+    cost: 'Break-even & Cost',
+    adv: 'Advanced Statistics',
+    defs: 'Definitions & Caveats',
+    term: 'Activity Terminal',
+  };
   const LS_SUFFIX = PAGE_MODE === 'staging' ? '_staging' : '';
   const LS_ORDER = 'tj_order' + LS_SUFFIX;
   const LS_COLLAPSE = 'tj_collapsed' + LS_SUFFIX;
+  const LS_HIDDEN = 'tj_hidden' + LS_SUFFIX;
   const WS_KEY = 'tj_ws_templates' + LS_SUFFIX;
   const sanitizeOrder = (ord: unknown): string[] => {
     if (!Array.isArray(ord)) return [...DEFAULT_ORDER];
@@ -76,12 +86,43 @@
   // Initialize synchronously from localStorage so the restored layout paints without a flash.
   let panelOrder = $state<string[]>(sanitizeOrder(store.local.get(LS_ORDER, null)));
   let collapsedPanels = $state<Record<string, number>>((store.local.get(LS_COLLAPSE, {}) as Record<string, number>) || {});
+  // R12 (staging): modules removed from the dashboard; re-spawned from the "Add module" menu.
+  let hiddenPanels = $state<Record<string, number>>((store.local.get(LS_HIDDEN, {}) as Record<string, number>) || {});
+  let addMenuOpen = $state(false);
   let draggingKey = $state<string | null>(null);
+  const visiblePanels = $derived(panelOrder.filter(k => !hiddenPanels[k]));
+  const hiddenList = $derived(panelOrder.filter(k => hiddenPanels[k]));
   let wsNames = $state<string[]>(Object.keys((store.local.get(WS_KEY, {}) as Record<string, unknown>) || {}));
   let wsSelected = $state('');
 
   const persistOrder = () => store.local.set(LS_ORDER, $state.snapshot(panelOrder));
   const persistCollapsed = () => store.local.set(LS_COLLAPSE, $state.snapshot(collapsedPanels));
+  const persistHidden = () => store.local.set(LS_HIDDEN, $state.snapshot(hiddenPanels));
+
+  // R12/A71 (staging): move a module one slot among the VISIBLE panels, then persist the new order.
+  function movePanel(key: string, dir: -1 | 1) {
+    const vis = panelOrder.filter(k => !hiddenPanels[k]);
+    const vi = vis.indexOf(key);
+    const swapWith = vis[vi + dir];
+    if (!swapWith) return; // already at an end
+    const next = [...panelOrder];
+    const a = next.indexOf(key);
+    const b = next.indexOf(swapWith);
+    [next[a], next[b]] = [next[b], next[a]];
+    panelOrder = next;
+    persistOrder();
+  }
+  function hidePanel(key: string) {
+    hiddenPanels = { ...hiddenPanels, [key]: 1 };
+    persistHidden();
+  }
+  function showPanel(key: string) {
+    const next = { ...hiddenPanels };
+    delete next[key];
+    hiddenPanels = next;
+    persistHidden();
+    addMenuOpen = false;
+  }
 
   function togglePanel(key: string) {
     const next = { ...collapsedPanels };
@@ -112,17 +153,26 @@
       persistOrder();
     },
     onreorderover: e => reorderOver(e, key),
+    // R12/A71 (staging only): the per-module header menu and its move/hide actions.
+    menu: STAGING_PAGE,
+    isFirst: visiblePanels[0] === key,
+    isLast: visiblePanels[visiblePanels.length - 1] === key,
+    onmoveup: () => movePanel(key, -1),
+    onmovedown: () => movePanel(key, 1),
+    onhide: () => hidePanel(key),
   });
 
   // Workspace templates (Store.local seam).
-  const readWs = (): Record<string, { order: string[]; collapsed: Record<string, number> }> =>
-    (store.local.get(WS_KEY, {}) as Record<string, { order: string[]; collapsed: Record<string, number> }>) || {};
+  // R12: workspace templates also snapshot which modules are hidden (older snapshots → nothing hidden).
+  const readWs = (): Record<string, { order: string[]; collapsed: Record<string, number>; hidden?: Record<string, number> }> =>
+    (store.local.get(WS_KEY, {}) as Record<string, { order: string[]; collapsed: Record<string, number>; hidden?: Record<string, number> }>) ||
+    {};
   function saveWorkspace() {
     if (PAGE_MODE === 'demo') return; // demo never persists new layouts (B23)
     const name = (window.prompt('Name this workspace layout:') || '').trim();
     if (!name) return;
     const t = readWs();
-    t[name] = { order: $state.snapshot(panelOrder), collapsed: $state.snapshot(collapsedPanels) };
+    t[name] = { order: $state.snapshot(panelOrder), collapsed: $state.snapshot(collapsedPanels), hidden: $state.snapshot(hiddenPanels) };
     store.local.set(WS_KEY, t);
     wsNames = Object.keys(t);
     wsSelected = name;
@@ -134,8 +184,10 @@
       // "— Default —" → drop the saved layout and restore the default arrangement.
       store.local.remove(LS_ORDER);
       store.local.remove(LS_COLLAPSE);
+      store.local.remove(LS_HIDDEN);
       panelOrder = [...DEFAULT_ORDER];
       collapsedPanels = {};
+      hiddenPanels = {};
       emit('ws:reverted', {});
       return;
     }
@@ -143,8 +195,10 @@
     if (t) {
       panelOrder = sanitizeOrder(t.order);
       collapsedPanels = { ...(t.collapsed || {}) };
+      hiddenPanels = { ...(t.hidden || {}) };
       persistOrder();
       persistCollapsed();
+      persistHidden();
       emit('ws:loaded', { name });
     }
   }
@@ -360,7 +414,18 @@
   });
 </script>
 
-<svelte:window onclick={() => (pillOpen = false)} />
+<svelte:window
+  onclick={() => {
+    pillOpen = false;
+    addMenuOpen = false;
+  }}
+  onkeydown={e => {
+    if (e.key === 'Escape') {
+      pillOpen = false;
+      addMenuOpen = false;
+    }
+  }}
+/>
 
 <main id="sv-app">
   <header class="topbar">
@@ -411,9 +476,32 @@
   {:else if loaded}
     <FilterBar {filters} {roots} {tags} {savedFilters} count={metricsActive.n} onclear={clearFilters} onsave={saveView} onapply={applyView} ondelete={deleteView} />
     <Overview metrics={metricsActive} tradeCount={metricsActive.n} oncard={k => (cardModalKey = k)} />
-    <WorkspaceBar names={wsNames} value={wsSelected} onsave={saveWorkspace} onselect={selectWorkspace} saveDisabled={PAGE_MODE === 'demo'} />
+    <div class="wsrow">
+      <WorkspaceBar names={wsNames} value={wsSelected} onsave={saveWorkspace} onselect={selectWorkspace} saveDisabled={PAGE_MODE === 'demo'} />
+      {#if STAGING_PAGE && hiddenList.length}
+        <!-- R12 (staging): re-spawn a hidden module onto the dashboard. -->
+        <div class="addmod">
+          <button
+            type="button"
+            class="addmodbtn"
+            aria-haspopup="true"
+            aria-expanded={addMenuOpen}
+            onclick={e => {
+              e.stopPropagation();
+              addMenuOpen = !addMenuOpen;
+            }}>+ Add module</button>
+          {#if addMenuOpen}
+            <div class="addmenu" role="menu" aria-label="Add a hidden module">
+              {#each hiddenList as key (key)}
+                <button type="button" role="menuitem" onclick={() => showPanel(key)}>{MODULE_LABELS[key] || key}</button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </div>
     <div class="dash" role="region" aria-label="Dashboard panels">
-      {#each panelOrder as key (key)}
+      {#each visiblePanels as key (key)}
         {#if key === 'perf'}
           <EquityCurve panel={panelBundle(key)} metrics={metricsAll} {costInputs} {journalDates} {selectedDate} onselect={d => (selectedDate = d)} />
         {:else if key === 'cal'}
@@ -648,6 +736,57 @@
   .managebtn:hover,
   .exportbtn:hover {
     border-color: var(--hover-line);
+  }
+  /* R12 (staging): the "Add module" control sits beside the workspace bar. */
+  .wsrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .addmod {
+    position: relative;
+  }
+  .addmodbtn {
+    background: var(--panel2);
+    color: var(--txt);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .addmodbtn:hover {
+    border-color: var(--hover-line);
+  }
+  .addmenu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 40;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+  .addmenu button {
+    text-align: left;
+    background: transparent;
+    color: var(--txt);
+    border: 0;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .addmenu button:hover {
+    background: var(--panel2);
   }
   .msg {
     color: var(--dim);
