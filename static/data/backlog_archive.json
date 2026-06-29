@@ -2823,6 +2823,17 @@
       "completedDate": "2026-06-29",
       "partial": false,
       "doneNote": "Styling-strategy assessment delivered (in-session). Verdict: KEEP the current approach — it already matches modern convention AND is ahead of the curve on security; no architecture change. Per dimension: (1) design tokens as CSS custom properties (src/styles/tokens.css, ~20 vars linked by every surface) — the modern idiom (Tailwind v4 CSS-first tokens / shadcn); a token PIPELINE (Style Dictionary) or Sass vars would add a dep (A28) for ~20 tokens and lose runtime theme-ability — not worth it. (2) scoped per-component <style> (Svelte SFC, Vite-extracted; 27 blocks) — idiomatic component-CSS; utility-first (Tailwind) = large dep + paradigm shift against A28, and the scoped model is clean/colocated. (3) no inline style + the styleProps CSSOM action under style-src 'self' (S18/A55; 7 sites in EquityCurve/StatCardModal) — STRICTER CSP than most apps (which ship 'unsafe-inline'); styleProps is a clean contained workaround; keep (nonce/hash inline styles would be more complex). (4) dead/duplicated CSS — svelte-check catches per-component unused selectors (0 today); cross-component duplication is minor but real. Every alternative was weighed against A28 (each is an unneeded dependency) and the CSP (the current model is built FOR strict style-src; utility/CSS-in-JS would fight it). FINDINGS spun into CH36: the .caveats <details> block is near-identical in AdvancedStats + CostPanel; the 'secondary control' button idiom (panel2 bg / --line border / radius / --hover-line hover) is hand-repeated across ~6 components (border:1px solid var(--line) appears 77x); and tokens.css carries a STALE header comment (references site.css/app.css/'bespoke index.html', all retired by A69/A30)."
+    },
+    {
+      "id": "CH36",
+      "title": "CSS de-duplication cleanups (from the A104 styling audit)",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-06-29",
+      "partial": false,
+      "doneNote": "(1) Extracted a shared Caveats.svelte component — the 'Assumptions & caveats' <details> block (summary + ul + the li/b/em/i styling) lives once now; AdvancedStats.svelte + CostPanel.svelte render <Caveats>{li bullets}</Caveats> and dropped their duplicate ~25-line .caveats CSS. The bullets pass as the children snippet (the caller's scope), so their li/b/em/i styling uses :global scoped under the Caveats-owned .caveats/ul — CSP-clean (no inline styles), verified identical rendering (li=--dim 12px, b=--txt, em/i italic). (2) Button-idiom DECISION: KEEP the scoped repetition — do NOT introduce a Button.svelte primitive now. Rationale: the ~6-8 'secondary control' buttons vary (size/padding; donate/accent vs panel2-secondary tones), so a shared component needs a variant API that outweighs the small per-site duplication; refactoring 8 call sites across 5 components is disproportionate churn/risk for a P3 cleanup; and A104 favors colocated scoped CSS over utility/global classes (a global .btn utility would contradict it). A Button primitive earns its weight better as the UI grows (e.g. alongside the F29 resizable-grid work) — left for then. (3) Fixed the stale tokens.css header comment (referenced site.css / app.css / the 'bespoke homepage index.html', all retired by A69/A30) to describe the current reality. npm test + 45 e2e green; bundle 175.8/200 KiB."
     }
   ]
 }
