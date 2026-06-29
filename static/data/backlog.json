@@ -3,7 +3,7 @@
   "title": "Blotterbook — improvement backlog (paste-ready prompts)",
   "intro": "From the 2026-06-25 audit. Each item is a self-contained prompt: scope, goal, constraints, \"done when\".",
   "tags": "Tags: P1 do-soon · P2 durable win · P3 polish. Send them one at a time (one surface/concern per turn).",
-  "updated": "2026-06-29 (A108 module registry shipped; R13 planning done → spun off R20/F29)",
+  "updated": "2026-06-29 (A104 styling audit done → spun off CH36)",
   "note": "Committed source of truth for the ACTIVE engineering backlog (open + guardrail items; replaces the retired .claude/backlog.md). Completed (Done) items are archived in data/backlog_archive.json to keep this file lean — the admin Backlog panel reads BOTH and merges them, so done items stay visible. The admin panel shows category/effort/status only; prompt + doneNote stay in the JSON.",
   "commitConvention": "Conventional-commit titles (enables CH12 automated versioning): when committing, and ESPECIALLY when titling a PR / squash-merge, lead the title with a conventional-commit type so the version bump can be derived automatically — `feat:` (new capability → minor), `fix:` (bug fix → patch), `chore:`/`refactor:`/`docs:`/`style:`/`test:`/`perf:` (→ patch), and append `!` (e.g. `feat!:`) or a `BREAKING CHANGE:` footer for a breaking change (→ major). Scope it when useful, e.g. `feat(staging): …`. Untyped/legacy titles default to a patch bump. Keep the existing Co-Authored-By and Claude-Session trailers on the commit body.",
   "donePolicy": "When an item's status is set to `done`, delete its `prompt` field and keep only the `doneNote` — the doneNote is the shipped record of what was actually done, so the original prompt is redundant and only bloats this file (the admin backlog panel never renders done-item prompts anyway). Keep `prompt` on `open` and `guardrail` items, since those are still the actionable spec. Applies retroactively: a done item should never carry a prompt. RECURRING ITEMS: an item with `recurring: true` (e.g. R1 repo audit, CH16 staging→prod promotion) is a perpetual driver — NEVER set its status to done, set completedDate, or strip its prompt; it stays open across every run and its prompt leads with a RECURRING/REPEATABLE marker. Each run ships its output as new items, not by closing the recurring item. ARCHIVE (post-split): completed items now live in `data/backlog_archive.json`. When you set an item to `done` and strip its prompt, MOVE the item object out of backlog.json into backlog_archive.json (the admin panel merges both). Recurring items never move — they stay open in backlog.json.",
@@ -297,18 +297,6 @@
       "doneNote": null
     },
     {
-      "id": "A104",
-      "title": "Discussion: styling/stylesheet strategy vs modern conventions",
-      "category": "REVIEW / AUDIT",
-      "priority": "P3",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "DISCUSSION/ANALYSIS. Survey how this app handles CSS today and whether it matches modern web-dev convention. Current approach: a single design-token source (src/styles/tokens.css) linked by every surface; per-component scoped <style> blocks that Vite extracts to a linked stylesheet; the marketing SSG pages' CSS folded into scoped component styles (A69); a strict `style-src 'self'` CSP (S18/A55) — NO inline style=\"\", with dynamic styles applied via the CSSOM `styleProps` action. Assess: tokens-as-CSS-vars vs alternatives, scoped-component CSS vs utility/global, the no-inline-style constraint's ergonomics, dead/duplicated CSS, and whether anything should change. Weigh each against A28 (deps) and the CSP constraint. Done when: a written assessment with a recommendation (keep/change) and any spun-off items is delivered.",
-      "doneNote": null
-    },
-    {
       "id": "A105",
       "title": "Create a feedback form",
       "category": "FEATURES",
@@ -414,6 +402,18 @@
       "completedDate": null,
       "partial": false,
       "prompt": "(STAGING) Resizable tiling dashboard grid — PHASE 1 (spun off from R13; gated on the R20 library-vs-custom eval). First increment toward Quantower-style resizable/snapping modules, scoped tight: make the F26 parallel-grid columns (cal/cost/adv) RESIZABLE by WIDTH — drag a column edge, SNAP to a fixed track grid (e.g. 12-col), neighbors reflow — building on the existing primitives (Panel drag, the .modgrid in App.svelte, the styleProps CSSOM action for CSP-clean dimensions, the A108 module registry, and the Store.local seam for persistence). Persist per-module width (extend the staging-namespaced layout keys + workspace templates; migrate the old 1-D order). MUST: degrade to the current single-column stack on narrow/mobile; stay CSP-clean (no inline style=\"\" — geometry via styleProps / CSS grid spans, A55); rAF-throttle the resize drag; keep compute() untouched (resize changes layout, not data); a11y keyboard fallback for resize. Staging-gated (STAGING_PAGE) until promoted (CH16). Later phases (height resize, full snap/reflow, drag-between-cells) are SEPARATE items. Done when: grid columns resize + snap + persist on staging, mobile degrades cleanly, build + npm test + e2e green.",
+      "doneNote": null
+    },
+    {
+      "id": "CH36",
+      "title": "CSS de-duplication cleanups (from the A104 styling audit)",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the A104 styling-strategy audit (which recommended KEEPING the tokens + scoped-CSS + styleProps approach). Three small cleanups it surfaced — all must stay CSP-clean (style-src 'self', no inline style=\"\" — A55) and token-driven: (1) The `.caveats` <details> 'Assumptions & caveats' block (summary/ul/li/b styling + the markup) is near-identical in src/app/components/AdvancedStats.svelte and CostPanel.svelte — extract a shared <Caveats> component (or snippet) so it lives once. (2) The 'secondary control' button idiom (background var(--panel2); color var(--txt); 1px var(--line) border; border-radius 6px; padding; cursor:pointer; hover -> --hover-line) is hand-repeated across App.svelte (managebtn/exportbtn/addmodbtn/donatebtn), CalendarMonth (.nav button), WorkspaceBar, FilterBar, etc. — DECIDE between a shared Button.svelte / documented control pattern and the current scoped repetition (weigh DRY vs the scoped-CSS simplicity; this is the one place a small shared primitive may earn its weight), and apply if adopted. (3) Fix the STALE header comment in src/styles/tokens.css — it still references site.css / app.css / the 'bespoke homepage index.html', all retired by A69/A30. Done when: the .caveats block is single-sourced, the button-idiom decision is made (and applied if adopted), the tokens.css comment is corrected, and build + npm test + e2e are green.",
       "doneNote": null
     }
   ],
