@@ -54,8 +54,12 @@ const isAdmin = f => f === 'src/admin.html' || /^src\/site\/.*admin\.(?:ts|svelt
 // Ambient type declarations (A128: src/vite-env.d.ts) are build-time-only — they emit no deploy
 // artifact, so they bump neither track. Recognized here as accounted-for (not a missing classification).
 const isAmbientTypes = f => /\.d\.ts$/.test(f);
+// The dev-only redesign surfaces (src/dev/** — the styleguide + the UI-redesign preview harness) are
+// built + deployed but noindex/robots-blocked and unlinked from the product. They're tooling, not a
+// prod/staging release, so they intentionally bump NEITHER track (like admin / ambient types).
+const isDev = f => /^src\/dev\//.test(f);
 const classified = f =>
-  isProdShipping(f) || isProdOnly(f) || STAGING_ONLY.has(f) || NON_SHIPPING_DATA.has(f) || isAdmin(f) || isAmbientTypes(f);
+  isProdShipping(f) || isProdOnly(f) || STAGING_ONLY.has(f) || NON_SHIPPING_DATA.has(f) || isAdmin(f) || isAmbientTypes(f) || isDev(f);
 
 const unclassified = tracked.filter(f => !classified(f));
 ok(
