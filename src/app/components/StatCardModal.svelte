@@ -5,7 +5,7 @@
   import { usd, money, ratio, minMax, linePath, dowBuckets, DOW_LABEL } from '../../lib/core/core.ts';
   import type { Metrics } from '../../lib/core/core.ts';
   import type { CostModel, Trade } from '../../lib/core/types.ts';
-  import * as Dialog from '$ui/dialog';
+  import * as Dialog from '$lib/components/ui/dialog';
   import { styleProps } from '../lib/actions.ts';
 
   interface Props {
@@ -81,12 +81,9 @@
 </script>
 
 <Dialog.Root open onOpenChange={(o: boolean) => !o && onclose()}>
-  <Dialog.Content class="modal" aria-label={title}>
+  <Dialog.Content class="modal max-w-[460px] gap-0 p-0 max-h-[88vh] overflow-auto" aria-label={title}>
     <div class="flex items-center justify-between border-b border-line px-4 py-3.5">
       <h2 class="m-0 text-[15px]">{title}</h2>
-      <Dialog.Close class="x cursor-pointer border-0 bg-transparent text-[22px] leading-none text-dim hover:text-txt" aria-label="Close"
-        >×</Dialog.Close
-      >
     </div>
     <div class="px-4 pb-[18px] pt-3.5">
       {#if cardKey === 'net'}

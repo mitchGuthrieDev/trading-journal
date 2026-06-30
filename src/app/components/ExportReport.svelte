@@ -9,9 +9,9 @@
   import type { Metrics } from '../../lib/core/core.ts';
   import type { CostModel, ReportLabels } from '../../lib/core/types.ts';
   import { downloadBlob } from '../lib/files.ts';
-  import * as Dialog from '$ui/dialog';
-  import * as Select from '$ui/select';
-  import { Button, buttonVariants } from '$ui/button';
+  import * as Dialog from '$lib/components/ui/dialog';
+  import * as Select from '$lib/components/ui/select';
+  import { Button, buttonVariants } from '$lib/components/ui/button';
 
   const FORMATS = [
     { value: 'pdf', label: 'PDF (print)' },
@@ -131,7 +131,7 @@
 </script>
 
 <Dialog.Root open onOpenChange={(o: boolean) => !o && onclose()}>
-  <Dialog.Content class="modal top-[5vh] flex max-h-[90vh] max-w-[880px] flex-col overflow-hidden" aria-label="Export performance report">
+  <Dialog.Content class="modal max-w-[880px] gap-0 p-0 max-h-[90vh] overflow-hidden flex flex-col" aria-label="Export performance report">
     <div class="flex items-center justify-between gap-3 border-b border-line bg-panel px-3.5 py-3 max-[560px]:flex-wrap">
       <strong class="text-[13px]">Performance report</strong>
       <div class="flex items-center gap-2 max-[560px]:w-full max-[560px]:flex-wrap max-[560px]:justify-start">
@@ -143,9 +143,9 @@
             {#each FORMATS as f (f.value)}<Select.Item value={f.value} label={f.label} />{/each}
           </Select.Content>
         </Select.Root>
-        <Button variant="primary" class="pri" disabled={!format} onclick={doDownload}>Download</Button>
-        <a href={rep.mailto} class={buttonVariants({ variant: 'default' })}>Email a copy</a>
-        <Button data-expclose onclick={onclose}>Close</Button>
+        <Button class="pri" disabled={!format} onclick={doDownload}>Download</Button>
+        <a href={rep.mailto} class={buttonVariants({ variant: 'secondary' })}>Email a copy</a>
+        <Button variant="secondary" onclick={onclose}>Close</Button>
       </div>
     </div>
     {#if note}<div

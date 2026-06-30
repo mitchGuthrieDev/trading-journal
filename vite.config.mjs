@@ -36,10 +36,9 @@ export default defineConfig({
   // Verbatim-static assets (data/*.json, _headers, _redirects, robots.txt, sitemap.xml,
   // assets/og-image.png) live in static/ and are copied to dist/ root by Vite (A30).
   publicDir: r('static'),
-  // $ui → the shared design-system primitives (A128). Tailwind v4 via @tailwindcss/vite scans all
-  // source surfaces (src/app + src/site + src/ui) and emits the utility stylesheet (CSP-safe — a
-  // linked sheet, never inline style="").
-  resolve: { alias: { $lib: r('src/lib'), $ui: r('src/ui') } },
+  // $lib → the shared lib (pure-logic core + the shadcn-svelte design system). Tailwind v4 scans
+  // all source surfaces and emits the utility stylesheet (CSP-safe — a linked sheet).
+  resolve: { alias: { $lib: r('src/lib') } },
   plugins: [tailwindcss(), svelte(), ssg(SSG_PAGES)],
   build: {
     // Pin the output baseline to match tsconfig's `target: ES2022` (A96) for deterministic,

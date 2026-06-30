@@ -7,7 +7,7 @@
   import type { PanelBundle } from '../../lib/core/types.ts';
   import type { Snippet } from 'svelte';
   import Panel from './Panel.svelte';
-  import { Button } from '$ui/button';
+  import { Button } from '$lib/components/ui/button';
 
   // year/month are owned by App (so the all-time/month scope toggle can read the same cursor);
   // onnav(delta) asks App to shift the month. metrics here is the FILTERED all-time set, so the
@@ -89,7 +89,7 @@
       <button type="button" class="h-7 w-7 cursor-pointer rounded-md border border-line bg-panel2 text-[16px] leading-none text-txt hover:border-hover-line" aria-label="Previous month" title="Previous month" onclick={() => onnav(-1)}>‹</button>
       <span class="label min-w-[9.5em] text-center font-bold">{MONTHS[month]} {year}</span>
       <button type="button" class="h-7 w-7 cursor-pointer rounded-md border border-line bg-panel2 text-[16px] leading-none text-txt hover:border-hover-line" aria-label="Next month" title="Next month" onclick={() => onnav(1)}>›</button>
-      <Button size="sm" class="today h-7 leading-none" title="Jump to the latest trade's month" onclick={() => onjump()}>Latest</Button>
+      <Button variant="secondary" size="sm" class="today h-7 leading-none" title="Jump to the latest trade's month" onclick={() => onjump()}>Latest</Button>
     </div>
     <span class="font-mono font-bold {monthNet < 0 ? 'text-red' : 'text-green'}">{usd(monthNet)}</span>
   </div>

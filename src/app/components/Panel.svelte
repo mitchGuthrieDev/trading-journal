@@ -5,7 +5,7 @@
   // drag handle (matches vanilla: mousedown arms the whole-panel draggable); clicking the header —
   // but not the grip or chevron — toggles collapse, and the chevron mirrors aria-expanded/label (B41).
   import type { Snippet } from 'svelte';
-  import * as DropdownMenu from '$ui/dropdown-menu';
+  import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 
   interface Props {
     pkey: string;
@@ -116,7 +116,7 @@
             <DropdownMenu.Item onSelect={ontoggle}>{collapsed ? 'Expand' : 'Collapse'}</DropdownMenu.Item>
             <DropdownMenu.Item disabled={isFirst} onSelect={onmoveup}>{moveUpLabel}</DropdownMenu.Item>
             <DropdownMenu.Item disabled={isLast} onSelect={onmovedown}>{moveDownLabel}</DropdownMenu.Item>
-            <DropdownMenu.Item variant="danger" onSelect={onhide}>Hide module</DropdownMenu.Item>
+            <DropdownMenu.Item variant="destructive" onSelect={onhide}>Hide module</DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Root>
       </div>

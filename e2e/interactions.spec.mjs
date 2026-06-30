@@ -16,14 +16,14 @@ test('demo (Svelte): boots, explores read-only, never persists, write controls d
   // Read-only interaction still works: a stat-card modal opens and closes.
   await page.click('#sv-app [data-card="net"]');
   await expect(page.locator('.modal[aria-label="Net PnL"]')).toBeVisible();
-  await page.click('.modal[aria-label="Net PnL"] .x');
+  await page.click('.modal[aria-label="Net PnL"] [data-slot="dialog-close"]');
 
   // Manage-data: the write controls are DISABLED in demo.
   await page.click('.managebtn');
   await expect(page.locator('.modal .toolbar button', { hasText: 'Load CSV' })).toBeDisabled();
   await expect(page.locator('.modal .toolbar button', { hasText: 'Erase all local data' })).toBeDisabled();
   await expect(page.locator('.modal .edit').first()).toBeDisabled();
-  await page.click('.modal[aria-label="Manage data"] .x');
+  await page.click('.modal[aria-label="Manage data"] [data-slot="dialog-close"]');
 
   // Day-note editor is read-only in demo (the save is disabled + a note shown).
   await page.locator('#sv-app .calendar .calgrid .cell.traded').first().click();
@@ -80,23 +80,23 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   await page.click('#sv-app [data-card="net"]');
   await expect(page.locator('.modal[aria-label="Net PnL"]')).toBeVisible();
   await expect(page.locator('.modal[aria-label="Net PnL"] .bars')).toContainText('Take-home');
-  await page.click('.modal[aria-label="Net PnL"] .x');
+  await page.click('.modal[aria-label="Net PnL"] [data-slot="dialog-close"]');
 
   // Avg Win/Loss card + its detail modal (A39 — parity with vanilla's 5th headline card).
   await expect(page.locator('#sv-app [data-card="wl"] .value')).toBeVisible();
   await page.click('#sv-app [data-card="wl"]');
   await expect(page.locator('.modal[aria-label="Avg Win / Loss"]')).toBeVisible();
   await expect(page.locator('.modal[aria-label="Avg Win / Loss"]')).toContainText('Win distribution');
-  await page.click('.modal[aria-label="Avg Win / Loss"] .x');
+  await page.click('.modal[aria-label="Avg Win / Loss"] [data-slot="dialog-close"]');
 
   // Win-rate modal: proportional wins/losses/scratch split bar (A46).
   await page.click('#sv-app [data-card="win"]');
   await expect(page.locator('.modal[aria-label="Win Rate"] .split .seg').first()).toBeVisible();
-  await page.click('.modal[aria-label="Win Rate"] .x');
+  await page.click('.modal[aria-label="Win Rate"] [data-slot="dialog-close"]');
   // Profit-factor modal: by-symbol table with PF + net columns (A46).
   await page.click('#sv-app [data-card="pf"]');
   await expect(page.locator('.modal[aria-label="Profit Factor"] .symtab tbody tr').first()).toBeVisible();
-  await page.click('.modal[aria-label="Profit Factor"] .x');
+  await page.click('.modal[aria-label="Profit Factor"] [data-slot="dialog-close"]');
 
   // Performance equity curve renders an SVG path from compute()'s m.curve.
   const curve = page.locator('#sv-app svg.equity path.line');
@@ -166,7 +166,7 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   // Export report (A34): open the modal, the iframe preview renders the report sheet, switching the
   // format dropdown enables Download, and Email a copy is a mailto link.
   await page.click('button:has-text("Export report")');
-  await expect(page.locator('#sv-app .modal[aria-label="Export performance report"]')).toBeVisible();
+  await expect(page.locator('.modal[aria-label="Export performance report"]')).toBeVisible();
   const repFrame = page.frameLocator('iframe[title="Performance report preview"]');
   await expect(repFrame.locator('.sheet .brandline')).toContainText('Blotterbook');
   await expect(repFrame.locator('.tiles .rtile').first()).toBeVisible();
@@ -177,8 +177,8 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   await page.locator('.modal[aria-label="Export performance report"] [aria-label="Download format"]').click(); // bits-ui Select (A128)
   await page.getByRole('option', { name: 'Markdown (.md)' }).click();
   await expect(page.locator('.modal[aria-label="Export performance report"] .pri')).toBeEnabled();
-  await page.click('.modal[aria-label="Export performance report"] [data-expclose]');
-  await expect(page.locator('#sv-app .modal[aria-label="Export performance report"]')).toHaveCount(0);
+  await page.click('.modal[aria-label="Export performance report"] [data-slot="dialog-close"]');
+  await expect(page.locator('.modal[aria-label="Export performance report"]')).toHaveCount(0);
 
   // A38 Tier-2 bits: filter trade-count, session pill, calendar Latest button all render.
   await expect(page.locator('#sv-app .filterbar .count')).toContainText('trade');
@@ -186,7 +186,7 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
   await expect(page.locator('#sv-app .panel[data-key="cal"] .nav .today')).toBeVisible();
   // Session-pill legend popup (A49): clicking the pill opens the status legend.
   await page.click('#sv-app .pill');
-  await expect(page.locator('#sv-app .sesspop')).toContainText('Online');
+  await expect(page.locator('.sesspop')).toContainText('Online');
 
   // Manage data: open the modal, edit a trade's tags via the Store, and see them in the table.
   await page.click('.managebtn');
@@ -232,7 +232,7 @@ test('staging (Svelte): session filter narrows the dataset', async ({ page }) =>
   const all = await readCount();
   expect(all).toBeGreaterThan(0);
   await page.getByLabel('Session').click(); // bits-ui Select (A128)
-  await page.locator('#sv-app .filterbar').getByRole('option', { name: 'RTH', exact: true }).click();
+  await page.getByRole('option', { name: 'RTH', exact: true }).click();
   await expect(count).not.toHaveText(`${all} trades`); // RTH-only is a strict subset
   expect(await readCount()).toBeLessThan(all);
 
@@ -275,16 +275,16 @@ test('staging (Svelte): panel collapse persists + workspace templates (A36)', as
   // bits-ui Select (A128): open the Workspace listbox → it now lists the saved layout.
   const wsList = page.locator('#sv-app .wsbar');
   await wsList.locator('[aria-label="Workspace"]').click();
-  await expect(wsList.getByRole('option', { name: 'My Layout' })).toHaveCount(1);
+  await expect(page.getByRole('option', { name: 'My Layout' })).toHaveCount(1);
 
   // "— Default —" reverts to the default arrangement → the perf panel expands again.
-  await wsList.getByRole('option', { name: '— Default —' }).click();
+  await page.getByRole('option', { name: '— Default —' }).click();
   await expect(page.locator('#sv-app .panel[data-key="perf"] .chev')).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('#sv-app .panel[data-key="perf"] svg.equity')).toBeVisible();
 
   // Reloading the default layout selection → loads my saved template back (perf collapsed again).
   await wsList.locator('[aria-label="Workspace"]').click();
-  await wsList.getByRole('option', { name: 'My Layout' }).click();
+  await page.getByRole('option', { name: 'My Layout' }).click();
   await expect(page.locator('#sv-app .panel[data-key="perf"] .chev')).toHaveAttribute('aria-expanded', 'false');
 });
 
@@ -341,7 +341,7 @@ test('staging (Svelte): module-header menu hides + re-adds a module (A71/R12)', 
   expect(start).toBeGreaterThan(1);
   // Open the first module's header menu → accessible popup with the expected actions.
   await page.locator('#sv-app .dash section.panel .pmenubtn').first().click();
-  const pop = page.locator('#sv-app .dash .pmenupop').first();
+  const pop = page.locator('.pmenupop').first();
   await expect(pop).toBeVisible();
   await expect(pop.getByRole('menuitem')).toHaveCount(4); // Collapse / Move up / Move down / Hide (bits-ui)
   // Hide it → panel count drops and the "Add module" control appears.
@@ -350,7 +350,7 @@ test('staging (Svelte): module-header menu hides + re-adds a module (A71/R12)', 
   await expect(page.locator('#sv-app .addmodbtn')).toBeVisible();
   // Re-spawn it from the Add-module menu → back to the original count.
   await page.locator('#sv-app .addmodbtn').click();
-  await page.locator('#sv-app .addmenu').getByRole('menuitem').first().click();
+  await page.locator('.addmenu').getByRole('menuitem').first().click();
   await expect(panels).toHaveCount(start);
 });
 
@@ -375,7 +375,7 @@ test('staging (Svelte): Trade Blotter lists trades + inline note persists (F23)'
   await expect(blotter.locator('.blpager .pginfo')).toContainText('1–50 of');
   const pickRows = async name => {
     await blotter.locator('.blpsize [aria-label="Rows per page"]').click();
-    await blotter.getByRole('option', { name, exact: true }).click(); // bits-ui listbox is in-tree under the panel
+    await page.getByRole('option', { name, exact: true }).click(); // bits-ui listbox is in-tree under the panel
   };
   await pickRows('25'); // bits-ui Select (A128)
   await expect(blotter.locator('.bltab tbody tr')).toHaveCount(25);
@@ -467,7 +467,7 @@ test('staging (Svelte): grid modules reorder within the parallel grid (F26)', as
   expect(await gridKeys()).toEqual(['cal', 'cost', 'adv']);
   // Open the Calendar module's menu → "Move left" is disabled (already first); "Move right" moves it.
   await page.locator('#sv-app .modgrid section.panel[data-key="cal"] .pmenubtn').click();
-  const pop = page.locator('#sv-app .modgrid section.panel[data-key="cal"] .pmenupop');
+  const pop = page.locator('.pmenupop');
   await expect(pop.getByRole('menuitem', { name: 'Move left' })).toBeDisabled();
   await pop.getByRole('menuitem', { name: 'Move right' }).click();
   expect(await gridKeys()).toEqual(['cost', 'cal', 'adv']);
@@ -623,7 +623,7 @@ test('demo (Svelte): dashboard module headers have a menu (A71, promoted)', asyn
   await expect(page.locator('#sv-app .dash section.panel').first()).toBeVisible();
   await expect(page.locator('#sv-app .dash .pmenubtn').first()).toBeVisible();
   await page.locator('#sv-app .dash section.panel .pmenubtn').first().click();
-  await expect(page.locator('#sv-app .dash .pmenupop').getByRole('menuitem')).toHaveCount(4);
+  await expect(page.locator('.pmenupop').getByRole('menuitem')).toHaveCount(4);
 });
 
 // A73 promoted to all surfaces (CH16): demo now also paginates the trades table.

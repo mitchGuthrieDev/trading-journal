@@ -5,8 +5,8 @@
   import { BROKERS, BROKER_ORDER, BROKER_FEEDS, STATES } from '../../lib/core/core.ts';
   import type { AppSetup } from '../../lib/core/types.ts';
   import { Adapters } from '../../lib/core/adapters.ts';
-  import * as Select from '$ui/select';
-  import { Button } from '$ui/button';
+  import * as Select from '$lib/components/ui/select';
+  import { Button } from '$lib/components/ui/button';
 
   interface Props {
     setup: AppSetup;
@@ -71,7 +71,7 @@
         <Select.Content>
           {#each Object.entries(feedGroups) as [grp, list] (grp)}
             <Select.Group>
-              <Select.GroupHeading class="px-2 py-1 text-[10px] uppercase tracking-wide text-faint">{grp}</Select.GroupHeading>
+              <Select.Label class="px-2 py-1 text-[10px] uppercase tracking-wide text-faint">{grp}</Select.Label>
               {#each list as [name, c] (name)}<Select.Item value={`${name}|${c}`} label={`${name} — $${c}`} />{/each}
             </Select.Group>
           {/each}
@@ -94,7 +94,7 @@
   </div>
 
   <div class="mt-[18px] flex items-center gap-[14px]">
-    <Button variant="primary" size="lg" onclick={() => fileInput.click()}>Load CSV</Button>
+    <Button size="lg" onclick={() => fileInput.click()}>Load CSV</Button>
     <div class="field flex flex-col gap-1 text-[11px] text-faint">
       <span>Platform</span>
       <Select.Root

@@ -4,8 +4,8 @@
   // CRUD + persistence live in App (Store.local seam); this is presentation only. Save is disabled
   // in demo (the demo is a 1:1 mirror with data-writing controls off — B23).
   // A128: native <select> → $ui Select (bits-ui); the save control → the Button primitive.
-  import * as Select from '$ui/select';
-  import { Button } from '$ui/button';
+  import * as Select from '$lib/components/ui/select';
+  import { Button } from '$lib/components/ui/button';
 
   interface Props {
     names?: string[];
@@ -36,6 +36,7 @@
     </Select.Root>
   </div>
   <Button
+    variant="secondary"
     class="wssave"
     size="sm"
     onclick={onsave}

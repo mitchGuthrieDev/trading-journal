@@ -7,7 +7,7 @@
   import type { AppSetup, CostInputs, PanelBundle, StateRow } from '../../lib/core/types.ts';
   import Panel from './Panel.svelte';
   import Caveats from './Caveats.svelte';
-  import * as Select from '$ui/select';
+  import * as Select from '$lib/components/ui/select';
 
   interface Props {
     metrics: Metrics;
@@ -63,7 +63,7 @@
         <Select.Content>
           {#each Object.entries(feedGroups) as [grp, list] (grp)}
             <Select.Group>
-              <Select.GroupHeading class="px-2 py-1 text-[10px] uppercase tracking-wide text-faint">{grp}</Select.GroupHeading>
+              <Select.Label class="px-2 py-1 text-[10px] uppercase tracking-wide text-faint">{grp}</Select.Label>
               {#each list as [name, c] (name)}<Select.Item value={`${name}|${c}`} label={`${name} — $${c}`} />{/each}
             </Select.Group>
           {/each}

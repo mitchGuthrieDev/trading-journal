@@ -41,8 +41,8 @@
   import ExportReport from './components/ExportReport.svelte';
   import WorkspaceBar from './components/WorkspaceBar.svelte';
   import Landing from './components/Landing.svelte';
-  import * as Popover from '$ui/popover';
-  import * as DropdownMenu from '$ui/dropdown-menu';
+  import * as Popover from '$lib/components/ui/popover';
+  import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 
   let allTrades = $state<Trade[]>([]);
   let loaded = $state(false);

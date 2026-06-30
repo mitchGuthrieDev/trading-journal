@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { DropdownMenu as DropdownMenuPrimitive, type WithoutChildrenOrChild } from "bits-ui";
+	import { DropdownMenu as DropdownMenuPrimitive, type WithoutChild } from "bits-ui";
 	import { cn } from "$lib/utils.js";
 
 	let {
@@ -8,7 +8,7 @@
 		inset,
 		variant = "default",
 		...restProps
-	}: WithoutChildrenOrChild<DropdownMenuPrimitive.ItemProps> & {
+	}: WithoutChild<DropdownMenuPrimitive.ItemProps> & {
 		inset?: boolean;
 		variant?: "default" | "destructive";
 	} = $props();

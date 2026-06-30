@@ -8,8 +8,8 @@
   import { usd, money, emit, PAGE_MODE } from '../../lib/core/core.ts';
   import type { Trade, TradeMeta, StoredJournal, StoredTradeMeta, SavedFilter, StoreLike } from '../../lib/core/types.ts';
   import { readImage, downloadBlob } from '../lib/files.ts';
-  import * as Dialog from '$ui/dialog';
-  import { Button } from '$ui/button';
+  import * as Dialog from '$lib/components/ui/dialog';
+  import { Button } from '$lib/components/ui/button';
 
   const isDemo = PAGE_MODE === 'demo'; // demo is a read-only preview — write controls disabled + guarded (B23)
   const isStaging = PAGE_MODE === 'staging';
@@ -208,7 +208,7 @@
      bits-ui's onEscapeKeydown (preventDefault keeps the dialog open while we clear the editor). -->
 <Dialog.Root open onOpenChange={(o: boolean) => !o && onclose()}>
   <Dialog.Content
-    class="modal top-[4vh] flex max-h-[92vh] max-w-[960px] flex-col overflow-hidden"
+    class="modal max-w-[960px] gap-0 p-0 max-h-[92vh] overflow-hidden flex flex-col"
     aria-label="Manage data"
     onEscapeKeydown={(e: KeyboardEvent) => {
       if (editing) {
@@ -219,9 +219,6 @@
   >
     <div class="flex items-center justify-between border-b border-line px-4 py-3.5">
       <h2 class="m-0 text-[15px]">Manage data</h2>
-      <Dialog.Close class="x cursor-pointer border-0 bg-transparent text-[22px] leading-none text-dim hover:text-txt" aria-label="Close"
-        >×</Dialog.Close
-      >
     </div>
 
     <div class="summary grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-2 border-b border-line px-4 py-3">
@@ -250,9 +247,9 @@
     {#if isDemo}<p class="demonote m-0 border-b border-line px-4 py-2 text-[12px] text-warn">This is a read-only demo — loading, editing, importing and erasing are disabled, and nothing is saved.</p>{/if}
 
     <div class="toolbar flex flex-wrap gap-2 border-b border-line px-4 py-3">
-      <Button disabled={isDemo} onclick={() => csvInput.click()}>Load CSV</Button>
-      <Button disabled={isDemo} onclick={exportBackup}>Export backup</Button>
-      <Button disabled={isDemo} onclick={() => backupInput.click()}>Import backup</Button>
+      <Button variant="secondary" disabled={isDemo} onclick={() => csvInput.click()}>Load CSV</Button>
+      <Button variant="secondary" disabled={isDemo} onclick={exportBackup}>Export backup</Button>
+      <Button variant="secondary" disabled={isDemo} onclick={() => backupInput.click()}>Import backup</Button>
       <button type="button" class="cursor-pointer rounded-md border border-[rgba(240,74,74,0.5)] bg-panel2 px-3 py-[7px] text-[13px] text-red hover:bg-red-bg disabled:cursor-not-allowed disabled:opacity-45" disabled={isDemo} onclick={eraseAll}>Erase all local data</button>
       <input type="text" class="search ml-auto min-w-[180px] cursor-text rounded-md border border-line bg-panel2 px-3 py-[7px] text-[13px] text-txt" placeholder="Search symbol / date" bind:value={search} />
       <input bind:this={csvInput} type="file" accept=".csv,text/csv" hidden onchange={importCSV} />
@@ -266,7 +263,7 @@
         <ul>
           {#each dayNotes as n (n.date)}
             <li>
-              <Button size="sm" class="flex-none font-mono text-primary" onclick={() => onopenday(n.date)}>{n.date}</Button>
+              <Button variant="secondary" size="sm" class="flex-none font-mono text-primary" onclick={() => onopenday(n.date)}>{n.date}</Button>
               <span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-dim">{n.text || '(tags/screenshots only)'}</span>
               {#if (n.tags || []).length}<span class="flex-none font-mono text-faint">{n.tags.join(', ')}</span>{/if}
               <button type="button" class="flex-none cursor-pointer border-0 bg-transparent text-[16px] leading-none text-faint hover:text-red disabled:cursor-not-allowed disabled:opacity-45" disabled={isDemo} aria-label="Delete day note" onclick={() => deleteDay(n.date)}>×</button>
@@ -282,9 +279,9 @@
         <ul>
           {#each savedFilters as sf (sf.id)}
             <li>
-              <Button size="sm" class="flex-none font-mono text-primary" onclick={() => onapplyview(sf)}>{sf.name}</Button>
+              <Button variant="secondary" size="sm" class="flex-none font-mono text-primary" onclick={() => onapplyview(sf)}>{sf.name}</Button>
               <span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-dim"></span>
-              <Button size="sm" class="sfbtn flex-none" disabled={isDemo} onclick={() => renameView(sf)}>Rename</Button>
+              <Button variant="secondary" size="sm" class="sfbtn flex-none" disabled={isDemo} onclick={() => renameView(sf)}>Rename</Button>
               <button type="button" class="flex-none cursor-pointer border-0 bg-transparent text-[16px] leading-none text-faint hover:text-red disabled:cursor-not-allowed disabled:opacity-45" disabled={isDemo} aria-label="Delete saved filter" onclick={() => ondeleteview(sf.id)}>×</button>
             </li>
           {/each}
@@ -312,7 +309,7 @@
               <td class="tags">{(m.tags || []).join(', ')}</td>
               <td class="max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap text-dim">{m.note || ''}</td>
               <td class="r whitespace-nowrap">
-                <Button size="sm" class="edit" disabled={isDemo} onclick={() => openEdit(t)}>Edit</Button>
+                <Button variant="secondary" size="sm" class="edit" disabled={isDemo} onclick={() => openEdit(t)}>Edit</Button>
                 <button type="button" class="del ml-1.5 cursor-pointer rounded-[5px] border border-line bg-panel2 px-2.5 py-[3px] text-[12px] text-red hover:border-[rgba(240,74,74,0.5)] hover:bg-red-bg disabled:cursor-not-allowed disabled:opacity-45" disabled={isDemo} aria-label="Delete trade" onclick={() => deleteTrade(t)}>Delete</button>
               </td>
             </tr>
@@ -322,7 +319,7 @@
                   <div class="editrow flex flex-wrap items-end gap-2.5 py-1.5 [&_label]:flex [&_label]:flex-col [&_label]:gap-[3px] [&_label]:font-sans [&_label]:text-[11px] [&_label]:text-faint [&_input]:rounded-md [&_input]:border [&_input]:border-line [&_input]:bg-panel2 [&_input]:px-2 [&_input]:py-1.5 [&_input]:font-sans [&_input]:text-[13px] [&_input]:text-txt">
                     <label>Tags <input type="text" class="etags" bind:value={editTags} placeholder="comma, separated" /></label>
                     <label class="!flex-1 !min-w-[200px]">Note <input type="text" class="enote" bind:value={editNote} placeholder="per-trade note" /></label>
-                    <Button variant="primary" class="save" onclick={saveEdit}>Save</Button>
+                    <Button class="save" onclick={saveEdit}>Save</Button>
                     <Button variant="outline" onclick={() => (editing = null)}>Cancel</Button>
                   </div>
                   <div class="editshots flex flex-wrap items-center gap-2 pb-2">
@@ -344,9 +341,9 @@
       {#if !filtered.length}<p class="px-1 py-5 text-[13px] text-dim">No trades{search ? ' match the search' : ''}.</p>{/if}
       {#if paged && filtered.length > PAGE_SIZE}
         <div class="pager mt-2.5 flex items-center justify-center gap-3 text-[12px] text-dim">
-          <Button size="sm" disabled={page === 0} onclick={() => (page -= 1)}>‹ Prev</Button>
+          <Button variant="secondary" size="sm" disabled={page === 0} onclick={() => (page -= 1)}>‹ Prev</Button>
           <span class="pginfo [font-variant-numeric:tabular-nums]">{page * PAGE_SIZE + 1}–{Math.min(filtered.length, (page + 1) * PAGE_SIZE)} of {filtered.length}</span>
-          <Button size="sm" disabled={page >= pageCount - 1} onclick={() => (page += 1)}>Next ›</Button>
+          <Button variant="secondary" size="sm" disabled={page >= pageCount - 1} onclick={() => (page += 1)}>Next ›</Button>
         </div>
       {/if}
     </div>

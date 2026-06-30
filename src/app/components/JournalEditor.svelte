@@ -4,7 +4,7 @@
   // real Store on app/staging, in-memory DemoStore on demo. Screenshots are gated by the shared
   // store.validShot allow-list (base64 images only — S15/S18). An empty save deletes the row.
   import { getContext } from 'svelte';
-  import { Button } from '$ui/button';
+  import { Button } from '$lib/components/ui/button';
   import { emit, PAGE_MODE } from '../../lib/core/core.ts';
   import { readImage } from '../lib/files.ts';
   import type { StoreLike } from '../../lib/core/types.ts';
@@ -106,7 +106,7 @@
     <input bind:this={shotInput} type="file" accept="image/*" hidden onchange={addShot} />
   </div>
   <div class="mt-2.5 flex items-center gap-3">
-    <Button variant="primary" class="save px-4 py-2" disabled={saving || !ready || isDemo} onclick={save}>Save note</Button>
+    <Button class="save px-4 py-2" disabled={saving || !ready || isDemo} onclick={save}>Save note</Button>
     {#if savedMsg}<span class="text-[12px] text-green">{savedMsg}</span>{/if}
   </div>
 </section>

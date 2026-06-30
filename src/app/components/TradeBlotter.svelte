@@ -11,7 +11,7 @@
   import { usd, money, rateFor, emit, PAGE_MODE, STAGING_PAGE, BROKERS } from '../../lib/core/core.ts';
   import type { Trade, StoredTradeMeta, StoreLike, PanelBundle } from '../../lib/core/types.ts';
   import Panel from './Panel.svelte';
-  import * as Select from '$ui/select';
+  import * as Select from '$lib/components/ui/select';
 
   interface Props {
     trades?: Trade[];

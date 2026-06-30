@@ -4,8 +4,8 @@
   // deep reactivity propagates to App's deriveds). Scope = all-time vs the calendar's current month.
   // Session + tag filters and saved-filter views from the vanilla bar are deferred to a later slice.
   import type { FilterState, SavedFilter } from '../../lib/core/types.ts';
-  import * as Select from '$ui/select';
-  import { Button } from '$ui/button';
+  import * as Select from '$lib/components/ui/select';
+  import { Button } from '$lib/components/ui/button';
 
   interface Props {
     filters: FilterState;
@@ -132,7 +132,7 @@
     bind:value={viewName}
     onkeydown={e => e.key === 'Enter' && save()}
   />
-  <Button size="sm" class="savebtn" onclick={save}>Save view</Button>
+  <Button variant="secondary" size="sm" class="savebtn" onclick={save}>Save view</Button>
   {#each savedFilters as sf (sf.id)}
     <span class="chip inline-flex items-stretch overflow-hidden rounded-md border border-line">
       <button type="button" class="apply cursor-pointer border-0 bg-panel px-2.5 py-1.5 text-xs text-primary" onclick={() => onapply(sf)}>{sf.name}</button>
