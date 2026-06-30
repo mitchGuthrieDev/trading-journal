@@ -14,9 +14,11 @@
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (role, tabindex and the keydown handler are all
      gated on `onclick`: when focusable it is a real button; the static check can't see the pairing) -->
+<!-- A128: scoped CSS → Tailwind utilities (tokens via @theme). `.value` kept as the e2e hook. -->
 <div
-  class="card"
-  class:clickable={!!onclick}
+  class="rounded-[10px] border border-line bg-panel px-3.5 py-3 {onclick
+    ? 'cursor-pointer hover:border-hover-line focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent'
+    : ''}"
   data-card={card}
   role={onclick ? 'button' : undefined}
   tabindex={onclick ? 0 : undefined}
@@ -30,51 +32,7 @@
       }
     : undefined}
 >
-  <div class="label">{label}</div>
-  <div class="value" class:pos={tone === 'pos'} class:neg={tone === 'neg'}>{value}</div>
-  {#if sub}<div class="sub">{sub}</div>{/if}
+  <div class="text-[11px] uppercase tracking-[0.5px] text-faint">{label}</div>
+  <div class="value mt-1.5 font-mono text-[22px] font-bold {tone === 'pos' ? 'text-green' : tone === 'neg' ? 'text-red' : 'text-txt'}">{value}</div>
+  {#if sub}<div class="mt-1 font-mono text-[11px] text-dim">{sub}</div>{/if}
 </div>
-
-<style>
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 12px 14px;
-  }
-  .card.clickable {
-    cursor: pointer;
-  }
-  .card.clickable:hover {
-    border-color: var(--hover-line);
-  }
-  .card.clickable:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
-  }
-  .label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--faint);
-  }
-  .value {
-    font-family: var(--mono);
-    font-size: 22px;
-    font-weight: 700;
-    margin-top: 6px;
-    color: var(--txt);
-  }
-  .value.pos {
-    color: var(--green);
-  }
-  .value.neg {
-    color: var(--red);
-  }
-  .sub {
-    margin-top: 4px;
-    font-size: 11px;
-    color: var(--dim);
-    font-family: var(--mono);
-  }
-</style>

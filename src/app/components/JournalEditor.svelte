@@ -86,162 +86,26 @@
   }
 </script>
 
-<section class="panel journal">
-  <div class="phead">
-    <h2>Day note · {date}</h2>
-    <button type="button" class="x" onclick={onclose} aria-label="Close day note">×</button>
+<section class="journal mt-4 rounded-[10px] border border-line bg-panel px-4 pb-4 pt-3.5">
+  <div class="phead mb-2.5 flex items-center justify-between">
+    <h2 class="m-0 text-[13px] font-bold uppercase tracking-[0.5px] text-faint">Day note · {date}</h2>
+    <button type="button" class="cursor-pointer border-0 bg-transparent text-[20px] leading-none text-dim hover:text-txt" onclick={onclose} aria-label="Close day note">×</button>
   </div>
-  {#if isDemo}<p class="demonote">Day-notes are read-only in the demo — nothing is saved.</p>{/if}
-  <textarea bind:value={text} rows="4" disabled={!ready || isDemo} placeholder={`What happened on ${date}? Setups, mistakes, market context…`}></textarea>
-  <input class="tags" type="text" bind:value={tagsStr} disabled={!ready || isDemo} placeholder="tags (comma separated)" />
-  <div class="shots">
+  {#if isDemo}<p class="demonote m-0 mb-2 text-[12px] text-warn">Day-notes are read-only in the demo — nothing is saved.</p>{/if}
+  <textarea class="box-border w-full resize-y rounded-[7px] border border-line bg-panel2 p-2.5 font-sans text-[13px] text-txt focus:border-accent focus:outline-none" bind:value={text} rows="4" disabled={!ready || isDemo} placeholder={`What happened on ${date}? Setups, mistakes, market context…`}></textarea>
+  <input class="box-border mt-2 w-full rounded-[7px] border border-line bg-panel2 px-2.5 py-2 font-sans text-[13px] text-txt focus:border-accent focus:outline-none" type="text" bind:value={tagsStr} disabled={!ready || isDemo} placeholder="tags (comma separated)" />
+  <div class="mt-2.5 flex flex-wrap items-center gap-2">
     {#each shots as s, i (i)}
-      <span class="shot">
-        <img src={s} alt="screenshot {i + 1}" />
-        <button type="button" class="rm" aria-label="Remove screenshot" onclick={() => (shots = shots.filter((_, j) => j !== i))}>×</button>
+      <span class="shot relative inline-block">
+        <img class="block h-12 rounded-md border border-line" src={s} alt="screenshot {i + 1}" />
+        <button type="button" class="absolute -right-1.5 -top-1.5 h-[18px] w-[18px] cursor-pointer rounded-full border-0 bg-red text-[12px] leading-none text-white" aria-label="Remove screenshot" onclick={() => (shots = shots.filter((_, j) => j !== i))}>×</button>
       </span>
     {/each}
-    <button type="button" class="addshot" onclick={() => shotInput.click()} disabled={isDemo}>+ screenshot</button>
+    <button type="button" class="cursor-pointer rounded-md border border-dashed border-line bg-panel2 px-3 py-[7px] text-[12px] text-dim" onclick={() => shotInput.click()} disabled={isDemo}>+ screenshot</button>
     <input bind:this={shotInput} type="file" accept="image/*" hidden onchange={addShot} />
   </div>
-  <div class="actions">
-    <button type="button" class="save" onclick={save} disabled={saving || !ready || isDemo}>Save note</button>
-    {#if savedMsg}<span class="ok">{savedMsg}</span>{/if}
+  <div class="mt-2.5 flex items-center gap-3">
+    <button type="button" class="save cursor-pointer rounded-md border-0 bg-accent px-4 py-2 text-[13px] font-bold text-bg disabled:cursor-default disabled:opacity-60" onclick={save} disabled={saving || !ready || isDemo}>Save note</button>
+    {#if savedMsg}<span class="text-[12px] text-green">{savedMsg}</span>{/if}
   </div>
 </section>
-
-<style>
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 14px 16px 16px;
-    margin-top: 16px;
-  }
-  .phead {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-  }
-  h2 {
-    margin: 0;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--faint);
-    font-weight: 700;
-  }
-  .x {
-    background: transparent;
-    border: 0;
-    color: var(--dim);
-    font-size: 20px;
-    line-height: 1;
-    cursor: pointer;
-  }
-  .x:hover {
-    color: var(--txt);
-  }
-  textarea {
-    width: 100%;
-    box-sizing: border-box;
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 7px;
-    padding: 10px;
-    font-family: var(--sans);
-    font-size: 13px;
-    resize: vertical;
-  }
-  textarea:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  .tags {
-    width: 100%;
-    box-sizing: border-box;
-    margin-top: 8px;
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 7px;
-    padding: 8px 10px;
-    font-family: var(--sans);
-    font-size: 13px;
-  }
-  .tags:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  .shots {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    margin-top: 10px;
-  }
-  .shot {
-    position: relative;
-    display: inline-block;
-  }
-  .shot img {
-    height: 48px;
-    border-radius: 6px;
-    border: 1px solid var(--line);
-    display: block;
-  }
-  .shot .rm {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 0;
-    background: var(--red);
-    color: #fff;
-    font-size: 12px;
-    line-height: 1;
-    cursor: pointer;
-  }
-  .addshot {
-    background: var(--panel2);
-    color: var(--dim);
-    border: 1px dashed var(--line);
-    border-radius: 6px;
-    padding: 7px 12px;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 10px;
-  }
-  .save {
-    background: var(--accent);
-    color: #0d1014;
-    border: 0;
-    border-radius: 6px;
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  .save:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-  .ok {
-    font-size: 12px;
-    color: var(--green);
-  }
-  .demonote {
-    margin: 0 0 8px;
-    font-size: 12px;
-    color: var(--warn);
-  }
-</style>

@@ -50,14 +50,28 @@
     'All time covers every trade; Calendar month restricts the cards, graph, and statistics to the month shown on the calendar. The calendar always shows the navigated month.';
 </script>
 
-<section class="filterbar">
-  <div class="scope" role="group" aria-label="Scope" title={SCOPE_HELP}>
-    <button type="button" class:on={filters.scope === 'all'} aria-pressed={filters.scope === 'all'} onclick={() => (filters.scope = 'all')}>All time</button>
-    <button type="button" class:on={filters.scope === 'month'} aria-pressed={filters.scope === 'month'} onclick={() => (filters.scope = 'month')}>Calendar month</button>
+<section class="filterbar mb-4 flex flex-wrap items-end gap-x-3 gap-y-2.5 rounded-[10px] border border-line bg-panel px-3.5 py-3">
+  <div class="scope flex" role="group" aria-label="Scope" title={SCOPE_HELP}>
+    <button
+      type="button"
+      class="cursor-pointer rounded-l-md border px-3 py-[7px] text-xs {filters.scope === 'all' ? 'border-accent bg-accent font-bold text-bg' : 'border-line bg-panel2 text-dim'}"
+      aria-pressed={filters.scope === 'all'}
+      onclick={() => (filters.scope = 'all')}>All time</button
+    >
+    <button
+      type="button"
+      class="cursor-pointer rounded-r-md border border-l-0 px-3 py-[7px] text-xs {filters.scope === 'month' ? 'border-accent bg-accent font-bold text-bg' : 'border-line bg-panel2 text-dim'}"
+      aria-pressed={filters.scope === 'month'}
+      onclick={() => (filters.scope = 'month')}>Calendar month</button
+    >
   </div>
-  <label>From<input type="date" bind:value={filters.from} /></label>
-  <label>To<input type="date" bind:value={filters.to} /></label>
-  <div class="selfield">
+  <label class="flex flex-col gap-[3px] text-[11px] text-faint"
+    >From<input type="date" bind:value={filters.from} class="rounded-md border border-line bg-panel2 px-2 py-1.5 text-[13px] font-sans text-txt focus:border-accent focus:outline-none" /></label
+  >
+  <label class="flex flex-col gap-[3px] text-[11px] text-faint"
+    >To<input type="date" bind:value={filters.to} class="rounded-md border border-line bg-panel2 px-2 py-1.5 text-[13px] font-sans text-txt focus:border-accent focus:outline-none" /></label
+  >
+  <div class="selfield flex flex-col gap-[3px] text-[11px] text-faint">
     <span>Symbol</span>
     <Select.Root type="single" value={filters.root || ALL} onValueChange={v => (filters.root = v === ALL ? '' : v)} items={rootItems}>
       <Select.Trigger aria-label="Symbol"><Select.Value /></Select.Trigger>
@@ -95,173 +109,39 @@
       </Select.Root>
     </div>
   {/if}
-  <div class="dows" role="group" aria-label="Day of week">
+  <div class="dows flex gap-[3px] self-end" role="group" aria-label="Day of week">
     {#each DOW as d, i (d)}
-      <button type="button" class:on={filters.dows.includes(i)} aria-pressed={filters.dows.includes(i)} onclick={() => toggleDow(i)}>{d}</button>
+      <button
+        type="button"
+        class="cursor-pointer rounded-[5px] border px-[7px] py-1.5 font-mono text-[11px] {filters.dows.includes(i) ? 'border-accent bg-accent font-bold text-bg' : 'border-line bg-panel2 text-dim'}"
+        aria-pressed={filters.dows.includes(i)}
+        onclick={() => toggleDow(i)}>{d}</button
+      >
     {/each}
   </div>
-  <span class="count">{count} trade{count === 1 ? '' : 's'}</span>
-  <button type="button" class="clear" onclick={onclear}>Clear</button>
+  <span class="count ml-auto self-center font-mono text-xs text-faint">{count} trade{count === 1 ? '' : 's'}</span>
+  <button type="button" class="clear cursor-pointer rounded-md border border-line bg-transparent px-3 py-[7px] text-xs text-dim hover:border-hover-line hover:text-txt" onclick={onclear}>Clear</button>
 </section>
 
-<section class="saved">
-  <input class="vname" type="text" placeholder="Name this view…" bind:value={viewName} onkeydown={e => e.key === 'Enter' && save()} />
-  <button type="button" class="savebtn" onclick={save}>Save view</button>
+<section class="saved mb-4 mt-[-8px] flex flex-wrap items-center gap-2">
+  <input
+    class="vname rounded-md border border-line bg-panel2 px-2 py-1.5 text-xs text-txt"
+    type="text"
+    placeholder="Name this view…"
+    bind:value={viewName}
+    onkeydown={e => e.key === 'Enter' && save()}
+  />
+  <button type="button" class="savebtn cursor-pointer rounded-md border border-line bg-panel2 px-3 py-1.5 text-xs text-txt" onclick={save}>Save view</button>
   {#each savedFilters as sf (sf.id)}
-    <span class="chip">
-      <button type="button" class="apply" onclick={() => onapply(sf)}>{sf.name}</button>
-      <button type="button" class="del" aria-label="Delete view {sf.name}" onclick={() => ondelete(sf.id)}>×</button>
+    <span class="chip inline-flex items-stretch overflow-hidden rounded-md border border-line">
+      <button type="button" class="apply cursor-pointer border-0 bg-panel px-2.5 py-1.5 text-xs text-accent" onclick={() => onapply(sf)}>{sf.name}</button>
+      <button
+        type="button"
+        class="del cursor-pointer border-0 border-l border-line bg-panel px-2 py-1.5 text-faint hover:text-red"
+        aria-label="Delete view {sf.name}"
+        onclick={() => ondelete(sf.id)}>×</button
+      >
     </span>
   {/each}
 </section>
 
-<style>
-  .filterbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 10px 12px;
-    padding: 12px 14px;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    margin-bottom: 16px;
-  }
-  .scope {
-    display: flex;
-    gap: 0;
-  }
-  .scope button {
-    background: var(--panel2);
-    color: var(--dim);
-    border: 1px solid var(--line);
-    padding: 7px 12px;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .scope button:first-child {
-    border-radius: 6px 0 0 6px;
-  }
-  .scope button:last-child {
-    border-radius: 0 6px 6px 0;
-    border-left: 0;
-  }
-  .scope button.on {
-    background: var(--accent);
-    color: #0d1014;
-    border-color: var(--accent);
-    font-weight: 700;
-  }
-  label,
-  .selfield {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    font-size: 11px;
-    color: var(--faint);
-  }
-  input {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 6px 8px;
-    font-size: 13px;
-    font-family: var(--sans);
-  }
-  input:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  .dows {
-    display: flex;
-    gap: 3px;
-    align-self: flex-end;
-  }
-  .dows button {
-    background: var(--panel2);
-    color: var(--dim);
-    border: 1px solid var(--line);
-    border-radius: 5px;
-    padding: 6px 7px;
-    font-size: 11px;
-    font-family: var(--mono);
-    cursor: pointer;
-  }
-  .dows button.on {
-    background: var(--accent);
-    color: #0d1014;
-    border-color: var(--accent);
-    font-weight: 700;
-  }
-  .count {
-    margin-left: auto;
-    font-size: 12px;
-    font-family: var(--mono);
-    color: var(--faint);
-    align-self: center;
-  }
-  .clear {
-    background: transparent;
-    color: var(--dim);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 7px 12px;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .clear:hover {
-    border-color: var(--hover-line);
-    color: var(--txt);
-  }
-  .saved {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    margin: -8px 0 16px;
-  }
-  .vname {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 6px 8px;
-    font-size: 12px;
-  }
-  .savebtn {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .chip {
-    display: inline-flex;
-    align-items: stretch;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .chip .apply {
-    background: var(--panel);
-    color: var(--accent);
-    border: 0;
-    padding: 6px 10px;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .chip .del {
-    background: var(--panel);
-    color: var(--faint);
-    border: 0;
-    border-left: 1px solid var(--line);
-    padding: 6px 8px;
-    cursor: pointer;
-  }
-  .chip .del:hover {
-    color: var(--red);
-  }
-</style>

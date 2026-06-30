@@ -69,11 +69,16 @@
 </script>
 
 <Panel {...panel} title="Advanced Statistics">
-  <div class="advstats rows">
+  <div class="advstats grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-6 gap-y-0.5">
     {#each rows as r (r.k)}
-      <div class="row">
-        <span class="k">{r.k}</span>
-        <span class="v" class:pos={r.tone === 'pos'} class:neg={r.tone === 'neg'}>{r.v}</span>
+      <div class="row flex items-baseline justify-between gap-3 border-b border-line py-[7px]">
+        <span class="text-xs text-dim">{r.k}</span>
+        <span
+          class="font-mono text-[13px] font-bold whitespace-nowrap {r.tone === 'pos'
+            ? 'text-green'
+            : r.tone === 'neg'
+              ? 'text-red'
+              : 'text-txt'}">{r.v}</span>
       </div>
     {/each}
   </div>
@@ -87,37 +92,3 @@
     <li><b>Weekday &amp; streak samples are thin.</b> Best/Worst Weekday averages and the streak dollars are only as stable as the trades behind them — a single weekday or run with a handful of trades swings easily. Read them as hints, not verdicts, on small samples.</li>
   </Caveats>
 </Panel>
-
-<style>
-  .rows {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 2px 24px;
-  }
-  .row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 7px 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .k {
-    font-size: 12px;
-    color: var(--dim);
-  }
-  .v {
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--txt);
-    white-space: nowrap;
-  }
-  .v.pos {
-    color: var(--green);
-  }
-  .v.neg {
-    color: var(--red);
-  }
-  /* CH36: the "Assumptions & caveats" block moved to the shared Caveats.svelte component. */
-</style>
