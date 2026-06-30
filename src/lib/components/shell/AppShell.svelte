@@ -9,6 +9,7 @@
   // navigate callback; wiring the seven screens to it is Phase 2 (client-side view switching).
   import type { Snippet } from 'svelte';
   import { fade, fly } from 'svelte/transition';
+  import { Menu, PanelLeft } from '@lucide/svelte';
   import SidebarNav, { type NavSection } from './SidebarNav.svelte';
 
   interface Props {
@@ -76,9 +77,7 @@
         aria-label="Open navigation"
         onclick={() => (mobileOpen = true)}
       >
-        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M3 6h18M3 12h18M3 18h18" />
-        </svg>
+        <Menu class="size-4" />
       </button>
       <!-- Desktop: collapse rail. -->
       <button
@@ -88,9 +87,7 @@
         aria-pressed={collapsed}
         onclick={() => (collapsed = !collapsed)}
       >
-        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18" />
-        </svg>
+        <PanelLeft class="size-4" />
       </button>
       {#if title}
         <div class="h-4 w-px bg-border"></div>

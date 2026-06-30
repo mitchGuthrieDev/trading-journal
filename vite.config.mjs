@@ -58,9 +58,11 @@ export default defineConfig({
         app: r('src/app/app.html'),
         demo: r('src/app/demo.html'),
         staging: r('src/app/staging.html'),
-        // Dev-only component reference (UI mockup workflow, Step 3). Built + deployed so it's always
-        // reachable, but noindex + robots-blocked and never linked from the product.
+        // Dev-only surfaces (UI mockup workflow). Built + deployed so they're always reachable, but
+        // noindex + robots-blocked and never linked from the product: the component reference
+        // (styleguide) and the redesign preview harness (Phase 2 screens).
         devcomponents: r('src/dev/components.html'),
+        devapp: r('src/dev/app.html'),
       },
     },
   },

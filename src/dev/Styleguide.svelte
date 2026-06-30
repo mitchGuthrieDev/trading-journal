@@ -8,32 +8,14 @@
   // examples use Svelte's built-in transitions (workflow Step 5).
   import { fade, fly, slide } from 'svelte/transition';
   import AppShell from '$lib/components/shell/AppShell.svelte';
-  import { type NavSection } from '$lib/components/shell/SidebarNav.svelte';
+  import { navSections } from './nav';
   import { Button, type ButtonVariant, type ButtonSize } from '$lib/components/ui/button';
   import * as Dialog from '$lib/components/ui/dialog';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as Popover from '$lib/components/ui/popover';
   import * as Select from '$lib/components/ui/select';
 
-  // ── App nav (the redesign's sidebar structure) ──────────────────────────────────────────────
-  const sections: NavSection[] = [
-    {
-      items: [
-        { key: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-        { key: 'calendar', label: 'Calendar', icon: 'calendar' },
-        { key: 'analytics', label: 'Analytics', icon: 'analytics' },
-        { key: 'blotter', label: 'Blotter', icon: 'blotter' },
-      ],
-    },
-    {
-      label: 'Data Management',
-      items: [
-        { key: 'csv', label: 'CSV Library', icon: 'csv' },
-        { key: 'trades', label: 'Trades', icon: 'trades' },
-        { key: 'reports', label: 'Reports', icon: 'reports' },
-      ],
-    },
-  ];
+  // App nav (the redesign's sidebar structure) lives in ./nav — shared with the Dashboard harness.
   let activeView = $state('dashboard');
 
   // ── Token reference data ────────────────────────────────────────────────────────────────────
@@ -97,9 +79,9 @@
   <p class="mb-5 text-sm text-muted-foreground">{blurb}</p>
 {/snippet}
 
-<AppShell {sections} active={activeView} onnavigate={k => (activeView = k)} title="Styleguide">
+<AppShell sections={navSections} active={activeView} onnavigate={k => (activeView = k)} title="Styleguide">
   {#snippet actions()}
-    <a class="text-sm text-muted-foreground hover:text-foreground" href="/app/">Open app →</a>
+    <a class="text-sm text-muted-foreground no-underline hover:text-foreground" href="/app/">Open app →</a>
   {/snippet}
 
   <p class="max-w-2xl text-sm text-muted-foreground">
