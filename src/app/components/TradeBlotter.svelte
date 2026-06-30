@@ -8,9 +8,10 @@
   // model costModel() uses) rather than recomputing fees. On demo the inline Note input is disabled and
   // saveNote() is guarded by isDemo (A87), so the module stays non-mutating there.
   import { getContext } from 'svelte';
-  import { usd, money, cls, rateFor, emit, PAGE_MODE, STAGING_PAGE, BROKERS } from '../../lib/core.ts';
+  import { usd, money, rateFor, emit, PAGE_MODE, STAGING_PAGE, BROKERS } from '../../lib/core.ts';
   import type { Trade, StoredTradeMeta, StoreLike, PanelBundle } from '../../lib/types.ts';
   import Panel from './Panel.svelte';
+  import * as Select from '$ui/select';
 
   interface Props {
     trades?: Trade[];
@@ -41,6 +42,7 @@
   // F32 (staging): paginate the blotter. Default 50/page, user-selectable 25/50/100/150/All. On
   // prod/demo (no STAGING_PAGE) the blotter renders every row, exactly as before.
   const PAGE_SIZES = [25, 50, 100, 150];
+  const PAGE_SIZE_ITEMS = [...PAGE_SIZES.map(n => ({ value: String(n), label: String(n) })), { value: 'all', label: 'All' }];
   let pageSize = $state(50); // Infinity = "All"
   let page = $state(0);
   const pageCount = $derived(Math.max(1, Math.ceil(trades.length / pageSize)));
@@ -72,39 +74,41 @@
 <Panel {...panel} title="Trade Blotter">
   {#snippet actions()}
     {#if trades.length}
-      <span class="blsum">{trades.length} trade{trades.length === 1 ? '' : 's'} · <span class={cls(net)}>{usd(net)}</span> · <span class="comm">−{money(totalComm)} comm</span></span>
+      <span class="font-mono text-[12px] text-dim">{trades.length} trade{trades.length === 1 ? '' : 's'} · <span class={net > 0 ? 'text-green' : net < 0 ? 'text-red' : ''}>{usd(net)}</span> · <span class="text-faint">−{money(totalComm)} comm</span></span>
     {/if}
   {/snippet}
 
   {#if trades.length}
-    <div class="blwrap">
-      <table class="bltab">
+    <div class="max-h-[460px] overflow-auto">
+      <table
+        class="bltab w-full border-collapse text-[12px] [&_td]:whitespace-nowrap [&_td]:border-b [&_td]:border-line [&_td]:px-2 [&_td]:py-1 [&_th]:sticky [&_th]:top-0 [&_th]:z-[1] [&_th]:whitespace-nowrap [&_th]:border-b [&_th]:border-line [&_th]:bg-panel [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold [&_th]:text-faint"
+      >
         <thead>
           <tr>
             <th>Date / time</th>
             <th>Symbol</th>
             <th>Contract</th>
             <th>Side</th>
-            <th class="num">Qty</th>
+            <th class="text-right">Qty</th>
             {#if STAGING_PAGE}<th>Broker</th>{/if}
-            <th class="num">Commission</th>
+            <th class="text-right">Commission</th>
             <th>Note</th>
-            <th class="num">P&amp;L</th>
+            <th class="text-right">P&amp;L</th>
           </tr>
         </thead>
         <tbody>
           {#each visible as t (store.tradeId(t))}
             <tr>
-              <td class="mono dim">{t.date}<span class="time"> {hm(t)}</span></td>
+              <td class="font-mono text-dim">{t.date}<span class="text-faint"> {hm(t)}</span></td>
               <td>{t.root || t.symbol}</td>
-              <td class="dim">{t.symbol}</td>
-              <td class="side">{t.side || '—'}</td>
-              <td class="num mono">{t.qty || 1}</td>
-              {#if STAGING_PAGE}<td class="dim">{brokerLabel}</td>{/if}
-              <td class="num mono dim">−{money(commOf(t))}</td>
-              <td class="notecell">
+              <td class="text-dim">{t.symbol}</td>
+              <td class="capitalize">{t.side || '—'}</td>
+              <td class="text-right font-mono">{t.qty || 1}</td>
+              {#if STAGING_PAGE}<td class="text-dim">{brokerLabel}</td>{/if}
+              <td class="text-right font-mono text-dim">−{money(commOf(t))}</td>
+              <td class="w-full min-w-[160px] whitespace-normal">
                 <input
-                  class="note"
+                  class="note w-full rounded-[5px] border border-transparent bg-panel2 px-1.5 py-1 font-[inherit] text-[12px] text-txt not-disabled:hover:border-line focus:border-accent focus:outline-none disabled:cursor-not-allowed disabled:bg-transparent"
                   type="text"
                   value={noteOf(t)}
                   disabled={isDemo}
@@ -113,7 +117,7 @@
                   onchange={e => saveNote(t, (e.currentTarget as HTMLInputElement).value)}
                 />
               </td>
-              <td class="num mono {cls(t.pnl)}">{usd(t.pnl)}</td>
+              <td class="text-right font-mono {t.pnl > 0 ? 'text-green' : t.pnl < 0 ? 'text-red' : ''}">{usd(t.pnl)}</td>
             </tr>
           {/each}
         </tbody>
@@ -121,170 +125,26 @@
     </div>
     {#if STAGING_PAGE}
       <!-- F32 (staging): page-size selector + prev/next pager. -->
-      <div class="blpager">
-        <label class="blpsize"
-          >Rows
-          <select aria-label="Rows per page" onchange={e => setPageSize((e.currentTarget as HTMLSelectElement).value)}>
-            {#each PAGE_SIZES as n (n)}<option value={n} selected={pageSize === n}>{n}</option>{/each}
-            <option value="all" selected={pageSize === Infinity}>All</option>
-          </select>
-        </label>
+      <div class="blpager mt-2.5 flex flex-wrap items-center justify-between gap-3 text-[12px] text-dim">
+        <div class="blpsize flex items-center gap-1.5">
+          <span>Rows</span>
+          <Select.Root type="single" value={pageSize === Infinity ? 'all' : String(pageSize)} onValueChange={setPageSize} items={PAGE_SIZE_ITEMS}>
+            <Select.Trigger aria-label="Rows per page" class="px-2 py-1"><Select.Value /></Select.Trigger>
+            <Select.Content class="min-w-[5rem]">
+              {#each PAGE_SIZE_ITEMS as it (it.value)}<Select.Item value={it.value} label={it.label} />{/each}
+            </Select.Content>
+          </Select.Root>
+        </div>
         {#if pageCount > 1}
-          <div class="blnav">
+          <div class="blnav flex items-center gap-3 [&_button]:cursor-pointer [&_button]:rounded-md [&_button]:border [&_button]:border-line [&_button]:bg-panel2 [&_button]:px-2.5 [&_button]:py-[5px] [&_button]:font-[inherit] [&_button]:text-[12px] [&_button]:text-txt [&_button:disabled]:cursor-not-allowed [&_button:disabled]:opacity-40">
             <button type="button" disabled={page === 0} onclick={() => (page -= 1)}>‹ Prev</button>
-            <span class="pginfo">{page * pageSize + 1}–{Math.min(trades.length, (page + 1) * pageSize)} of {trades.length}</span>
+            <span class="pginfo [font-variant-numeric:tabular-nums]">{page * pageSize + 1}–{Math.min(trades.length, (page + 1) * pageSize)} of {trades.length}</span>
             <button type="button" disabled={page >= pageCount - 1} onclick={() => (page += 1)}>Next ›</button>
           </div>
         {/if}
       </div>
     {/if}
   {:else}
-    <p class="blnone">No trades to show{filtered ? ' with the active filters' : ''}.</p>
+    <p class="blnone m-0 text-[13px] text-dim">No trades to show{filtered ? ' with the active filters' : ''}.</p>
   {/if}
 </Panel>
-
-<style>
-  .blsum {
-    font-size: 12px;
-    font-family: var(--mono);
-    color: var(--dim);
-  }
-  .blsum .pos {
-    color: var(--green);
-  }
-  .blsum .neg {
-    color: var(--red);
-  }
-  .blsum .comm {
-    color: var(--faint);
-  }
-  /* Scrollable, full-width list — caps the height so a large book scrolls inside the module. */
-  .blwrap {
-    overflow: auto;
-    max-height: 460px;
-  }
-  .bltab {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-  .bltab th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    text-align: left;
-    background: var(--panel);
-    color: var(--faint);
-    font-weight: 600;
-    padding: 6px 8px;
-    border-bottom: 1px solid var(--line);
-    white-space: nowrap;
-  }
-  .bltab th.num {
-    text-align: right;
-  }
-  .bltab td {
-    padding: 4px 8px;
-    border-bottom: 1px solid var(--line);
-    white-space: nowrap;
-  }
-  .bltab td.num {
-    text-align: right;
-  }
-  .bltab td.mono {
-    font-family: var(--mono);
-  }
-  .bltab td.dim {
-    color: var(--dim);
-  }
-  .time {
-    color: var(--faint);
-  }
-  .side {
-    text-transform: capitalize;
-  }
-  .pos {
-    color: var(--green);
-  }
-  .neg {
-    color: var(--red);
-  }
-  .notecell {
-    width: 100%;
-    min-width: 160px;
-    white-space: normal;
-  }
-  .note {
-    width: 100%;
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid transparent;
-    border-radius: 5px;
-    padding: 4px 6px;
-    font: inherit;
-    font-size: 12px;
-  }
-  .note:hover:not(:disabled) {
-    border-color: var(--line);
-  }
-  .note:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  .note:disabled {
-    background: transparent;
-    cursor: not-allowed;
-  }
-  .blnone {
-    margin: 0;
-    font-size: 13px;
-    color: var(--dim);
-  }
-  /* F32 (staging): blotter pager — page-size selector (left) + prev/next (right). */
-  .blpager {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-top: 10px;
-    font-size: 12px;
-    color: var(--dim);
-  }
-  .blpsize {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .blpsize select {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 4px 6px;
-    font: inherit;
-    font-size: 12px;
-  }
-  .blnav {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .blnav button {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 5px 10px;
-    font: inherit;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .blnav button:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-  .pginfo {
-    font-variant-numeric: tabular-nums;
-  }
-</style>

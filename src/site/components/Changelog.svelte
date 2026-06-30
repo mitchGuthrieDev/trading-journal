@@ -73,21 +73,31 @@
   <p class="blurb">
     Release notes for <b>Blotterbook</b> — what shipped in each version, newest first. Tracks the live production app and demo.
   </p>
-  <p class="clstatus">{live ? 'Release notes · prod track' : 'Showing the last saved snapshot'}</p>
+  <p class="font-mono text-[11.5px] text-faint mt-0 mb-1.5">
+    {live ? 'Release notes · prod track' : 'Showing the last saved snapshot'}
+  </p>
 
-  <div class="log" id="log">
+  <div class="log relative mt-9 pl-[26px]" id="log">
     {#each releases as r, i (r.version + r.date)}
-      <div class="entry" class:first={i === 0} class:beta={r.beta}>
-        <div class="meta">
-          <span class="ver">v{r.version}</span>
-          <span class="date">{fmtDate(r.date)}</span>
-          {#if i === 0}<span class="latest">Latest</span>{/if}
+      <div class="entry relative pb-[30px]" class:first={i === 0} class:beta={r.beta}>
+        <div class="flex flex-wrap items-center gap-3 mb-[7px]">
+          <span
+            class="ver font-mono text-xs font-semibold rounded-[5px] border px-2 py-0.5 {r.beta
+              ? 'text-dim bg-panel border-line'
+              : 'text-accent bg-[rgba(106,160,255,0.12)] border-[rgba(106,160,255,0.28)]'}"
+            >v{r.version}</span
+          >
+          <span class="font-mono text-[12.5px] text-dim">{fmtDate(r.date)}</span>
+          {#if i === 0}<span
+              class="font-mono text-[10.5px] uppercase tracking-[0.08em] text-green bg-[rgba(63,185,80,0.12)] rounded-[5px] px-2 py-0.5"
+              >Latest</span
+            >{/if}
         </div>
-        <h3>{r.title}</h3>
-        {#if r.summary}<p class="summary">{r.summary}</p>{/if}
+        <h3 class="text-[16.5px] m-0 font-semibold tracking-[-0.01em] leading-[1.4]">{r.title}</h3>
+        {#if r.summary}<p class="text-dim text-[14.5px] leading-[1.6] mt-[7px] mb-0 max-w-[680px]">{r.summary}</p>{/if}
         {#if r.highlights && r.highlights.length}
-          <ul class="highlights">
-            {#each r.highlights as h}<li>{h}</li>{/each}
+          <ul class="highlights mt-2.5 mb-0 pl-[18px] max-w-[680px]">
+            {#each r.highlights as h}<li class="text-dim text-sm leading-[1.55] mt-0 mb-[5px]">{h}</li>{/each}
           </ul>
         {/if}
       </div>
@@ -96,12 +106,8 @@
 </SiteShell>
 
 <style>
-  /* timeline (changelog) */
-  .log {
-    margin-top: 36px;
-    position: relative;
-    padding-left: 26px;
-  }
+  /* timeline (changelog) — bespoke pseudo-elements (the rail gradient, node markers, and bullet
+     marker color) stay scoped; everything else moved to Tailwind utilities on the elements. */
   .log::before {
     content: '';
     position: absolute;
@@ -110,10 +116,6 @@
     bottom: 6px;
     width: 2px;
     background: linear-gradient(180deg, var(--accent), rgba(201, 139, 255, 0.4), transparent);
-  }
-  .entry {
-    position: relative;
-    padding: 0 0 30px;
   }
   .entry::before {
     content: '';
@@ -130,76 +132,7 @@
     background: var(--accent);
     box-shadow: 0 0 0 4px rgba(106, 160, 255, 0.15);
   }
-  .entry .meta {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 7px;
-  }
-  .entry .date {
-    font-family: var(--mono);
-    font-size: 12.5px;
-    color: var(--dim);
-  }
-  .entry .latest {
-    font-family: var(--mono);
-    font-size: 10.5px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--green);
-    background: rgba(63, 185, 80, 0.12);
-    border-radius: 5px;
-    padding: 2px 8px;
-  }
-  /* F13: versioned release-notes entry — version badge, summary, highlight bullets */
-  .entry .ver {
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--accent);
-    background: rgba(106, 160, 255, 0.12);
-    border: 1px solid rgba(106, 160, 255, 0.28);
-    border-radius: 5px;
-    padding: 2px 8px;
-  }
-  .entry.beta .ver {
-    color: var(--dim);
-    background: var(--panel);
-    border-color: var(--line);
-  }
-  .entry h3 {
-    font-size: 16.5px;
-    margin: 0;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    line-height: 1.4;
-  }
-  .entry .summary {
-    color: var(--dim);
-    font-size: 14.5px;
-    line-height: 1.6;
-    margin: 7px 0 0;
-    max-width: 680px;
-  }
-  .entry .highlights {
-    margin: 10px 0 0;
-    padding-left: 18px;
-    max-width: 680px;
-  }
-  .entry .highlights li {
-    color: var(--dim);
-    font-size: 14px;
-    line-height: 1.55;
-    margin: 0 0 5px;
-  }
   .entry .highlights li::marker {
     color: var(--accent);
-  }
-  .clstatus {
-    font-family: var(--mono);
-    font-size: 11.5px;
-    color: var(--faint);
-    margin: 0 0 6px;
   }
 </style>

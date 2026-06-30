@@ -2,7 +2,7 @@
   // Read-only intraday trade list for the selected day (A50 — parity with vanilla data.js
   // renderDayTrades / #j_trades). Shown alongside the day-note editor on calendar/curve day-select.
   // `trades` is the active-filtered set for the day (passed from App), so it tracks the filters.
-  import { usd, cls } from '../../lib/core.ts';
+  import { usd } from '../../lib/core.ts';
   import type { Trade } from '../../lib/types.ts';
 
   interface Props {
@@ -15,111 +15,37 @@
   const hm = (t: Trade) => (t.time || '').slice(11, 16) || '—';
 </script>
 
-<section class="panel daytrades">
-  <div class="phead">
-    <h2>Trades · {date}</h2>
-    {#if trades.length}<span class="dtnet {cls(net)}">{trades.length} · {usd(net)}</span>{/if}
+<section class="daytrades mt-4 rounded-[10px] border border-line bg-panel px-4 pt-3.5 pb-4">
+  <div class="mb-2.5 flex items-baseline justify-between gap-3">
+    <h2 class="m-0 text-[13px] font-bold tracking-[0.5px] text-faint uppercase">Trades · {date}</h2>
+    {#if trades.length}<span
+        class="dtnet font-mono text-[13px] font-bold {net > 0 ? 'text-green' : net < 0 ? 'text-red' : 'text-txt'}"
+        >{trades.length} · {usd(net)}</span
+      >{/if}
   </div>
   {#if trades.length}
-    <div class="dtwrap">
-      <table class="dttab">
-        <thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th class="num">P&amp;L</th></tr></thead>
+    <div class="overflow-x-auto">
+      <table
+        class="dttab w-full border-collapse text-xs [&_td]:border-b [&_td]:border-line [&_td]:px-2 [&_td]:py-[5px] [&_th]:border-b [&_th]:border-line [&_th]:px-2 [&_th]:py-[5px] [&_th]:text-left [&_th]:font-semibold [&_th]:text-faint"
+      >
+        <thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th class="text-right!">P&amp;L</th></tr></thead>
         <tbody>
           {#each trades as t, i (i)}
             <tr>
-              <td class="mono dim">{hm(t)}</td>
+              <td class="font-mono text-dim">{hm(t)}</td>
               <td>{t.root || t.symbol}</td>
-              <td class="side">{t.side || '—'}</td>
-              <td class="num mono {cls(t.pnl)}">{usd(t.pnl)}</td>
+              <td class="capitalize">{t.side || '—'}</td>
+              <td class="text-right font-mono {t.pnl > 0 ? 'text-green' : t.pnl < 0 ? 'text-red' : ''}"
+                >{usd(t.pnl)}</td
+              >
             </tr>
           {/each}
         </tbody>
       </table>
     </div>
   {:else}
-    <p class="dtnone">No trades on this day{filtered ? ' (with the active filters)' : ''}.</p>
+    <p class="m-0 text-[13px] text-dim">
+      No trades on this day{filtered ? ' (with the active filters)' : ''}.
+    </p>
   {/if}
 </section>
-
-<style>
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 14px 16px 16px;
-    margin-top: 16px;
-  }
-  .phead {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
-  }
-  h2 {
-    margin: 0;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--faint);
-    font-weight: 700;
-  }
-  .dtnet {
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--txt);
-  }
-  .dtnet.pos {
-    color: var(--green);
-  }
-  .dtnet.neg {
-    color: var(--red);
-  }
-  .dtwrap {
-    overflow-x: auto;
-  }
-  .dttab {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-  .dttab th {
-    text-align: left;
-    color: var(--faint);
-    font-weight: 600;
-    padding: 5px 8px;
-    border-bottom: 1px solid var(--line);
-  }
-  .dttab th.num {
-    text-align: right;
-  }
-  .dttab td {
-    padding: 5px 8px;
-    border-bottom: 1px solid var(--line);
-  }
-  .dttab td.num {
-    text-align: right;
-  }
-  .dttab td.mono,
-  .dttab td.num.mono {
-    font-family: var(--mono);
-  }
-  .dttab td.dim {
-    color: var(--dim);
-  }
-  .side {
-    text-transform: capitalize;
-  }
-  .pos {
-    color: var(--green);
-  }
-  .neg {
-    color: var(--red);
-  }
-  .dtnone {
-    margin: 0;
-    font-size: 13px;
-    color: var(--dim);
-  }
-</style>

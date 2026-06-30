@@ -5,6 +5,7 @@
   // drag handle (matches vanilla: mousedown arms the whole-panel draggable); clicking the header —
   // but not the grip or chevron — toggles collapse, and the chevron mirrors aria-expanded/label (B41).
   import type { Snippet } from 'svelte';
+  import * as DropdownMenu from '$ui/dropdown-menu';
 
   interface Props {
     pkey: string;
@@ -50,11 +51,6 @@
   }: Props = $props();
 
   let armed = $state(false); // grip pressed → the section is draggable for this gesture only
-  let menuOpen = $state(false); // A71 module-header menu popup
-  const runMenu = (fn: () => void) => {
-    fn();
-    menuOpen = false;
-  };
 
   function headClick(e: MouseEvent) {
     // Toggle on a bare-header click only — never when the click lands on the grip, the chevron, the
@@ -81,52 +77,60 @@
   }
 </script>
 
-<svelte:window
-  onclick={() => (menuOpen = false)}
-  onkeydown={e => {
-    if (e.key === 'Escape') menuOpen = false;
-  }}
-/>
-
 <!-- svelte-ignore a11y_no_static_element_interactions (drag-to-reorder is a pointer-only enhancement;
      the grip is aria-hidden and collapse/expand has a real keyboard button — panel content is fully
      reachable without dragging) -->
-<section class="panel" class:collapsed class:dragging data-key={pkey} draggable={armed} ondragstart={onDragStart} ondragend={onDragEnd} ondragover={onDragOver}>
-  <div class="phead" role="presentation" onclick={headClick}>
+<section
+  class="panel mt-4 rounded-[10px] border border-line bg-panel px-4 pt-3.5 pb-4"
+  class:collapsed
+  class:dragging
+  class:opacity-[0.55]={dragging}
+  class:border-accent={dragging}
+  data-key={pkey}
+  draggable={armed}
+  ondragstart={onDragStart}
+  ondragend={onDragEnd}
+  ondragover={onDragOver}
+>
+  <div class="phead mb-3 flex flex-wrap items-center gap-x-2.5 gap-y-2" role="presentation" onclick={headClick}>
     <span
-      class="grip"
+      class="grip cursor-grab select-none text-[13px] leading-none tracking-[-2px] text-faint active:cursor-grabbing"
       aria-hidden="true"
       title="Drag to reorder"
       onmousedown={() => (armed = true)}
       onmouseup={() => (armed = false)}
     >⠿</span>
-    <h2>{title}</h2>
-    {#if actions}<div class="pactions">{@render actions()}</div>{/if}
+    <h2 class="m-0 min-w-0 text-[13px] font-bold uppercase tracking-[0.5px] text-faint">{title}</h2>
+    {#if actions}<div class="pactions ml-auto flex min-w-0 flex-wrap items-center gap-2.5">{@render actions()}</div>{/if}
     {#if menu}
-      <!-- A71 (staging): clickable header menu — per-module actions (move / hide). -->
-      <div class="pmenu">
-        <button
-          type="button"
-          class="pmenubtn"
-          aria-haspopup="true"
-          aria-expanded={menuOpen}
-          aria-label="{title} module menu"
-          title="Module options"
-          onclick={e => {
-            e.stopPropagation();
-            menuOpen = !menuOpen;
-          }}>⋯</button>
-        {#if menuOpen}
-          <div class="pmenupop" role="menu" aria-label="{title} options">
-            <button type="button" role="menuitem" onclick={() => runMenu(ontoggle)}>{collapsed ? 'Expand' : 'Collapse'}</button>
-            <button type="button" role="menuitem" disabled={isFirst} onclick={() => runMenu(onmoveup)}>{moveUpLabel}</button>
-            <button type="button" role="menuitem" disabled={isLast} onclick={() => runMenu(onmovedown)}>{moveDownLabel}</button>
-            <button type="button" role="menuitem" class="danger" onclick={() => runMenu(onhide)}>Hide module</button>
-          </div>
-        {/if}
+      <!-- A71 (staging): clickable header menu — per-module actions (move / hide). bits-ui (A128)
+           owns open/close, outside-click, Escape, keyboard nav + ARIA roles. -->
+      <div class="pmenu relative" class:ml-auto={!actions} class:ml-0={actions}>
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger
+            class="pmenubtn cursor-pointer rounded-[5px] border-0 bg-transparent px-1.5 py-0.5 text-[15px] leading-none text-dim hover:bg-panel2 hover:text-txt"
+            aria-label="{title} module menu"
+            title="Module options">⋯</DropdownMenu.Trigger
+          >
+          <DropdownMenu.Content class="pmenupop" aria-label="{title} options">
+            <DropdownMenu.Item onSelect={ontoggle}>{collapsed ? 'Expand' : 'Collapse'}</DropdownMenu.Item>
+            <DropdownMenu.Item disabled={isFirst} onSelect={onmoveup}>{moveUpLabel}</DropdownMenu.Item>
+            <DropdownMenu.Item disabled={isLast} onSelect={onmovedown}>{moveDownLabel}</DropdownMenu.Item>
+            <DropdownMenu.Item variant="danger" onSelect={onhide}>Hide module</DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Root>
       </div>
     {/if}
-    <button type="button" class="chev" aria-expanded={!collapsed} aria-label={collapsed ? 'Expand' : 'Collapse'} title={collapsed ? 'Expand' : 'Collapse'} onclick={ontoggle}>
+    <button
+      type="button"
+      class="chev cursor-pointer border-0 bg-transparent px-1 py-0.5 text-[13px] leading-none text-dim hover:text-txt"
+      class:ml-auto={!actions && !menu}
+      class:ml-0={actions || menu}
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? 'Expand' : 'Collapse'}
+      title={collapsed ? 'Expand' : 'Collapse'}
+      onclick={ontoggle}
+    >
       {collapsed ? '▸' : '▾'}
     </button>
   </div>
@@ -134,133 +138,3 @@
     <div class="pbody">{@render children()}</div>
   {/if}
 </section>
-
-<style>
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 14px 16px 16px;
-    margin-top: 16px;
-  }
-  .panel.dragging {
-    opacity: 0.55;
-    border-color: var(--accent);
-  }
-  .phead {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-    /* A121/A123: in a narrow grid column (F26) a heavy header (e.g. the calendar's month nav) would
-       overflow and push the collapse chevron off the panel — leaving it stuck collapsed. Allow the
-       header to wrap so the controls stay reachable and nothing clips past the panel edge. */
-    flex-wrap: wrap;
-    row-gap: 8px;
-  }
-  .grip {
-    cursor: grab;
-    color: var(--faint);
-    font-size: 13px;
-    line-height: 1;
-    user-select: none;
-    letter-spacing: -2px;
-  }
-  .grip:active {
-    cursor: grabbing;
-  }
-  h2 {
-    margin: 0;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--faint);
-    font-weight: 700;
-    min-width: 0;
-  }
-  .pactions {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    /* A123: let a heavy actions cluster (e.g. the calendar nav) wrap instead of overflowing the panel. */
-    flex-wrap: wrap;
-    min-width: 0;
-  }
-  .chev {
-    margin-left: auto;
-    background: transparent;
-    border: 0;
-    color: var(--dim);
-    font-size: 13px;
-    line-height: 1;
-    cursor: pointer;
-    padding: 2px 4px;
-  }
-  .pactions + .chev {
-    margin-left: 0;
-  }
-  .chev:hover {
-    color: var(--txt);
-  }
-  /* A71 (staging): the module-header menu button + popup. */
-  .pmenu {
-    position: relative;
-    margin-left: auto;
-  }
-  .pactions + .pmenu {
-    margin-left: 0;
-  }
-  .pmenu + .chev {
-    margin-left: 0;
-  }
-  .pmenubtn {
-    background: transparent;
-    border: 0;
-    color: var(--dim);
-    font-size: 15px;
-    line-height: 1;
-    cursor: pointer;
-    padding: 2px 6px;
-    border-radius: 5px;
-  }
-  .pmenubtn:hover {
-    color: var(--txt);
-    background: var(--panel2);
-  }
-  .pmenupop {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    z-index: 40;
-    min-width: 150px;
-    display: flex;
-    flex-direction: column;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    padding: 6px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  }
-  .pmenupop button {
-    text-align: left;
-    background: transparent;
-    color: var(--txt);
-    border: 0;
-    border-radius: 6px;
-    padding: 7px 10px;
-    font: inherit;
-    font-size: 13px;
-    cursor: pointer;
-  }
-  .pmenupop button:hover:not(:disabled) {
-    background: var(--panel2);
-  }
-  .pmenupop button:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-  .pmenupop button.danger {
-    color: var(--red);
-  }
-</style>

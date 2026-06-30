@@ -36,32 +36,13 @@
   }
 </script>
 
-<section class="cards" class:staging={STAGING_PAGE} aria-label="Overview metrics">
+<section
+  class="cards grid gap-3 {STAGING_PAGE
+    ? 'grid-cols-5 max-[900px]:grid-cols-2 max-[520px]:grid-cols-1'
+    : 'grid-cols-[repeat(auto-fill,minmax(180px,1fr))]'}"
+  aria-label="Overview metrics"
+>
   {#each cards as c (c.key)}
     <StatCard card={c.key} label={c.label} value={c.value} tone={c.tone || ''} sub={c.sub || ''} onclick={MODAL_KEYS.has(c.key) ? () => oncard(c.key) : null} />
   {/each}
 </section>
-
-<style>
-  .cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 12px;
-  }
-  /* L9 (staging): after F25 only the five interactive cards remain — stretch them across the FULL row
-     (5 equal columns) so there's no dead gap to the right margin on a wide (e.g. MacBook-13in) screen.
-     Wraps to 2 columns / 1 column as the width shrinks. */
-  .cards.staging {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-  @media (max-width: 900px) {
-    .cards.staging {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-  @media (max-width: 520px) {
-    .cards.staging {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>

@@ -19,64 +19,24 @@
 <!-- A97: trimmed to the foundational parsing caveats — these gate the trustworthiness of every
      downstream number, so they stay in one place a user can read before trusting any grouping. -->
 {#snippet body()}
-  <dl>
-    <dt>Trade = one closed position</dt>
-    <dd>Each trade is one realized-PnL event. Depending on the platform Blotterbook auto-detects, that's either one row per closed position (close-event exports like TradingView) or entry/exit fills paired into round-trips by a FIFO matcher (which also recovers hold time). TradingView is verified; the other eight adapters are beta — verify the parsed numbers against your statement.</dd>
+  <dl class="m-0">
+    <dt class="mt-3 text-[12px] font-bold text-txt">Trade = one closed position</dt>
+    <dd class="mt-[3px] mb-0 text-[12px] leading-[1.55] text-dim">Each trade is one realized-PnL event. Depending on the platform Blotterbook auto-detects, that's either one row per closed position (close-event exports like TradingView) or entry/exit fills paired into round-trips by a FIFO matcher (which also recovers hold time). TradingView is verified; the other eight adapters are beta — verify the parsed numbers against your statement.</dd>
   </dl>
-  <dl class="warn">
-    <dt>US dates &amp; Eastern time assumed</dt>
-    <dd>Timestamps are read as written, in the export's own clock — no timezone conversion. Dates parse as US <b>M/D/Y</b>; an unambiguous day &gt; 12 (e.g. 25/06) is auto-detected as D/M/Y, but ambiguous non-US dates can land on the wrong day. Session (RTH/ETH) classification assumes US Eastern time. Export in a US/ET format, or verify the parsed dates before trusting day/week/month grouping.</dd>
+  <dl class="m-0">
+    <dt class="mt-3 text-[12px] font-bold text-warn">US dates &amp; Eastern time assumed</dt>
+    <dd class="mt-[3px] mb-0 text-[12px] leading-[1.55] text-dim">Timestamps are read as written, in the export's own clock — no timezone conversion. Dates parse as US <b>M/D/Y</b>; an unambiguous day &gt; 12 (e.g. 25/06) is auto-detected as D/M/Y, but ambiguous non-US dates can land on the wrong day. Session (RTH/ETH) classification assumes US Eastern time. Export in a US/ET format, or verify the parsed dates before trusting day/week/month grouping.</dd>
   </dl>
 {/snippet}
 
 {#if footer}
   <!-- F27 (staging): the Definitions & Caveats module is relegated to a page footer. -->
-  <footer class="defs deffoot" aria-label="Definitions and caveats">
-    <h2 class="foothd">Definitions &amp; Caveats</h2>
-    <div class="defbody">{@render body()}</div>
+  <footer class="defs deffoot mt-7 border-t border-line pt-4" aria-label="Definitions and caveats">
+    <h2 class="m-0 mb-2 text-[12px] font-bold uppercase tracking-[0.5px] text-faint">Definitions &amp; Caveats</h2>
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-x-7 gap-y-0">{@render body()}</div>
   </footer>
 {:else}
   <Panel {...panel} title="Definitions &amp; Caveats">
-    <div class="defs defbody">{@render body()}</div>
+    <div class="defs grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-x-7 gap-y-0">{@render body()}</div>
   </Panel>
 {/if}
-
-<style>
-  .defbody {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 0 28px;
-  }
-  /* F27 (staging): footer variant — a muted band below the dashboard, separated by a top rule. */
-  .deffoot {
-    margin-top: 28px;
-    padding-top: 16px;
-    border-top: 1px solid var(--line);
-  }
-  .foothd {
-    margin: 0 0 8px;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--faint);
-    font-weight: 700;
-  }
-  dl {
-    margin: 0;
-  }
-  dt {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--txt);
-    margin-top: 12px;
-  }
-  dd {
-    margin: 3px 0 0;
-    font-size: 12px;
-    line-height: 1.55;
-    color: var(--dim);
-  }
-  dl.warn dt {
-    color: var(--warn);
-  }
-</style>

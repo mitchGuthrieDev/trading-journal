@@ -66,34 +66,17 @@
 
 <Panel {...panel} title="Activity">
   <div class="terminal">
-    <div class="log" bind:this={box} role="log" aria-live="polite">
+    <div
+      class="log max-h-40 overflow-auto rounded-[7px] border border-line bg-bg px-2.5 py-2 font-mono text-xs"
+      bind:this={box}
+      role="log"
+      aria-live="polite"
+    >
       {#each lines as l (l.id)}
-        <div class="row"><span class="ts">{l.ts}</span><span class="msg">{l.msg}</span></div>
+        <div class="flex gap-2.5 py-0.5">
+          <span class="text-faint">{l.ts}</span><span class="text-green">{l.msg}</span>
+        </div>
       {/each}
     </div>
   </div>
 </Panel>
-
-<style>
-  .log {
-    max-height: 160px;
-    overflow: auto;
-    font-family: var(--mono);
-    font-size: 12px;
-    background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: 7px;
-    padding: 8px 10px;
-  }
-  .row {
-    display: flex;
-    gap: 10px;
-    padding: 2px 0;
-  }
-  .ts {
-    color: var(--faint);
-  }
-  .msg {
-    color: var(--green);
-  }
-</style>

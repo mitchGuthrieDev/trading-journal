@@ -174,7 +174,8 @@ test('staging (Svelte): boots into Overview with computed metrics, seeded data p
     'href',
     /^mailto:/
   );
-  await page.selectOption('.modal[aria-label="Export performance report"] select', 'md');
+  await page.locator('.modal[aria-label="Export performance report"] [aria-label="Download format"]').click(); // bits-ui Select (A128)
+  await page.getByRole('option', { name: 'Markdown (.md)' }).click();
   await expect(page.locator('.modal[aria-label="Export performance report"] .pri')).toBeEnabled();
   await page.click('.modal[aria-label="Export performance report"] [data-expclose]');
   await expect(page.locator('#sv-app .modal[aria-label="Export performance report"]')).toHaveCount(0);
@@ -230,7 +231,8 @@ test('staging (Svelte): session filter narrows the dataset', async ({ page }) =>
   const readCount = async () => parseInt(((await count.textContent()) || '').replace(/[^\d]/g, ''), 10);
   const all = await readCount();
   expect(all).toBeGreaterThan(0);
-  await page.getByLabel('Session').selectOption('rth');
+  await page.getByLabel('Session').click(); // bits-ui Select (A128)
+  await page.locator('#sv-app .filterbar').getByRole('option', { name: 'RTH', exact: true }).click();
   await expect(count).not.toHaveText(`${all} trades`); // RTH-only is a strict subset
   expect(await readCount()).toBeLessThan(all);
 
@@ -270,15 +272,19 @@ test('staging (Svelte): panel collapse persists + workspace templates (A36)', as
   // Workspace templates: save the current (perf-collapsed) layout under a name → it joins the select.
   page.on('dialog', d => d.accept('My Layout'));
   await page.click('#sv-app .wsbar .wssave');
-  await expect(page.locator('#sv-app .wsbar select option', { hasText: 'My Layout' })).toHaveCount(1);
+  // bits-ui Select (A128): open the Workspace listbox → it now lists the saved layout.
+  const wsList = page.locator('#sv-app .wsbar');
+  await wsList.locator('[aria-label="Workspace"]').click();
+  await expect(wsList.getByRole('option', { name: 'My Layout' })).toHaveCount(1);
 
   // "— Default —" reverts to the default arrangement → the perf panel expands again.
-  await page.selectOption('#sv-app .wsbar select', '');
+  await wsList.getByRole('option', { name: '— Default —' }).click();
   await expect(page.locator('#sv-app .panel[data-key="perf"] .chev')).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('#sv-app .panel[data-key="perf"] svg.equity')).toBeVisible();
 
   // Reloading the default layout selection → loads my saved template back (perf collapsed again).
-  await page.selectOption('#sv-app .wsbar select', 'My Layout');
+  await wsList.locator('[aria-label="Workspace"]').click();
+  await wsList.getByRole('option', { name: 'My Layout' }).click();
   await expect(page.locator('#sv-app .panel[data-key="perf"] .chev')).toHaveAttribute('aria-expanded', 'false');
 });
 
@@ -291,7 +297,9 @@ test('staging (Svelte): modal locks scroll + closes on Escape (A42)', async ({ p
   expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).toBe('hidden'); // B36 scroll-lock
   await page.keyboard.press('Escape');
   await expect(page.locator('.modal[aria-label="Net PnL"]')).toHaveCount(0);
-  expect(await page.evaluate(() => document.body.style.overflow)).toBe(''); // lock released
+  // Lock released. bits-ui (A128) debounces its scroll-lock teardown a tick before restoring the
+  // body style (vs. the old use:modal which cleared it synchronously), so poll for release.
+  await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('');
 });
 
 // A45: a trade can be deleted from the manage-data table (with its meta), shrinking the row count.
@@ -335,14 +343,14 @@ test('staging (Svelte): module-header menu hides + re-adds a module (A71/R12)', 
   await page.locator('#sv-app .dash section.panel .pmenubtn').first().click();
   const pop = page.locator('#sv-app .dash .pmenupop').first();
   await expect(pop).toBeVisible();
-  await expect(pop.locator('button')).toHaveCount(4); // Collapse / Move up / Move down / Hide
+  await expect(pop.getByRole('menuitem')).toHaveCount(4); // Collapse / Move up / Move down / Hide (bits-ui)
   // Hide it → panel count drops and the "Add module" control appears.
-  await pop.locator('button', { hasText: 'Hide module' }).click();
+  await pop.getByRole('menuitem', { name: 'Hide module' }).click();
   await expect(panels).toHaveCount(start - 1);
   await expect(page.locator('#sv-app .addmodbtn')).toBeVisible();
   // Re-spawn it from the Add-module menu → back to the original count.
   await page.locator('#sv-app .addmodbtn').click();
-  await page.locator('#sv-app .addmenu button').first().click();
+  await page.locator('#sv-app .addmenu').getByRole('menuitem').first().click();
   await expect(panels).toHaveCount(start);
 });
 
@@ -365,11 +373,15 @@ test('staging (Svelte): Trade Blotter lists trades + inline note persists (F23)'
   // F32 (staging): the blotter paginates at 50/page by default.
   await expect(blotter.locator('.bltab tbody tr')).toHaveCount(50);
   await expect(blotter.locator('.blpager .pginfo')).toContainText('1–50 of');
-  await blotter.locator('.blpsize select').selectOption('25');
+  const pickRows = async name => {
+    await blotter.locator('.blpsize [aria-label="Rows per page"]').click();
+    await blotter.getByRole('option', { name, exact: true }).click(); // bits-ui listbox is in-tree under the panel
+  };
+  await pickRows('25'); // bits-ui Select (A128)
   await expect(blotter.locator('.bltab tbody tr')).toHaveCount(25);
-  await blotter.locator('.blpsize select').selectOption('all'); // "All" shows every row + hides the pager nav
+  await pickRows('All'); // "All" shows every row + hides the pager nav
   await expect(blotter.locator('.blnav')).toHaveCount(0);
-  await blotter.locator('.blpsize select').selectOption('50'); // back to a paged view for the note test below
+  await pickRows('50'); // back to a paged view for the note test below
   // Inline note: editable, persists across a reload via Store.saveTradeMeta (trademeta).
   const note = blotter.locator('.bltab tbody tr .note').first();
   await note.fill('e2e blotter note');
@@ -456,8 +468,8 @@ test('staging (Svelte): grid modules reorder within the parallel grid (F26)', as
   // Open the Calendar module's menu → "Move left" is disabled (already first); "Move right" moves it.
   await page.locator('#sv-app .modgrid section.panel[data-key="cal"] .pmenubtn').click();
   const pop = page.locator('#sv-app .modgrid section.panel[data-key="cal"] .pmenupop');
-  await expect(pop.locator('button', { hasText: 'Move left' })).toBeDisabled();
-  await pop.locator('button', { hasText: 'Move right' }).click();
+  await expect(pop.getByRole('menuitem', { name: 'Move left' })).toBeDisabled();
+  await pop.getByRole('menuitem', { name: 'Move right' }).click();
   expect(await gridKeys()).toEqual(['cost', 'cal', 'adv']);
   // Persists across a reload (Store.local seam, staging-namespaced key).
   await page.reload({ waitUntil: 'networkidle' });
@@ -611,7 +623,7 @@ test('demo (Svelte): dashboard module headers have a menu (A71, promoted)', asyn
   await expect(page.locator('#sv-app .dash section.panel').first()).toBeVisible();
   await expect(page.locator('#sv-app .dash .pmenubtn').first()).toBeVisible();
   await page.locator('#sv-app .dash section.panel .pmenubtn').first().click();
-  await expect(page.locator('#sv-app .dash .pmenupop button')).toHaveCount(4);
+  await expect(page.locator('#sv-app .dash .pmenupop').getByRole('menuitem')).toHaveCount(4);
 });
 
 // A73 promoted to all surfaces (CH16): demo now also paginates the trades table.

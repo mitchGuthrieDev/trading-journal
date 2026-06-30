@@ -7,6 +7,7 @@
   import { onMount } from 'svelte';
   import SiteShell from '../lib/SiteShell.svelte';
   import { platformLabel } from '../../lib/format.ts';
+  import * as Select from '$ui/select';
 
   // Shapes of the admin-only JSON this page fetches (status override, versions, backlog). Local to
   // this view — they aren't part of the shared pure-logic core (src/lib/types.ts).
@@ -96,6 +97,10 @@
   const bkCats = $derived((bkData && bkData.categories) || []);
   const bkStatuses = $derived([...new Set(bkItems.map(i => i.status).filter(Boolean))].sort());
   const bkEfforts = $derived([...new Set(bkItems.map(i => i.effort).filter(Boolean))].sort());
+  // A128: '' = "All" maps to a sentinel (bits-ui Select treats '' as no-value); items resolve labels.
+  const FILT_ALL = '__all__';
+  const statusItems = $derived([{ value: FILT_ALL, label: 'All' }, ...bkStatuses.map(s => ({ value: s, label: s }))]);
+  const effortItems = $derived([{ value: FILT_ALL, label: 'All' }, ...bkEfforts.map(e => ({ value: e, label: e }))]);
   // Per-category counts always reflect full totals (project health), not the active filter.
   const bkCounts = $derived(
     bkCats.map((c: string) => {
@@ -318,48 +323,84 @@
     the others force a fixed state.
   </p>
 
-  <p class="curstate">
+  <p class="font-mono text-[13px] text-dim [&_b]:text-txt">
     {#if statusErr}Current: unavailable (deploy on Cloudflare to use){:else if status}Current: <b>{status.mode || 'auto'}</b>{#if status.label} — “{status.label}”{/if}{#if status.updatedAt} · updated {new Date(status.updatedAt).toLocaleString()}{/if}{:else}Current: loading…{/if}
   </p>
 
-  <p class="authnote">{authnote}</p>
-  <div class="adminkeyrow">
-    <div class="fld">
-      <label for="label">Custom label (optional)</label>
-      <input type="text" id="label" maxlength="40" placeholder="e.g. Back at 5pm ET" bind:value={label} />
+  <p class="m-0 mb-[10px] min-h-[14px] font-mono text-[11.5px] text-green">{authnote}</p>
+  <div class="mx-0 mt-2 mb-1 flex flex-wrap items-end gap-[10px]">
+    <div class="flex flex-col gap-[5px]">
+      <label class="text-[10.5px] tracking-[0.07em] text-faint uppercase" for="label">Custom label (optional)</label>
+      <input
+        class="min-w-[240px] rounded-[7px] border border-line bg-panel2 px-[10px] py-2 font-mono text-[13px] text-txt outline-none focus:border-accent"
+        type="text"
+        id="label"
+        maxlength="40"
+        placeholder="e.g. Back at 5pm ET"
+        bind:value={label}
+      />
     </div>
   </div>
 
   <!-- The admin credential is auto-issued as a short-lived token via Cloudflare Access (S3/S4). This
        manual field is a tucked-away fallback: only needed off-Access or if the token didn't issue. -->
-  <details class="advkey">
-    <summary>Advanced — manual admin key</summary>
-    <p class="advkey-note">
+  <details class="advkey mx-0 mt-[6px] mb-1 rounded-[9px] border border-line bg-panel2 px-3 py-0">
+    <summary class="cursor-pointer list-none py-[10px] text-[12px] tracking-[0.04em] text-faint uppercase select-none">Advanced — manual admin key</summary>
+    <p class="m-0 mb-[10px] text-[12px] leading-[1.5] text-dim [&_code]:font-mono [&_code]:text-txt">
       Auto-filled from Cloudflare Access. Enter the raw <code>ADMIN_KEY</code> here only if you're working off-Access or the token didn't
       issue.
     </p>
-    <div class="fld">
-      <label for="adminkey">Admin key</label>
-      <input type="password" id="adminkey" placeholder="ADMIN_KEY" autocomplete="off" bind:value={adminKey} />
+    <div class="m-0 mb-3 flex max-w-[320px] flex-col gap-[5px]">
+      <label class="text-[10.5px] tracking-[0.07em] text-faint uppercase" for="adminkey">Admin key</label>
+      <input
+        class="rounded-[7px] border border-line bg-panel px-[10px] py-2 font-mono text-[13px] text-txt outline-none focus:border-accent"
+        type="password"
+        id="adminkey"
+        placeholder="ADMIN_KEY"
+        autocomplete="off"
+        bind:value={adminKey}
+      />
     </div>
   </details>
 
-  <div class="modes">
+  <div class="mx-0 my-[14px] flex flex-wrap gap-[10px]">
     {#each MODES as md (md.m)}
-      <button class="modebtn" class:on={(status?.mode || 'auto') === md.m} data-mode={md.m} onclick={() => save(md.m)}>
-        <span class="d"></span>{md.label}
+      <button
+        class="inline-flex cursor-pointer items-center gap-2 rounded-[9px] border border-line bg-panel2 px-4 py-[10px] font-sans text-[13.5px] text-txt hover:border-accent {(status?.mode ||
+          'auto') === md.m
+          ? 'border-accent bg-panel'
+          : ''}"
+        data-mode={md.m}
+        onclick={() => save(md.m)}
+      >
+        <span
+          class="h-2 w-2 rounded-full {md.m === 'live'
+            ? 'bg-green'
+            : md.m === 'offline'
+              ? 'bg-red'
+              : md.m === 'maintenance'
+                ? 'bg-warn'
+                : 'bg-accent'}"
+        ></span>{md.label}
       </button>
     {/each}
   </div>
-  <p class="amsg {amsg.kind}">{amsg.text}</p>
+  <p class="mt-[10px] min-h-4 font-mono text-[12.5px] {amsg.kind === 'ok' ? 'text-green' : amsg.kind === 'err' ? 'text-red' : ''}">{amsg.text}</p>
 
   <h2>Staging environment</h2>
   <p>
     A 1:1 sandbox copy of the app on sample data, for trialling UI/behavior changes before they reach the main app. The page is gated by the
     admin key — this button carries it for you (sets a short-lived <code>bb_staging</code> cookie, then opens staging).
   </p>
-  <div class="modes"><button class="modebtn" onclick={launchStaging}><span class="d warn"></span>Launch staging env &rarr;</button></div>
-  <p class="amsg {stagemsg.kind}">{stagemsg.text}</p>
+  <div class="mx-0 my-[14px] flex flex-wrap gap-[10px]">
+    <button
+      class="inline-flex cursor-pointer items-center gap-2 rounded-[9px] border border-line bg-panel2 px-4 py-[10px] font-sans text-[13.5px] text-txt hover:border-accent"
+      onclick={launchStaging}><span class="h-2 w-2 rounded-full bg-warn"></span>Launch staging env &rarr;</button
+    >
+  </div>
+  <p class="mt-[10px] min-h-4 font-mono text-[12.5px] {stagemsg.kind === 'ok' ? 'text-green' : stagemsg.kind === 'err' ? 'text-red' : ''}">
+    {stagemsg.text}
+  </p>
 
   <h2>Platform versions</h2>
   <p>
@@ -367,7 +408,7 @@
     paths, and writes <code>data/versions.json</code> — the single source of truth every surface reads at load. The platform phase (Beta →
     stable) is derived from the prod major. There's nothing to set here.
   </p>
-  <p class="curstate">
+  <p class="font-mono text-[13px] text-dim [&_b]:text-txt">
     {#if verErr}Versions: unavailable{:else if versions}Prod (main + demo) <b>{versions.prod || '—'}</b> · Staging <b>{versions.staging || '—'}</b> · Platform <b>{platformLabel(versions.prod || '—')}</b>{:else}Versions: loading…{/if}
   </p>
 
@@ -376,13 +417,22 @@
     Server-side flags stored in KV; the app reads them at boot (<code>/api/config</code>). New flags must also be added to
     <code>DEFAULTS.flags</code> in <code>functions/api/config.js</code> (allow-list).
   </p>
-  <div class="flags">
+  <div class="mx-0 my-[10px] flex flex-col gap-[9px]">
     {#each FLAGS as f (f.key)}
-      <label class="flagrow"><input type="checkbox" bind:checked={flags[f.key]} /><span>{f.label}</span></label>
+      <label class="flex cursor-pointer items-center gap-[10px] text-[13.5px] text-txt"
+        ><input class="h-4 w-4 accent-[var(--accent)]" type="checkbox" bind:checked={flags[f.key]} /><span>{f.label}</span></label
+      >
     {/each}
   </div>
-  <div class="modes"><button class="modebtn" onclick={saveFlags}><span class="d accent"></span>Save flags</button></div>
-  <p class="amsg {flagmsg.kind}">{flagmsg.text}</p>
+  <div class="mx-0 my-[14px] flex flex-wrap gap-[10px]">
+    <button
+      class="inline-flex cursor-pointer items-center gap-2 rounded-[9px] border border-line bg-panel2 px-4 py-[10px] font-sans text-[13.5px] text-txt hover:border-accent"
+      onclick={saveFlags}><span class="h-2 w-2 rounded-full bg-accent"></span>Save flags</button
+    >
+  </div>
+  <p class="mt-[10px] min-h-4 font-mono text-[12.5px] {flagmsg.kind === 'ok' ? 'text-green' : flagmsg.kind === 'err' ? 'text-red' : ''}">
+    {flagmsg.text}
+  </p>
 
   <h2>Backlog</h2>
   <p>
@@ -390,201 +440,79 @@
     <code>data/backlog_archive.json</code> (filter by Status to see done items). Per-item prompts and done-notes live in the files but are not
     shown here.
   </p>
-  <div class="bkcounts">
+  <div class="mx-0 my-3 grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-[10px]">
     {#each bkCounts as c (c.cat)}
-      <div class="bkcount">
-        <div class="bk-cat">{c.cat}</div>
-        <div class="bk-nums">
-          <span class="bk-done">{c.done}</span><span class="bk-of">/ {c.tot} done</span>
-          <span class="bk-rem">{c.open} left{#if c.guard} · {c.guard} guard{/if}</span>
+      <div class="rounded-[9px] border border-line bg-panel2 px-3 py-[10px]">
+        <div class="mb-[6px] text-[10.5px] tracking-[0.05em] text-faint uppercase">{c.cat}</div>
+        <div class="flex items-baseline gap-[7px] font-mono">
+          <span class="text-[18px] font-semibold text-green">{c.done}</span><span class="text-[12.5px] text-dim">/ {c.tot} done</span>
+          <span class="ml-auto text-[11.5px] text-warn">{c.open} left{#if c.guard} · {c.guard} guard{/if}</span>
         </div>
-        <div class="bkbar"><i use:barWidth={c.pct}></i></div>
+        <div class="bkbar mt-2 h-[5px] overflow-hidden rounded-[3px] bg-line"><i use:barWidth={c.pct}></i></div>
       </div>
     {/each}
   </div>
   {#if bkData}
-    <div class="bktotal">
+    <div class="mx-0 mt-1 mb-4 font-mono text-[13px] text-dim [&_b]:text-txt">
       Overall: <b>{tDone}</b> done · <b>{tOpen}</b> remaining{#if tGuard} · {tGuard} guardrail{/if} · <b>{bkGrand ? Math.round((100 * tDone) / bkGrand) : 0}%</b>
       complete ({bkItems.length} items)
     </div>
   {/if}
-  <div class="bkfilters">
-    <div class="fld">
-      <label class="lbl" for="bk_fstatus">Status</label>
-      <select id="bk_fstatus" bind:value={fStatus}>
-        <option value="">All</option>
-        {#each bkStatuses as s}<option value={s}>{s}</option>{/each}
-      </select>
+  <div class="mx-0 mt-[14px] mb-[6px] flex flex-wrap items-end gap-[14px]">
+    <div class="flex flex-col gap-[5px]">
+      <span class="text-[10.5px] tracking-[0.07em] text-faint uppercase">Status</span>
+      <Select.Root type="single" value={fStatus || FILT_ALL} onValueChange={v => (fStatus = v === FILT_ALL ? '' : v)} items={statusItems}>
+        <Select.Trigger aria-label="Status" class="min-w-[150px]"><Select.Value /></Select.Trigger>
+        <Select.Content>
+          {#each statusItems as it (it.value)}<Select.Item value={it.value} label={it.label} />{/each}
+        </Select.Content>
+      </Select.Root>
     </div>
-    <div class="fld">
-      <label class="lbl" for="bk_feffort">Effort</label>
-      <select id="bk_feffort" bind:value={fEffort}>
-        <option value="">All</option>
-        {#each bkEfforts as e}<option value={e}>{e}</option>{/each}
-      </select>
+    <div class="flex flex-col gap-[5px]">
+      <span class="text-[10.5px] tracking-[0.07em] text-faint uppercase">Effort</span>
+      <Select.Root type="single" value={fEffort || FILT_ALL} onValueChange={v => (fEffort = v === FILT_ALL ? '' : v)} items={effortItems}>
+        <Select.Trigger aria-label="Effort" class="min-w-[150px]"><Select.Value /></Select.Trigger>
+        <Select.Content>
+          {#each effortItems as it (it.value)}<Select.Item value={it.value} label={it.label} />{/each}
+        </Select.Content>
+      </Select.Root>
     </div>
-    <button type="button" class="bkclear" onclick={clearFilters}>Clear filters</button>
-    <span class="bkfnote">Counts above are full totals; filters narrow the list only.</span>
+    <button
+      type="button"
+      class="cursor-pointer rounded-[7px] border border-line bg-panel2 px-3 py-2 font-sans text-[12.5px] text-dim hover:border-accent hover:text-txt"
+      onclick={clearFilters}>Clear filters</button
+    >
+    <span class="ml-auto self-center font-mono text-[11px] text-faint">Counts above are full totals; filters narrow the list only.</span>
   </div>
-  <div class="bklist">
+  <div>
     {#each bkGroups as g (g.cat)}
-      <div class="bkgroup">{g.cat}</div>
+      <div class="mx-0 mt-4 mb-1 text-[10.5px] tracking-[0.06em] text-faint uppercase">{g.cat}</div>
       {#each g.items as i (i.id)}
-        <div class="bkrow is-{i.status}">
-          <span class="bk-id">{i.id}</span>
-          <span class="bk-title">{i.title}</span>
-          <span class="bk-eff">{i.effort}</span>
-          <span class="bk-badge {i.status}">{badgeText(i.status)}</span>
+        <div class="flex items-center gap-[10px] border-b border-line px-[2px] py-[7px] text-[13.5px]">
+          <span class="min-w-9 font-mono text-[11.5px] text-dim">{i.id}</span>
+          <span class="flex-1 {i.status === 'done' ? 'text-dim line-through' : 'text-txt'}">{i.title}</span>
+          <span class="font-mono text-[11px] text-faint">{i.effort}</span>
+          <span
+            class="rounded-full border px-2 py-[2px] font-mono text-[10px] tracking-[0.04em] uppercase {i.status === 'done'
+              ? 'border-[rgba(63,185,80,0.4)] text-green'
+              : i.status === 'open'
+                ? 'border-[rgba(227,179,65,0.4)] text-warn'
+                : i.status === 'guardrail'
+                  ? 'border-[rgba(106,160,255,0.4)] text-accent'
+                  : 'border-line text-dim'}">{badgeText(i.status)}</span
+          >
         </div>
       {/each}
     {:else}
-      {#if bkData}<div class="bktotal">No items match these filters.</div>{/if}
+      {#if bkData}<div class="mx-0 mt-1 mb-4 font-mono text-[13px] text-dim">No items match these filters.</div>{/if}
     {/each}
   </div>
-  <p class="amsg {bkErr ? 'err' : ''}">{bkErr ? 'Could not load data/backlog.json.' : ''}</p>
+  <p class="mt-[10px] min-h-4 font-mono text-[12.5px] {bkErr ? 'text-red' : ''}">{bkErr ? 'Could not load data/backlog.json.' : ''}</p>
 </SiteShell>
 
 <style>
-  .adminkeyrow {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    margin: 8px 0 4px;
-  }
-  .adminkeyrow .fld {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  .adminkeyrow label {
-    font-size: 10.5px;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--faint);
-  }
-  .adminkeyrow input {
-    background: var(--panel2);
-    border: 1px solid var(--line);
-    color: var(--txt);
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 8px 10px;
-    border-radius: 7px;
-    outline: none;
-    min-width: 240px;
-  }
-  .adminkeyrow input:focus {
-    border-color: var(--accent);
-  }
-  .modes {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin: 14px 0;
-  }
-  .modebtn {
-    cursor: pointer;
-    border: 1px solid var(--line);
-    background: var(--panel2);
-    color: var(--txt);
-    font-family: inherit;
-    font-size: 13.5px;
-    padding: 10px 16px;
-    border-radius: 9px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .modebtn:hover {
-    border-color: var(--accent);
-  }
-  .modebtn .d {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--faint);
-  }
-  .modebtn.on {
-    border-color: var(--accent);
-    background: var(--panel);
-  }
-  .modebtn[data-mode='live'] .d {
-    background: var(--green);
-  }
-  .modebtn[data-mode='offline'] .d {
-    background: var(--red);
-  }
-  .modebtn[data-mode='maintenance'] .d {
-    background: var(--warn);
-  }
-  .modebtn[data-mode='auto'] .d {
-    background: var(--accent);
-  }
-  .curstate {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--dim);
-  }
-  .curstate b {
-    color: var(--txt);
-  }
-  .amsg {
-    font-family: var(--mono);
-    font-size: 12.5px;
-    margin-top: 10px;
-    min-height: 16px;
-  }
-  .amsg.ok {
-    color: var(--green);
-  }
-  .amsg.err {
-    color: var(--red);
-  }
-  .flags {
-    display: flex;
-    flex-direction: column;
-    gap: 9px;
-    margin: 10px 0;
-  }
-  .flagrow {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13.5px;
-    color: var(--txt);
-    cursor: pointer;
-  }
-  .flagrow input {
-    width: 16px;
-    height: 16px;
-    accent-color: var(--accent);
-  }
-  .authnote {
-    font-family: var(--mono);
-    font-size: 11.5px;
-    color: var(--green);
-    margin: 0 0 10px;
-    min-height: 14px;
-  }
-  /* advanced (tucked-away) manual admin-key fallback */
-  .advkey {
-    margin: 6px 0 4px;
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    background: var(--panel2);
-    padding: 0 12px;
-  }
-  .advkey > summary {
-    cursor: pointer;
-    list-style: none;
-    padding: 10px 0;
-    font-size: 12px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--faint);
-    user-select: none;
-  }
+  /* advanced (tucked-away) manual admin-key fallback — disclosure-triangle pseudo-elements + the
+     closed-collapse rule stay scoped (no Tailwind equivalent for ::before content / details state). */
   .advkey > summary::-webkit-details-marker {
     display: none;
   }
@@ -595,224 +523,17 @@
   .advkey[open] > summary::before {
     content: '\25BE ';
   }
-  /* explicitly hide content when closed — our .fld{display:flex} below would otherwise out-specify
-     the UA rule that collapses <details>, leaking the field out of the box */
+  /* explicitly hide content when closed — the field's display:flex would otherwise out-specify the
+     UA rule that collapses <details>, leaking the field out of the box */
   .advkey:not([open]) > :not(summary) {
     display: none;
   }
-  .advkey .advkey-note {
-    font-size: 12px;
-    color: var(--dim);
-    line-height: 1.5;
-    margin: 0 0 10px;
-  }
-  .advkey .advkey-note code {
-    font-family: var(--mono);
-    color: var(--txt);
-  }
-  .advkey .fld {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    margin: 0 0 12px;
-    max-width: 320px;
-  }
-  .advkey .fld label {
-    font-size: 10.5px;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--faint);
-  }
-  .advkey .fld input {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    color: var(--txt);
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 8px 10px;
-    border-radius: 7px;
-    outline: none;
-  }
-  .advkey .fld input:focus {
-    border-color: var(--accent);
-  }
-  /* backlog module */
-  .bkcounts {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-    gap: 10px;
-    margin: 12px 0;
-  }
-  .bkcount {
-    border: 1px solid var(--line);
-    background: var(--panel2);
-    border-radius: 9px;
-    padding: 10px 12px;
-  }
-  .bkcount .bk-cat {
-    font-size: 10.5px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--faint);
-    margin-bottom: 6px;
-  }
-  .bkcount .bk-nums {
-    display: flex;
-    align-items: baseline;
-    gap: 7px;
-    font-family: var(--mono);
-  }
-  .bkcount .bk-done {
-    color: var(--green);
-    font-size: 18px;
-    font-weight: 600;
-  }
-  .bkcount .bk-of {
-    color: var(--dim);
-    font-size: 12.5px;
-  }
-  .bkcount .bk-rem {
-    color: var(--warn);
-    font-size: 11.5px;
-    margin-left: auto;
-  }
-  .bkbar {
-    height: 5px;
-    border-radius: 3px;
-    background: var(--line);
-    margin-top: 8px;
-    overflow: hidden;
-  }
+  /* backlog progress-bar fill — width is driven through the CSSOM (--w via the barWidth action, A55),
+     so this stays scoped rather than becoming a static utility. */
   .bkbar i {
     display: block;
     height: 100%;
     background: var(--green);
     width: var(--w);
-  }
-  .bktotal {
-    margin: 4px 0 16px;
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--dim);
-  }
-  .bktotal b {
-    color: var(--txt);
-  }
-  .bkgroup {
-    margin: 16px 0 4px;
-    font-size: 10.5px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--faint);
-  }
-  .bkrow {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 7px 2px;
-    border-bottom: 1px solid var(--line);
-    font-size: 13.5px;
-  }
-  .bkrow .bk-id {
-    font-family: var(--mono);
-    font-size: 11.5px;
-    color: var(--dim);
-    min-width: 36px;
-  }
-  .bkrow .bk-title {
-    color: var(--txt);
-    flex: 1;
-  }
-  .bkrow.is-done .bk-title {
-    color: var(--dim);
-    text-decoration: line-through;
-  }
-  /* backlog filters (F9) */
-  .bkfilters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    align-items: flex-end;
-    margin: 14px 0 6px;
-  }
-  .bkfilters .fld {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  .bkfilters label.lbl {
-    font-size: 10.5px;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--faint);
-  }
-  .bkfilters select {
-    background: var(--panel2);
-    border: 1px solid var(--line);
-    color: var(--txt);
-    font-family: inherit;
-    font-size: 13px;
-    padding: 7px 9px;
-    border-radius: 7px;
-    outline: none;
-    min-width: 150px;
-  }
-  .bkfilters select:focus {
-    border-color: var(--accent);
-  }
-  .bkfilters .bkclear {
-    cursor: pointer;
-    border: 1px solid var(--line);
-    background: var(--panel2);
-    color: var(--dim);
-    font-family: inherit;
-    font-size: 12.5px;
-    padding: 8px 12px;
-    border-radius: 7px;
-  }
-  .bkfilters .bkclear:hover {
-    border-color: var(--accent);
-    color: var(--txt);
-  }
-  .bkfilters .bkfnote {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--faint);
-    margin-left: auto;
-    align-self: center;
-  }
-  .bk-eff {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--faint);
-  }
-  .bk-badge {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    padding: 2px 8px;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    color: var(--dim);
-  }
-  .bk-badge.done {
-    color: var(--green);
-    border-color: rgba(63, 185, 80, 0.4);
-  }
-  .bk-badge.open {
-    color: var(--warn);
-    border-color: rgba(227, 179, 65, 0.4);
-  }
-  .bk-badge.guardrail {
-    color: var(--accent);
-    border-color: rgba(106, 160, 255, 0.4);
-  }
-  /* A55/S18: extracted from former inline style="" attributes (mode-indicator dots). */
-  .d.warn {
-    background: var(--warn);
-  }
-  .d.accent {
-    background: var(--accent);
   }
 </style>
