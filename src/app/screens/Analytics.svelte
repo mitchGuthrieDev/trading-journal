@@ -1,16 +1,22 @@
+<script lang="ts" module>
+  export type { Kpi, DistBar, SignedBar, SymbolRow, StatRow } from '../lib/analytics.ts';
+</script>
+
 <script lang="ts">
-  // Analytics surface mockup (UI redesign, Phase 2 — 3rd screen). A curated, fixed grid of analytics
-  // modules pairing the deeper compute() metrics with visual charts: a KPI highlights strip, P&L
-  // distribution, drawdown (underwater) curve, time-of-day + day-of-week performance, per-symbol and
-  // long/short breakdowns, and the full advanced-stats grid. All charts are inline SVG (geometry attrs
-  // + fill-*/stroke-* utilities — no inline style, CSP-safe). Representative static data; color only
-  // in the P&L data.
+  // Analytics surface (UI redesign). A curated, fixed grid of analytics modules pairing the deeper
+  // compute() metrics with visual charts: a KPI highlights strip, P&L distribution, drawdown
+  // (underwater) curve, time-of-day + day-of-week performance, per-symbol and long/short breakdowns,
+  // and the full advanced-stats grid. All charts are inline SVG (geometry attrs + fill-*/stroke-*
+  // utilities — no inline style, CSP-safe). Data comes from props (the real analytics view-model on
+  // the staging app); the defaults below are the /dev mock. Color only in the P&L data.
   import { cn } from '$lib/utils';
   import * as Card from '$lib/components/ui/card';
+  import type { Kpi, DistBar, SignedBar, SymbolRow, StatRow } from '../lib/analytics.ts';
 
   const money = (n: number) => `${n >= 0 ? '+' : '-'}$${Math.abs(n).toLocaleString()}`;
 
-  const kpis: { label: string; value: string; tone?: 'pos' | 'neg' }[] = [
+  // ── Mock defaults (the /dev preview). ──────────────────────────────────────────────────────────
+  const MOCK_KPIS: Kpi[] = [
     { label: 'Net P&L', value: '+$79,467', tone: 'pos' },
     { label: 'Expectancy / trade', value: '+$51.64', tone: 'pos' },
     { label: 'Profit factor', value: '3.01' },
@@ -18,71 +24,101 @@
     { label: 'Sharpe (daily)', value: '0.80' },
     { label: 'Recovery factor', value: '12.4' },
   ];
-
-  // Per-trade P&L distribution (counts per bucket).
-  const dist = [
-    { label: '<-2h', value: 6, neg: true },
-    { label: '-2h..-1h', value: 14, neg: true },
-    { label: '-1h..0', value: 33, neg: true },
-    { label: '0..1h', value: 48, neg: false },
-    { label: '1h..2h', value: 39, neg: false },
-    { label: '2h..3h', value: 22, neg: false },
-    { label: '3h..4h', value: 11, neg: false },
-    { label: '>4h', value: 7, neg: false },
+  const MOCK_DIST: DistBar[] = [
+    { label: '<-200', value: 6, neg: true }, { label: '-200..-100', value: 14, neg: true },
+    { label: '-100..-50', value: 33, neg: true }, { label: '-50..0', value: 48, neg: true },
+    { label: '0..50', value: 39, neg: false }, { label: '50..100', value: 22, neg: false },
+    { label: '100..200', value: 11, neg: false }, { label: '>200', value: 7, neg: false },
   ];
-  const wins = 892;
-  const losses = 647;
-  const winShare = Math.round((wins / (wins + losses)) * 100);
-
-  // Signed avg P&L by hour-of-day and by weekday.
-  const hours = [
+  const MOCK_HOURS: SignedBar[] = [
     { label: '09', value: 48 }, { label: '10', value: 86 }, { label: '11', value: 22 },
     { label: '12', value: -14 }, { label: '13', value: 9 }, { label: '14', value: 37 }, { label: '15', value: -6 },
   ];
-  const wdays = [
+  const MOCK_WDAYS: SignedBar[] = [
     { label: 'Mon', value: -8 }, { label: 'Tue', value: 42 }, { label: 'Wed', value: 71 },
     { label: 'Thu', value: 33 }, { label: 'Fri', value: 19 },
   ];
-
-  const symbols = [
-    { sym: 'ES', trades: 612, win: 59, pnl: 38420 },
-    { sym: 'NQ', trades: 441, win: 57, pnl: 24180 },
-    { sym: 'CL', trades: 233, win: 55, pnl: 9870 },
-    { sym: 'GC', trades: 151, win: 61, pnl: 6120 },
+  const MOCK_SYMBOLS: SymbolRow[] = [
+    { sym: 'ES', trades: 612, win: 59, pnl: 38420 }, { sym: 'NQ', trades: 441, win: 57, pnl: 24180 },
+    { sym: 'CL', trades: 233, win: 55, pnl: 9870 }, { sym: 'GC', trades: 151, win: 61, pnl: 6120 },
     { sym: 'MES', trades: 102, win: 52, pnl: 877 },
   ];
-  const maxSym = Math.max(...symbols.map(s => Math.abs(s.pnl)));
-  const longS = { pnl: 51240, n: 842 };
-  const shortS = { pnl: 28227, n: 697 };
-  const longShare = Math.round((longS.n / (longS.n + shortS.n)) * 100);
-
-  const statRows: { k: string; v: string; tone?: 'pos' | 'neg' }[] = [
-    { k: 'Payoff ratio (avg win / avg loss)', v: '2.18' },
-    { k: 'Average win', v: '+$133.39', tone: 'pos' },
-    { k: 'Average loss', v: '-$61.08', tone: 'neg' },
-    { k: 'Expectancy / trade', v: '+$51.64', tone: 'pos' },
-    { k: 'Per-trade std dev', v: '$182.55' },
-    { k: 'Sortino (daily)', v: '1.24' },
-    { k: 'Recovery factor (net / max DD)', v: '12.4' },
-    { k: 'Profit concentration (top 5)', v: '18%' },
-    { k: 'Max consecutive wins', v: '9' },
-    { k: 'Max consecutive losses', v: '4' },
-    { k: 'Avg hold time', v: '7m 42s' },
-    { k: 'Largest winning streak', v: '+$1,940', tone: 'pos' },
-    { k: 'Largest losing streak', v: '-$612', tone: 'neg' },
-    { k: 'Best weekday', v: 'Wed · +$71/trade', tone: 'pos' },
-    { k: 'Worst weekday', v: 'Mon · -$8/trade', tone: 'neg' },
-    { k: 'Gross profit', v: '+$118,402', tone: 'pos' },
-    { k: 'Gross loss', v: '-$38,935', tone: 'neg' },
-    { k: 'Avg trades / day', v: '3.5' },
+  const MOCK_STATS: StatRow[] = [
+    { k: 'Payoff ratio (avg win / avg loss)', v: '2.18' }, { k: 'Average win', v: '+$133.39', tone: 'pos' },
+    { k: 'Average loss', v: '-$61.08', tone: 'neg' }, { k: 'Expectancy / trade', v: '+$51.64', tone: 'pos' },
+    { k: 'Per-trade std dev', v: '$182.55' }, { k: 'Sortino (daily)', v: '1.24' },
+    { k: 'Recovery factor (net / max DD)', v: '12.4' }, { k: 'Profit concentration (top 5)', v: '18%' },
+    { k: 'Max consecutive wins', v: '9' }, { k: 'Max consecutive losses', v: '4' },
+    { k: 'Avg hold time', v: '7m' }, { k: 'Largest winning streak', v: '+$1,940', tone: 'pos' },
+    { k: 'Largest losing streak', v: '-$612', tone: 'neg' }, { k: 'Best weekday', v: 'Wed · +$71/trade', tone: 'pos' },
+    { k: 'Worst weekday', v: 'Mon · -$8/trade', tone: 'neg' }, { k: 'Gross profit', v: '+$118,402', tone: 'pos' },
+    { k: 'Gross loss', v: '-$38,935', tone: 'neg' }, { k: 'Avg trades / day', v: '3.5' },
   ];
+  // A representative underwater curve for the /dev preview.
+  const MOCK_CURVE = [0, 8, 2, 14, 6, 22, 30, 12, 4, 18, 9, 2].map((_, i, a) => a.slice(0, i + 1).reduce((s, v) => s + v, 0));
+
+  interface Props {
+    kpis?: Kpi[];
+    dist?: DistBar[];
+    wins?: number;
+    losses?: number;
+    curve?: number[];
+    maxDD?: number;
+    maxDDpct?: number;
+    long?: { pnl: number; n: number };
+    short?: { pnl: number; n: number };
+    hours?: SignedBar[];
+    wdays?: SignedBar[];
+    symbols?: SymbolRow[];
+    statRows?: StatRow[];
+  }
+  let {
+    kpis = MOCK_KPIS,
+    dist = MOCK_DIST,
+    wins = 892,
+    losses = 647,
+    curve = MOCK_CURVE,
+    maxDD = 502.75,
+    maxDDpct = 0.8,
+    long = { pnl: 51240, n: 842 },
+    short = { pnl: 28227, n: 697 },
+    hours = MOCK_HOURS,
+    wdays = MOCK_WDAYS,
+    symbols = MOCK_SYMBOLS,
+    statRows = MOCK_STATS,
+  }: Props = $props();
+
+  const winShare = $derived(wins + losses ? Math.round((wins / (wins + losses)) * 100) : 0);
+  const longShare = $derived(long.n + short.n ? Math.round((long.n / (long.n + short.n)) * 100) : 0);
+  const maxSym = $derived(Math.max(1, ...symbols.map(s => Math.abs(s.pnl))));
+
+  // Underwater (drawdown) series from the equity curve: depth = running peak − equity, normalized.
+  // Uses a loop (not Math.max(...curve)) so a large fills export can't overflow the call stack.
+  const ddPath = $derived.by(() => {
+    if (curve.length < 2) return { area: '', line: '' };
+    let peak = curve[0],
+      maxd = 0;
+    const depth = curve.map(v => {
+      if (v > peak) peak = v;
+      const d = peak - v;
+      if (d > maxd) maxd = d;
+      return d;
+    });
+    const span = maxd || 1;
+    const W = 100,
+      H = 50;
+    const X = (i: number) => (i / (curve.length - 1)) * W;
+    const Y = (d: number) => 1 + (d / span) * (H - 3);
+    const line = depth.map((d, i) => `${i === 0 ? 'M' : 'L'}${X(i).toFixed(2)} ${Y(d).toFixed(2)}`).join(' ');
+    return { line, area: `M0 0 ${line.replace(/^M/, 'L')} L${W} 0 Z` };
+  });
 </script>
 
 {#snippet head(title: string)}
   <div class="border-b border-border px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</div>
 {/snippet}
 
-{#snippet countBars(items: { label: string; value: number; neg: boolean }[])}
+{#snippet countBars(items: DistBar[])}
   {@const max = Math.max(1, ...items.map(d => d.value))}
   {@const step = 100 / items.length}
   <svg viewBox="0 0 100 60" class="h-32 w-full" preserveAspectRatio="none" aria-hidden="true">
@@ -97,9 +133,9 @@
   </div>
 {/snippet}
 
-{#snippet signedBars(items: { label: string; value: number }[])}
+{#snippet signedBars(items: SignedBar[])}
   {@const max = Math.max(1, ...items.map(d => Math.abs(d.value)))}
-  {@const step = 100 / items.length}
+  {@const step = 100 / Math.max(1, items.length)}
   <svg viewBox="0 0 100 60" class="h-32 w-full" preserveAspectRatio="none" aria-hidden="true">
     <line x1="0" y1="30" x2="100" y2="30" class="stroke-border" stroke-width="0.5" />
     {#each items as d, i (i)}
@@ -152,12 +188,12 @@
       <Card.Content>
         <svg viewBox="0 0 100 50" class="h-32 w-full" preserveAspectRatio="none" aria-hidden="true">
           <line x1="0" y1="0.5" x2="100" y2="0.5" class="stroke-border" stroke-width="0.5" />
-          <path d="M0 0 L0 8 L12 14 L20 6 L30 22 L42 30 L55 12 L68 4 L80 18 L92 9 L100 2 L100 0 Z" class="fill-destructive/20" />
-          <path d="M0 8 L12 14 L20 6 L30 22 L42 30 L55 12 L68 4 L80 18 L92 9 L100 2" fill="none" class="stroke-destructive" stroke-width="0.7" />
+          <path d={ddPath.area} class="fill-destructive/20" />
+          <path d={ddPath.line} fill="none" class="stroke-destructive" stroke-width="0.7" />
         </svg>
         <div class="mt-2 flex justify-between text-[11px] text-muted-foreground">
-          <span>Max drawdown <span class="text-destructive">-$502.75</span></span>
-          <span>0.8% of peak</span>
+          <span>Max drawdown <span class="text-destructive">{maxDD > 0 ? `-${money(maxDD).slice(1)}` : '$0'}</span></span>
+          <span>{maxDDpct.toFixed(1)}% of peak</span>
         </div>
       </Card.Content>
     </Card.Root>
@@ -168,12 +204,12 @@
       <Card.Content>
         <div class="grid grid-cols-2 gap-2">
           <div class="rounded-md border border-border bg-background px-3 py-2">
-            <div class="text-[11px] text-muted-foreground">Long · {longS.n}</div>
-            <div class="mt-0.5 text-sm font-semibold tabular-nums text-chart-2">{money(longS.pnl)}</div>
+            <div class="text-[11px] text-muted-foreground">Long · {long.n}</div>
+            <div class={cn('mt-0.5 text-sm font-semibold tabular-nums', long.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{money(long.pnl)}</div>
           </div>
           <div class="rounded-md border border-border bg-background px-3 py-2">
-            <div class="text-[11px] text-muted-foreground">Short · {shortS.n}</div>
-            <div class="mt-0.5 text-sm font-semibold tabular-nums text-chart-2">{money(shortS.pnl)}</div>
+            <div class="text-[11px] text-muted-foreground">Short · {short.n}</div>
+            <div class={cn('mt-0.5 text-sm font-semibold tabular-nums', short.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{money(short.pnl)}</div>
           </div>
         </div>
         <svg viewBox="0 0 100 8" class="mt-3 h-2 w-full" preserveAspectRatio="none" aria-hidden="true">

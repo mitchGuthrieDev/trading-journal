@@ -8,13 +8,13 @@
   import AppShell from '$lib/components/shell/AppShell.svelte';
   import { Button } from '$lib/components/ui/button';
   import { navSections, navItems, navLabel } from './nav';
-  import Dashboard from './screens/Dashboard.svelte';
-  import Calendar from './screens/Calendar.svelte';
-  import Analytics from './screens/Analytics.svelte';
-  import Blotter from './screens/Blotter.svelte';
-  import CsvLibrary from './screens/CsvLibrary.svelte';
-  import TradeEditor from './screens/TradeEditor.svelte';
-  import Reports from './screens/Reports.svelte';
+  import Dashboard from '../app/screens/Dashboard.svelte';
+  import Calendar from '../app/screens/Calendar.svelte';
+  import Analytics from '../app/screens/Analytics.svelte';
+  import Blotter from '../app/screens/Blotter.svelte';
+  import CsvLibrary from '../app/screens/CsvLibrary.svelte';
+  import TradeEditor from '../app/screens/TradeEditor.svelte';
+  import Reports from '../app/screens/Reports.svelte';
   import Placeholder from './screens/Placeholder.svelte';
 
   // Screens are registered here as they're built; unregistered keys fall back to the Placeholder.
