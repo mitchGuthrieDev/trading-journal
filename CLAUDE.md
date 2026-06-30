@@ -136,8 +136,9 @@ So:
   (`@font-face`, variable woff2 in `src/assets/fonts/`, CSP font-src 'self') is the primary UI
   typeface — both `--font-sans` and `--font-mono` resolve to it. `tw-animate-css` supplies animations.
 - **UI primitives = canonical shadcn-svelte at `$lib/components/ui/` (ADR-002).** `button`, `badge`,
-  `card`, `checkbox`, `input`, `table`, `dialog`, `dropdown-menu`, `popover`, `select` — composed over
-  **bits-ui v2** with `data-slot` attrs and `cn` from `$lib/utils`. Use these for dialogs/menus/popovers/selects instead of hand-rolling a11y; you
+  `card`, `checkbox`, `input`, `textarea`, `label`, `switch`, `table`, `tabs`, `tooltip`, `breadcrumb`,
+  `separator`, `skeleton`, `dialog`, `sheet`, `alert-dialog`, `dropdown-menu`, `popover`, `select` —
+  composed over **bits-ui v2** with `data-slot` attrs and `cn` from `$lib/utils`. Use these for dialogs/menus/popovers/selects instead of hand-rolling a11y; you
   **own the source**, so customize them in place. They render canonically (Dialog/menus/popover/select
   **portal to body**). Add/maintain them with the **shadcn-svelte CLI** — `components.json` is wired,
   so `npx shadcn-svelte add <name>` works. **Icons = [`@lucide/svelte`](https://lucide.dev)** (the
@@ -150,8 +151,9 @@ So:
   specs + `_headers` green. **No Tailwind preflight** ships (tailwind.css imports only theme +
   utilities, not preflight — to avoid resetting the hand-styled app/site), so native form controls
   keep their UA chrome: a raw `<button>` shows a light UA background unless a `bg-*` utility overrides
-  it. The dev/redesign surfaces neutralize this with a `[data-mode='dev'] button` reset in
-  tailwind.css; elsewhere, give bare buttons an explicit background.
+  it (and a bare `<a>` gets UA blue + underline). The dev/redesign surfaces neutralize both with
+  `[data-mode='dev'] button`/`a` resets in tailwind.css; elsewhere, give bare buttons/links explicit
+  styling.
 - **Marketing/info site = Svelte SSG (A69).** `index/howto/roadmap/changelog/legal/admin.html` are
   hand-authored, marker-free **templates** (head meta + `<div id="app"><!--ssg-outlet--></div>`
   + a client-entry `<script>`). At build time [`vite-ssg.mjs`](scripts/vite-ssg.mjs) server-renders each page
@@ -287,7 +289,9 @@ conforms to the rules below; keep it that way.
       format.ts         shared esc/platformLabel + version-badge IIFE (ex assets/util.js — A76)
       types.ts          shared TS interfaces (Trade/Fill/CostModel/Metrics/StoreLike/… — A61)
     components/ui/      canonical shadcn-svelte primitives (ADR-002): button, badge, card, checkbox,
-                        input, table, dialog, dropdown-menu, popover, select — composed over bits-ui v2
+                        input, textarea, label, switch, table, tabs, tooltip, breadcrumb, separator,
+                        skeleton, dialog, sheet, alert-dialog, dropdown-menu, popover, select (bits-ui v2).
+                        CLI registry is egress-blocked → vendor new ones by hand (canonical source)
     components/shell/   reusable sidebar app frame (UI redesign): AppShell.svelte (rail + content
                         column) + SidebarNav.svelte (data-driven nav rail) — every UI mockup sits inside
     utils.ts            cn() class composer (clsx + tailwind-merge) — `$lib/utils`

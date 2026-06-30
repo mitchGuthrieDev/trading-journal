@@ -15,6 +15,16 @@
   import { Input } from '$lib/components/ui/input';
   import * as Card from '$lib/components/ui/card';
   import * as Table from '$lib/components/ui/table';
+  import * as Tabs from '$lib/components/ui/tabs';
+  import * as Tooltip from '$lib/components/ui/tooltip';
+  import * as Sheet from '$lib/components/ui/sheet';
+  import * as AlertDialog from '$lib/components/ui/alert-dialog';
+  import * as Breadcrumb from '$lib/components/ui/breadcrumb';
+  import { Switch } from '$lib/components/ui/switch';
+  import { Label } from '$lib/components/ui/label';
+  import { Textarea } from '$lib/components/ui/textarea';
+  import { Separator } from '$lib/components/ui/separator';
+  import { Skeleton } from '$lib/components/ui/skeleton';
   import * as Dialog from '$lib/components/ui/dialog';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as Popover from '$lib/components/ui/popover';
@@ -76,6 +86,10 @@
   let dialogOpen = $state(false);
   let cbA = $state(true);
   let cbB = $state(false);
+  let switchOn = $state(true);
+  let tabValue = $state('overview');
+  let sheetOpen = $state(false);
+  let alertOpen = $state(false);
   let showTransition = $state(true);
   type Tx = 'fade' | 'fly' | 'slide';
   let txKind = $state<Tx>('fade');
@@ -201,12 +215,103 @@
   </Card.Root>
 
   <!-- ── Form controls ─────────────────────────────────────────────────────────────────────── -->
-  {@render section('Form controls', 'Input + Checkbox (bits-ui).')}
-  <div class="flex flex-wrap items-center gap-6">
-    <Input placeholder="Search…" class="w-56" />
-    <label class="flex items-center gap-2 text-sm"><Checkbox bind:checked={cbA} /> Checked</label>
-    <label class="flex items-center gap-2 text-sm"><Checkbox bind:checked={cbB} /> Unchecked</label>
-    <label class="flex items-center gap-2 text-sm text-muted-foreground"><Checkbox disabled /> Disabled</label>
+  {@render section('Form controls', 'Input, Textarea, Label, Checkbox, Switch (bits-ui).')}
+  <div class="flex flex-wrap items-start gap-6">
+    <div class="grid gap-1.5">
+      <Label for="sg-input">Label</Label>
+      <Input id="sg-input" placeholder="Search…" class="w-56" />
+    </div>
+    <Textarea placeholder="Notes…" class="w-56" />
+    <div class="flex flex-col gap-3 pt-6">
+      <Label class="gap-2"><Checkbox bind:checked={cbA} /> Checkbox checked</Label>
+      <Label class="gap-2"><Checkbox bind:checked={cbB} /> Checkbox unchecked</Label>
+      <Label class="gap-2"><Switch bind:checked={switchOn} /> Switch</Label>
+    </div>
+  </div>
+
+  <!-- ── Tabs ──────────────────────────────────────────────────────────────────────────────── -->
+  {@render section('Tabs', 'value-bound segmented sections.')}
+  <Tabs.Root bind:value={tabValue} class="max-w-md">
+    <Tabs.List>
+      <Tabs.Trigger value="overview">Overview</Tabs.Trigger>
+      <Tabs.Trigger value="costs">Costs</Tabs.Trigger>
+      <Tabs.Trigger value="tax">Tax</Tabs.Trigger>
+    </Tabs.List>
+    <Tabs.Content value="overview" class="pt-2 text-sm text-muted-foreground">Overview panel content.</Tabs.Content>
+    <Tabs.Content value="costs" class="pt-2 text-sm text-muted-foreground">Costs panel content.</Tabs.Content>
+    <Tabs.Content value="tax" class="pt-2 text-sm text-muted-foreground">Tax panel content.</Tabs.Content>
+  </Tabs.Root>
+
+  <!-- ── Tooltip ───────────────────────────────────────────────────────────────────────────── -->
+  {@render section('Tooltip', 'Wrap triggers in Tooltip.Provider.')}
+  <Tooltip.Provider>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        {#snippet child({ props })}
+          <Button {...props} variant="outline">Hover me</Button>
+        {/snippet}
+      </Tooltip.Trigger>
+      <Tooltip.Content>Tooltip text</Tooltip.Content>
+    </Tooltip.Root>
+  </Tooltip.Provider>
+
+  <!-- ── Breadcrumb · Separator · Skeleton ─────────────────────────────────────────────────── -->
+  {@render section('Breadcrumb, Separator, Skeleton', 'Navigation + layout primitives.')}
+  <Breadcrumb.Root>
+    <Breadcrumb.List>
+      <Breadcrumb.Item><Breadcrumb.Link href="/app/">Dashboard</Breadcrumb.Link></Breadcrumb.Item>
+      <Breadcrumb.Separator />
+      <Breadcrumb.Item><Breadcrumb.Page>Blotter</Breadcrumb.Page></Breadcrumb.Item>
+    </Breadcrumb.List>
+  </Breadcrumb.Root>
+  <div class="flex items-center gap-3 text-sm text-muted-foreground">left <Separator orientation="vertical" class="h-4" /> right</div>
+  <Separator />
+  <div class="flex items-center gap-3">
+    <Skeleton class="size-10 rounded-full" />
+    <div class="grid gap-2">
+      <Skeleton class="h-3 w-40" />
+      <Skeleton class="h-3 w-24" />
+    </div>
+  </div>
+
+  <!-- ── Sheet · Alert dialog ──────────────────────────────────────────────────────────────── -->
+  {@render section('Sheet & Alert dialog', 'Slide-over sheet + confirm dialog (portal to <body>).')}
+  <div class="flex flex-wrap gap-3">
+    <Sheet.Root bind:open={sheetOpen}>
+      <Sheet.Trigger>
+        {#snippet child({ props })}
+          <Button {...props} variant="outline">Open sheet</Button>
+        {/snippet}
+      </Sheet.Trigger>
+      <Sheet.Content side="right">
+        <Sheet.Header>
+          <Sheet.Title>Sheet title</Sheet.Title>
+          <Sheet.Description>A right-side slide-over panel.</Sheet.Description>
+        </Sheet.Header>
+        <div class="p-4 text-sm text-muted-foreground">Sheet body content.</div>
+        <Sheet.Footer>
+          <Button onclick={() => (sheetOpen = false)}>Done</Button>
+        </Sheet.Footer>
+      </Sheet.Content>
+    </Sheet.Root>
+
+    <AlertDialog.Root bind:open={alertOpen}>
+      <AlertDialog.Trigger>
+        {#snippet child({ props })}
+          <Button {...props} variant="destructive">Delete…</Button>
+        {/snippet}
+      </AlertDialog.Trigger>
+      <AlertDialog.Content>
+        <AlertDialog.Header>
+          <AlertDialog.Title>Delete this trade?</AlertDialog.Title>
+          <AlertDialog.Description>This action cannot be undone.</AlertDialog.Description>
+        </AlertDialog.Header>
+        <AlertDialog.Footer>
+          <AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+          <AlertDialog.Action class="bg-destructive text-white hover:bg-destructive/90">Delete</AlertDialog.Action>
+        </AlertDialog.Footer>
+      </AlertDialog.Content>
+    </AlertDialog.Root>
   </div>
 
   <!-- ── Table ─────────────────────────────────────────────────────────────────────────────── -->
