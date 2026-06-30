@@ -6,6 +6,7 @@
   // + fill-*/stroke-* utilities — no inline style, CSP-safe). Representative static data; color only
   // in the P&L data.
   import { cn } from '$lib/utils';
+  import * as Card from '$lib/components/ui/card';
 
   const money = (n: number) => `${n >= 0 ? '+' : '-'}$${Math.abs(n).toLocaleString()}`;
 
@@ -116,20 +117,20 @@
   <!-- KPI highlights -->
   <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
     {#each kpis as k (k.label)}
-      <div class="rounded-md border border-border bg-card p-4">
+      <Card.Root class="p-4">
         <div class="text-xs text-muted-foreground">{k.label}</div>
         <div class={cn('mt-1 text-xl font-semibold tabular-nums', k.tone === 'pos' ? 'text-chart-2' : k.tone === 'neg' ? 'text-destructive' : 'text-foreground')}>
           {k.value}
         </div>
-      </div>
+      </Card.Root>
     {/each}
   </div>
 
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     <!-- Distribution -->
-    <div class="rounded-md border border-border bg-card lg:col-span-2">
+    <Card.Root class="lg:col-span-2">
       {@render head('P&L distribution (per trade)')}
-      <div class="p-4">
+      <Card.Content>
         {@render countBars(dist)}
         <div class="mt-3 flex items-center gap-4 text-xs">
           <span class="text-muted-foreground">Win / loss</span>
@@ -142,13 +143,13 @@
           <span class="tabular-nums text-chart-2">{wins}W</span>
           <span class="tabular-nums text-destructive">{losses}L</span>
         </div>
-      </div>
-    </div>
+      </Card.Content>
+    </Card.Root>
 
     <!-- Drawdown -->
-    <div class="rounded-md border border-border bg-card">
+    <Card.Root>
       {@render head('Drawdown (underwater)')}
-      <div class="p-4">
+      <Card.Content>
         <svg viewBox="0 0 100 50" class="h-32 w-full" preserveAspectRatio="none" aria-hidden="true">
           <line x1="0" y1="0.5" x2="100" y2="0.5" class="stroke-border" stroke-width="0.5" />
           <path d="M0 0 L0 8 L12 14 L20 6 L30 22 L42 30 L55 12 L68 4 L80 18 L92 9 L100 2 L100 0 Z" class="fill-destructive/20" />
@@ -158,13 +159,13 @@
           <span>Max drawdown <span class="text-destructive">-$502.75</span></span>
           <span>0.8% of peak</span>
         </div>
-      </div>
-    </div>
+      </Card.Content>
+    </Card.Root>
 
     <!-- Long vs Short -->
-    <div class="rounded-md border border-border bg-card">
+    <Card.Root>
       {@render head('Long vs short')}
-      <div class="p-4">
+      <Card.Content>
         <div class="grid grid-cols-2 gap-2">
           <div class="rounded-md border border-border bg-background px-3 py-2">
             <div class="text-[11px] text-muted-foreground">Long · {longS.n}</div>
@@ -182,25 +183,25 @@
         <div class="mt-1 flex justify-between text-[11px] text-muted-foreground">
           <span>{longShare}% long</span><span>{100 - longShare}% short</span>
         </div>
-      </div>
-    </div>
+      </Card.Content>
+    </Card.Root>
 
     <!-- Time of day -->
-    <div class="rounded-md border border-border bg-card">
+    <Card.Root>
       {@render head('Avg P&L by hour')}
-      <div class="p-4">{@render signedBars(hours)}</div>
-    </div>
+      <Card.Content>{@render signedBars(hours)}</Card.Content>
+    </Card.Root>
 
     <!-- Day of week -->
-    <div class="rounded-md border border-border bg-card">
+    <Card.Root>
       {@render head('Avg P&L by weekday')}
-      <div class="p-4">{@render signedBars(wdays)}</div>
-    </div>
+      <Card.Content>{@render signedBars(wdays)}</Card.Content>
+    </Card.Root>
 
     <!-- Per-symbol -->
-    <div class="rounded-md border border-border bg-card lg:col-span-2">
+    <Card.Root class="lg:col-span-2">
       {@render head('Performance by symbol')}
-      <div class="space-y-2 p-4">
+      <Card.Content class="space-y-2">
         {#each symbols as s (s.sym)}
           <div class="flex items-center gap-3 text-xs">
             <span class="w-10 font-medium">{s.sym}</span>
@@ -212,20 +213,20 @@
             <span class={cn('w-20 text-right font-semibold tabular-nums', s.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{money(s.pnl)}</span>
           </div>
         {/each}
-      </div>
-    </div>
+      </Card.Content>
+    </Card.Root>
 
     <!-- Full advanced stats grid -->
-    <div class="rounded-md border border-border bg-card lg:col-span-2">
+    <Card.Root class="lg:col-span-2">
       {@render head('Advanced statistics')}
-      <div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-x-6 gap-y-0 p-4">
+      <Card.Content class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-x-6 gap-y-0">
         {#each statRows as r (r.k)}
           <div class="flex items-baseline justify-between gap-3 border-b border-border py-[7px]">
             <span class="text-xs text-muted-foreground">{r.k}</span>
             <span class={cn('text-[13px] font-bold tabular-nums whitespace-nowrap', r.tone === 'pos' ? 'text-chart-2' : r.tone === 'neg' ? 'text-destructive' : 'text-foreground')}>{r.v}</span>
           </div>
         {/each}
-      </div>
-    </div>
+      </Card.Content>
+    </Card.Root>
   </div>
 </div>

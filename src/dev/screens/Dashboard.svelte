@@ -6,6 +6,8 @@
   // (that integration comes when the look is approved). Utility-only styling, color only in the data.
   import { SlidersHorizontal, Plus, GripVertical, MoreHorizontal } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
+  import * as Card from '$lib/components/ui/card';
 
   let scope = $state<'all' | 'month'>('all');
   let overlay = $state<'gross' | 'net' | 'take'>('gross');
@@ -77,16 +79,11 @@
   <!-- KPI stat cards -->
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
     {#each stats as s (s.label)}
-      <div class="rounded-md border border-border bg-card p-4">
+      <Card.Root class="p-4">
         <div class="flex items-start justify-between gap-2">
           <span class="text-xs text-muted-foreground">{s.label}</span>
           {#if s.badge}
-            <span
-              class={[
-                'rounded border px-1.5 py-0.5 text-[11px]',
-                s.up ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive',
-              ]}>{s.badge}</span
-            >
+            <Badge variant="outline" class={s.up ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}>{s.badge}</Badge>
           {/if}
         </div>
         <div
@@ -98,14 +95,14 @@
           {s.value}
         </div>
         <div class="mt-1 text-[11px] text-muted-foreground">{s.note}</div>
-      </div>
+      </Card.Root>
     {/each}
   </div>
 
   <!-- Performance module -->
-  <div class="rounded-md border border-border bg-card">
+  <Card.Root>
     {@render moduleHeader('Performance')}
-    <div class="p-4">
+    <Card.Content>
       <div class="mb-3 flex w-fit items-center gap-0.5 rounded-md border border-border p-0.5">
         {@render seg(overlay === 'gross', 'Gross', () => (overlay = 'gross'))}
         {@render seg(overlay === 'net', 'Net', () => (overlay = 'net'))}
@@ -132,13 +129,13 @@
           stroke-width="2"
         />
       </svg>
-    </div>
-  </div>
+    </Card.Content>
+  </Card.Root>
 
   <!-- Trading calendar module -->
-  <div class="rounded-md border border-border bg-card">
+  <Card.Root>
     {@render moduleHeader('Trading Calendar')}
-    <div class="p-4">
+    <Card.Content>
       <div class="mb-3 flex items-center justify-between">
         <span class="text-sm font-medium text-foreground">June 2026</span>
         <span class="text-sm tabular-nums text-chart-2">+$4,016.50</span>
@@ -174,8 +171,8 @@
           {/if}
         {/each}
       </div>
-    </div>
-  </div>
+    </Card.Content>
+  </Card.Root>
 
   <!-- Add-module affordance -->
   <button

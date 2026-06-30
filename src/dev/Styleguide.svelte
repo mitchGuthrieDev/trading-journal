@@ -10,6 +10,11 @@
   import AppShell from '$lib/components/shell/AppShell.svelte';
   import { navSections } from './nav';
   import { Button, type ButtonVariant, type ButtonSize } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Checkbox } from '$lib/components/ui/checkbox';
+  import { Input } from '$lib/components/ui/input';
+  import * as Card from '$lib/components/ui/card';
+  import * as Table from '$lib/components/ui/table';
   import * as Dialog from '$lib/components/ui/dialog';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as Popover from '$lib/components/ui/popover';
@@ -69,6 +74,8 @@
   const selectLabel = $derived(contracts.find(c => c.value === selectValue)?.label ?? 'Pick a contract');
 
   let dialogOpen = $state(false);
+  let cbA = $state(true);
+  let cbB = $state(false);
   let showTransition = $state(true);
   type Tx = 'fade' | 'fly' | 'slide';
   let txKind = $state<Tx>('fade');
@@ -165,6 +172,68 @@
       </div>
     {/each}
   </div>
+
+  <!-- ── Badge ─────────────────────────────────────────────────────────────────────────────── -->
+  {@render section('Badge', 'variant prop. Use outline + class overrides for P&L tints.')}
+  <div class="flex flex-wrap items-center gap-2">
+    <Badge>default</Badge>
+    <Badge variant="secondary">secondary</Badge>
+    <Badge variant="destructive">destructive</Badge>
+    <Badge variant="outline">outline</Badge>
+    <Badge variant="outline" class="border-chart-2/40 text-chart-2">+P&L</Badge>
+    <Badge variant="outline" class="border-destructive/40 text-destructive">-P&L</Badge>
+  </div>
+
+  <!-- ── Card ──────────────────────────────────────────────────────────────────────────────── -->
+  {@render section('Card', 'Compact module shell — Header / Content / Footer.')}
+  <Card.Root class="max-w-sm">
+    <Card.Header>
+      <Card.Title>Card title</Card.Title>
+      <Badge variant="secondary">badge</Badge>
+    </Card.Header>
+    <Card.Content>
+      <p class="text-sm text-muted-foreground">Card content sits here. Used as the shell for every dashboard module.</p>
+    </Card.Content>
+    <Card.Footer class="justify-end">
+      <Button variant="ghost" size="sm">Cancel</Button>
+      <Button size="sm">Save</Button>
+    </Card.Footer>
+  </Card.Root>
+
+  <!-- ── Form controls ─────────────────────────────────────────────────────────────────────── -->
+  {@render section('Form controls', 'Input + Checkbox (bits-ui).')}
+  <div class="flex flex-wrap items-center gap-6">
+    <Input placeholder="Search…" class="w-56" />
+    <label class="flex items-center gap-2 text-sm"><Checkbox bind:checked={cbA} /> Checked</label>
+    <label class="flex items-center gap-2 text-sm"><Checkbox bind:checked={cbB} /> Unchecked</label>
+    <label class="flex items-center gap-2 text-sm text-muted-foreground"><Checkbox disabled /> Disabled</label>
+  </div>
+
+  <!-- ── Table ─────────────────────────────────────────────────────────────────────────────── -->
+  {@render section('Table', 'Header / Body / Row / Cell / Footer.')}
+  <Card.Root>
+    <Table.Root>
+      <Table.Header>
+        <Table.Row class="hover:bg-transparent">
+          <Table.Head>Symbol</Table.Head>
+          <Table.Head>Side</Table.Head>
+          <Table.Head class="text-right">P&L</Table.Head>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
+        <Table.Row>
+          <Table.Cell class="font-medium">ES</Table.Cell>
+          <Table.Cell><Badge variant="outline" class="border-chart-2/40 text-chart-2">Long</Badge></Table.Cell>
+          <Table.Cell class="text-right tabular-nums text-chart-2">+$375.00</Table.Cell>
+        </Table.Row>
+        <Table.Row>
+          <Table.Cell class="font-medium">NQ</Table.Cell>
+          <Table.Cell><Badge variant="outline" class="border-destructive/40 text-destructive">Short</Badge></Table.Cell>
+          <Table.Cell class="text-right tabular-nums text-destructive">-$230.00</Table.Cell>
+        </Table.Row>
+      </Table.Body>
+    </Table.Root>
+  </Card.Root>
 
   <!-- ── Overlays ──────────────────────────────────────────────────────────────────────────── -->
   {@render section('Overlays', 'Dialog, dropdown menu, popover, select — all portal to <body>.')}

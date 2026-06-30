@@ -8,6 +8,8 @@
   // the live engine. Color only in the P&L data.
   import { ChevronLeft, ChevronRight, X, Minus, Plus, Paperclip, ImagePlus, Check } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
+  import * as Card from '$lib/components/ui/card';
   import { cn } from '$lib/utils';
 
   type Day = { pnl: number; trades: number; wins: number; note?: boolean };
@@ -126,12 +128,12 @@
 {/snippet}
 
 {#snippet stat(label: string, value: string, tone: 'pos' | 'neg' | 'plain' = 'plain')}
-  <div class="rounded-md border border-border bg-card px-3 py-2">
+  <Card.Root class="px-3 py-2">
     <div class="text-[11px] text-muted-foreground">{label}</div>
     <div class={cn('mt-0.5 text-sm font-semibold tabular-nums', tone === 'pos' ? 'text-chart-2' : tone === 'neg' ? 'text-destructive' : 'text-foreground')}>
       {value}
     </div>
-  </div>
+  </Card.Root>
 {/snippet}
 
 <div class="flex flex-col gap-4">
@@ -171,7 +173,7 @@
     <!-- Left: grid / heatmap -->
     <div class="min-w-0 flex-1">
       {#if view === 'month'}
-        <div class="rounded-md border border-border bg-card p-3">
+        <Card.Root class="p-3">
           <div class="grid grid-cols-[56px_repeat(7,1fr)] gap-1.5">
             <span class="pb-1 text-[11px] text-muted-foreground">Week</span>
             {#each DOW as d (d)}<span class="pb-1 text-center text-[11px] text-muted-foreground">{d}</span>{/each}
@@ -214,10 +216,10 @@
           <p class="mt-3 text-[11px] text-muted-foreground">
             Cell shade scales with P&L size · <Check class="inline size-3 text-chart-2" /> = hit the ${target}/day target · dot = has a note.
           </p>
-        </div>
+        </Card.Root>
       {:else}
         <!-- Year heatmap -->
-        <div class="rounded-md border border-border bg-card p-4">
+        <Card.Root class="p-4">
           <div class="overflow-x-auto">
             <div class="flex min-w-[680px] justify-between px-0.5 text-[10px] text-muted-foreground">
               {#each MON as m (m)}<span>{m}</span>{/each}
@@ -244,14 +246,14 @@
             <span class="size-[10px] rounded-[2px] bg-chart-2/55"></span>
             <span>Profit</span>
           </div>
-        </div>
+        </Card.Root>
       {/if}
     </div>
 
     <!-- Right rail: day detail + summary -->
     <div class="flex shrink-0 flex-col gap-4 xl:w-80">
       {#if view === 'month' && selectedDay && sel}
-        <div class="rounded-md border border-border bg-card">
+        <Card.Root>
           <div class="flex items-center justify-between border-b border-border px-4 py-2.5">
             <span class="text-sm font-semibold">June {selectedDay}, 2026</span>
             <button type="button" class="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Close day detail" onclick={() => (selectedDay = null)}>
@@ -275,7 +277,7 @@
                   <div class={cn('flex items-center gap-2 px-2.5 py-1.5 text-xs', i > 0 && 'border-t border-border')}>
                     <span class="tabular-nums text-muted-foreground">{t.time}</span>
                     <span class="font-medium">{t.sym}</span>
-                    <span class={cn('rounded px-1 text-[10px]', t.side === 'Long' ? 'bg-chart-2/15 text-chart-2' : 'bg-destructive/15 text-destructive')}>{t.side}</span>
+                    <Badge variant="outline" class={t.side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}>{t.side}</Badge>
                     <span class="text-muted-foreground">×{t.qty}</span>
                     <span class={cn('ml-auto font-semibold tabular-nums', t.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{money(t.pnl)}</span>
                   </div>
@@ -309,11 +311,11 @@
               </div>
             </div>
           </div>
-        </div>
+        </Card.Root>
       {/if}
 
       <!-- Month / year summary -->
-      <div class="rounded-md border border-border bg-card">
+      <Card.Root>
         <div class="border-b border-border px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {view === 'month' ? 'June summary' : '2026 summary'}
         </div>
@@ -352,7 +354,7 @@
             <p class="text-[11px] text-muted-foreground">Pick a month from the heatmap to drill into its daily grid.</p>
           {/if}
         </div>
-      </div>
+      </Card.Root>
     </div>
   </div>
 </div>
