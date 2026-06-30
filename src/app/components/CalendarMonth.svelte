@@ -83,14 +83,14 @@
   <!-- A123: the month nav lives in a body TOOLBAR (not the panel header) so a narrow F26-grid column
        can't cram the header — the header stays light (title + menu + chevron) and never wraps, keeping
        the collapse chevron reachable (A121). -->
-  <div class="caltoolbar">
-    <div class="nav">
-      <button type="button" aria-label="Previous month" title="Previous month" onclick={() => onnav(-1)}>‹</button>
-      <span class="label">{MONTHS[month]} {year}</span>
-      <button type="button" aria-label="Next month" title="Next month" onclick={() => onnav(1)}>›</button>
-      <button type="button" class="today" title="Jump to the latest trade's month" onclick={() => onjump()}>Latest</button>
+  <div class="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+    <div class="nav flex flex-wrap items-center gap-2.5">
+      <button type="button" class="h-7 w-7 cursor-pointer rounded-md border border-line bg-panel2 text-[16px] leading-none text-txt hover:border-hover-line" aria-label="Previous month" title="Previous month" onclick={() => onnav(-1)}>‹</button>
+      <span class="label min-w-[9.5em] text-center font-bold">{MONTHS[month]} {year}</span>
+      <button type="button" class="h-7 w-7 cursor-pointer rounded-md border border-line bg-panel2 text-[16px] leading-none text-txt hover:border-hover-line" aria-label="Next month" title="Next month" onclick={() => onnav(1)}>›</button>
+      <button type="button" class="today h-7 cursor-pointer rounded-md border border-line bg-panel2 px-2.5 text-xs leading-none text-txt hover:border-hover-line" title="Jump to the latest trade's month" onclick={() => onjump()}>Latest</button>
     </div>
-    <span class="mnet" class:neg={monthNet < 0}>{usd(monthNet)}</span>
+    <span class="font-mono font-bold {monthNet < 0 ? 'text-red' : 'text-green'}">{usd(monthNet)}</span>
   </div>
 
   <div class="calendar">
@@ -136,67 +136,11 @@
       {/each}
     </div>
   </div>
-  <p class="cnote">Days are grouped by the literal date in the Time column, not the CME session day.</p>
+  <p class="mt-3 text-[11px] leading-[1.45] text-dim">Days are grouped by the literal date in the Time column, not the CME session day.</p>
   {@render extra?.()}
 </Panel>
 
 <style>
-  /* A97: the calendar grouping caveat, distributed here from the standalone Definitions panel. */
-  .cnote {
-    margin: 12px 0 0;
-    font-size: 11px;
-    line-height: 1.45;
-    color: var(--dim);
-  }
-  /* A123: the month nav + month-net toolbar sits at the top of the calendar body (was the panel
-     header). justify-between puts the nav on the left and the month net on the right; it wraps on a
-     narrow column instead of overflowing. */
-  .caltoolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px 12px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-  }
-  .nav {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .nav button {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    width: 28px;
-    height: 28px;
-    font-size: 16px;
-    line-height: 1;
-    cursor: pointer;
-  }
-  .nav button:hover {
-    border-color: var(--hover-line);
-  }
-  .nav .label {
-    font-weight: 700;
-    min-width: 9.5em;
-    text-align: center;
-  }
-  .nav .today {
-    width: auto;
-    padding: 0 10px;
-    font-size: 12px;
-  }
-  .mnet {
-    font-family: var(--mono);
-    font-weight: 700;
-    color: var(--green);
-  }
-  .mnet.neg {
-    color: var(--red);
-  }
   .calgrid {
     display: grid;
     grid-template-columns: 52px repeat(7, 1fr);

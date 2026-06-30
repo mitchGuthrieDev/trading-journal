@@ -180,15 +180,23 @@
 
 <Panel {...panel} title="Performance">
   {#snippet actions()}
-    <div class="overlays" role="group" aria-label="Curve overlays">
+    <div class="overlays flex gap-1" role="group" aria-label="Curve overlays">
       {#each SERIES as s (s.key)}
-        <button type="button" class:on={sel[s.key]} aria-pressed={sel[s.key]} use:styleProps={{ '--sw': s.color }} onclick={() => toggle(s.key)}>{s.label}</button>
+        <button
+          type="button"
+          class={[
+            'cursor-pointer rounded-[5px] border border-line bg-panel2 px-[9px] py-1 text-[11px]',
+            sel[s.key] ? 'border-[var(--sw)] text-txt shadow-[inset_0_-2px_0_var(--sw)]' : 'text-dim',
+          ]}
+          aria-pressed={sel[s.key]}
+          use:styleProps={{ '--sw': s.color }}
+          onclick={() => toggle(s.key)}>{s.label}</button>
       {/each}
     </div>
   {/snippet}
 
   {#if view}
-    <div class="plot" bind:clientWidth={cw}>
+    <div class="w-full" bind:clientWidth={cw}>
       <!-- A deliberately keyboard-navigable chart widget: tabindex + arrow/Enter handlers, with the
            aria-label documenting the interaction; role="img" conveys the visual to AT. svelte-check
            treats every <svg> as non-interactive regardless of role, so the two interaction warnings
@@ -253,44 +261,16 @@
         {/if}
       </svg>
     </div>
-    <div class="axis">
-      <span class="tip" aria-live="polite">{tip || 'cumulative P&L'}</span>
+    <div class="axis mt-1 flex justify-center font-mono text-[11px]">
+      <span class="tip text-center text-dim" aria-live="polite">{tip || 'cumulative P&L'}</span>
     </div>
-    <p class="gnote">X axis is the calendar date (the selected month's first to last day, or the full sample in All-time scope); Y axis is cumulative PnL. Toggle the Gross / Net / Take-home overlays above; clicking a calendar day marks it here.</p>
+    <p class="mt-2 text-[11px] leading-[1.45] text-dim">X axis is the calendar date (the selected month's first to last day, or the full sample in All-time scope); Y axis is cumulative PnL. Toggle the Gross / Net / Take-home overlays above; clicking a calendar day marks it here.</p>
   {:else}
-    <p class="empty">Not enough trades to plot a curve.</p>
+    <p class="px-1 py-6 text-dim">Not enough trades to plot a curve.</p>
   {/if}
 </Panel>
 
 <style>
-  .overlays {
-    display: flex;
-    gap: 4px;
-  }
-  .overlays button {
-    background: var(--panel2);
-    color: var(--dim);
-    border: 1px solid var(--line);
-    border-radius: 5px;
-    padding: 4px 9px;
-    font-size: 11px;
-    cursor: pointer;
-  }
-  .overlays button.on {
-    color: var(--txt);
-    border-color: var(--sw);
-    box-shadow: inset 0 -2px 0 var(--sw);
-  }
-  .plot {
-    width: 100%;
-  }
-  /* A97: the chart's one-line definition, distributed here from the standalone Definitions panel. */
-  .gnote {
-    margin: 8px 0 0;
-    font-size: 11px;
-    line-height: 1.45;
-    color: var(--dim);
-  }
   .equity {
     width: 100%;
     height: 240px;
@@ -360,20 +340,5 @@
     fill: var(--accent);
     stroke: var(--bg);
     stroke-width: 1.5;
-  }
-  .axis {
-    display: flex;
-    justify-content: center;
-    font-family: var(--mono);
-    font-size: 11px;
-    margin-top: 4px;
-  }
-  .axis .tip {
-    color: var(--dim);
-    text-align: center;
-  }
-  .empty {
-    color: var(--dim);
-    padding: 24px 4px;
   }
 </style>

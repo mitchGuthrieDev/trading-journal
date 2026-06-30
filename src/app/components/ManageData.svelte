@@ -223,37 +223,52 @@
       >
     </div>
 
-    <div class="summary">
-      <div class="dmstat"><div class="dk">Trades</div><div class="dv">{trades.length}</div></div>
-      <div class="dmstat"><div class="dk">Date range</div><div class="dv mono">{dmRange}</div></div>
-      <div class="dmstat"><div class="dk">Day notes</div><div class="dv">{dayNotes.length}</div></div>
-      <div class="dmstat"><div class="dk">Tagged trades</div><div class="dv">{metaMap.size}</div></div>
-      <div class="dmstat"><div class="dk">Local size</div><div class="dv mono">{localKb}</div></div>
+    <div class="summary grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-2 border-b border-line px-4 py-3">
+      <div class="dmstat rounded-[7px] border border-line bg-panel2 px-[9px] py-[7px]">
+        <div class="text-[10px] uppercase tracking-[0.4px] text-faint">Trades</div>
+        <div class="dv mt-[3px] text-[14px] font-bold text-txt">{trades.length}</div>
+      </div>
+      <div class="dmstat rounded-[7px] border border-line bg-panel2 px-[9px] py-[7px]">
+        <div class="text-[10px] uppercase tracking-[0.4px] text-faint">Date range</div>
+        <div class="dv mt-[3px] font-mono text-[12px] font-bold text-txt">{dmRange}</div>
+      </div>
+      <div class="dmstat rounded-[7px] border border-line bg-panel2 px-[9px] py-[7px]">
+        <div class="text-[10px] uppercase tracking-[0.4px] text-faint">Day notes</div>
+        <div class="dv mt-[3px] text-[14px] font-bold text-txt">{dayNotes.length}</div>
+      </div>
+      <div class="dmstat rounded-[7px] border border-line bg-panel2 px-[9px] py-[7px]">
+        <div class="text-[10px] uppercase tracking-[0.4px] text-faint">Tagged trades</div>
+        <div class="dv mt-[3px] text-[14px] font-bold text-txt">{metaMap.size}</div>
+      </div>
+      <div class="dmstat rounded-[7px] border border-line bg-panel2 px-[9px] py-[7px]">
+        <div class="text-[10px] uppercase tracking-[0.4px] text-faint">Local size</div>
+        <div class="dv mt-[3px] font-mono text-[12px] font-bold text-txt">{localKb}</div>
+      </div>
     </div>
 
-    {#if isDemo}<p class="demonote">This is a read-only demo — loading, editing, importing and erasing are disabled, and nothing is saved.</p>{/if}
+    {#if isDemo}<p class="demonote m-0 border-b border-line px-4 py-2 text-[12px] text-warn">This is a read-only demo — loading, editing, importing and erasing are disabled, and nothing is saved.</p>{/if}
 
-    <div class="toolbar">
-      <button type="button" disabled={isDemo} onclick={() => csvInput.click()}>Load CSV</button>
-      <button type="button" disabled={isDemo} onclick={exportBackup}>Export backup</button>
-      <button type="button" disabled={isDemo} onclick={() => backupInput.click()}>Import backup</button>
-      <button type="button" class="danger" disabled={isDemo} onclick={eraseAll}>Erase all local data</button>
-      <input type="text" class="search" placeholder="Search symbol / date" bind:value={search} />
+    <div class="toolbar flex flex-wrap gap-2 border-b border-line px-4 py-3">
+      <button type="button" class="cursor-pointer rounded-md border border-line bg-panel2 px-3 py-[7px] text-[13px] text-txt hover:border-hover-line disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-line" disabled={isDemo} onclick={() => csvInput.click()}>Load CSV</button>
+      <button type="button" class="cursor-pointer rounded-md border border-line bg-panel2 px-3 py-[7px] text-[13px] text-txt hover:border-hover-line disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-line" disabled={isDemo} onclick={exportBackup}>Export backup</button>
+      <button type="button" class="cursor-pointer rounded-md border border-line bg-panel2 px-3 py-[7px] text-[13px] text-txt hover:border-hover-line disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-line" disabled={isDemo} onclick={() => backupInput.click()}>Import backup</button>
+      <button type="button" class="cursor-pointer rounded-md border border-[rgba(240,74,74,0.5)] bg-panel2 px-3 py-[7px] text-[13px] text-red hover:bg-red-bg disabled:cursor-not-allowed disabled:opacity-45" disabled={isDemo} onclick={eraseAll}>Erase all local data</button>
+      <input type="text" class="search ml-auto min-w-[180px] cursor-text rounded-md border border-line bg-panel2 px-3 py-[7px] text-[13px] text-txt" placeholder="Search symbol / date" bind:value={search} />
       <input bind:this={csvInput} type="file" accept=".csv,text/csv" hidden onchange={importCSV} />
       <input bind:this={backupInput} type="file" accept="application/json,.json" hidden onchange={importBackup} />
     </div>
-    {#if msg}<p class="msg">{msg}</p>{/if}
+    {#if msg}<p class="m-0 border-b border-line px-4 py-2 text-[12px] text-accent">{msg}</p>{/if}
 
     {#if dayNotes.length}
-      <details class="daynotes">
+      <details class="daynotes border-b border-line px-4 py-2 [&_summary]:cursor-pointer [&_summary]:text-[12px] [&_summary]:font-bold [&_summary]:uppercase [&_summary]:tracking-[0.5px] [&_summary]:text-faint [&_ul]:m-0 [&_ul]:mt-2 [&_ul]:list-none [&_ul]:p-0 [&_li]:flex [&_li]:items-center [&_li]:gap-2.5 [&_li]:border-b [&_li]:border-line [&_li]:py-[5px] [&_li]:text-[12px]">
         <summary>Day notes ({dayNotes.length})</summary>
         <ul>
           {#each dayNotes as n (n.date)}
             <li>
-              <button type="button" class="opends" onclick={() => onopenday(n.date)}>{n.date}</button>
-              <span class="dntext">{n.text || '(tags/screenshots only)'}</span>
-              {#if (n.tags || []).length}<span class="dntags">{n.tags.join(', ')}</span>{/if}
-              <button type="button" class="dndel" disabled={isDemo} aria-label="Delete day note" onclick={() => deleteDay(n.date)}>×</button>
+              <button type="button" class="flex-none cursor-pointer rounded-[5px] border border-line bg-panel2 px-[9px] py-[3px] font-mono text-accent" onclick={() => onopenday(n.date)}>{n.date}</button>
+              <span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-dim">{n.text || '(tags/screenshots only)'}</span>
+              {#if (n.tags || []).length}<span class="flex-none font-mono text-faint">{n.tags.join(', ')}</span>{/if}
+              <button type="button" class="flex-none cursor-pointer border-0 bg-transparent text-[16px] leading-none text-faint hover:text-red disabled:cursor-not-allowed disabled:opacity-45" disabled={isDemo} aria-label="Delete day note" onclick={() => deleteDay(n.date)}>×</button>
             </li>
           {/each}
         </ul>
@@ -261,23 +276,25 @@
     {/if}
 
     {#if savedFilters.length}
-      <details class="savedfilters">
+      <details class="savedfilters border-b border-line px-4 py-2 [&_summary]:cursor-pointer [&_summary]:text-[12px] [&_summary]:font-bold [&_summary]:uppercase [&_summary]:tracking-[0.5px] [&_summary]:text-faint [&_ul]:m-0 [&_ul]:mt-2 [&_ul]:list-none [&_ul]:p-0 [&_li]:flex [&_li]:items-center [&_li]:gap-2.5 [&_li]:border-b [&_li]:border-line [&_li]:py-[5px] [&_li]:text-[12px]">
         <summary>Saved filters ({savedFilters.length})</summary>
         <ul>
           {#each savedFilters as sf (sf.id)}
             <li>
-              <button type="button" class="opends" onclick={() => onapplyview(sf)}>{sf.name}</button>
-              <span class="dntext"></span>
-              <button type="button" class="sfbtn" disabled={isDemo} onclick={() => renameView(sf)}>Rename</button>
-              <button type="button" class="dndel" disabled={isDemo} aria-label="Delete saved filter" onclick={() => ondeleteview(sf.id)}>×</button>
+              <button type="button" class="flex-none cursor-pointer rounded-[5px] border border-line bg-panel2 px-[9px] py-[3px] font-mono text-accent" onclick={() => onapplyview(sf)}>{sf.name}</button>
+              <span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-dim"></span>
+              <button type="button" class="sfbtn flex-none cursor-pointer rounded-[5px] border border-line bg-panel2 px-[9px] py-[3px] text-[12px] text-dim hover:border-hover-line hover:text-txt disabled:cursor-not-allowed disabled:opacity-45" disabled={isDemo} onclick={() => renameView(sf)}>Rename</button>
+              <button type="button" class="flex-none cursor-pointer border-0 bg-transparent text-[16px] leading-none text-faint hover:text-red disabled:cursor-not-allowed disabled:opacity-45" disabled={isDemo} aria-label="Delete saved filter" onclick={() => ondeleteview(sf.id)}>×</button>
             </li>
           {/each}
         </ul>
       </details>
     {/if}
 
-    <div class="tablewrap">
-      <table>
+    <div class="tablewrap overflow-auto px-4 pb-4">
+      <table
+        class="w-full border-collapse text-[12px] [&_th]:sticky [&_th]:top-0 [&_th]:border-b [&_th]:border-line [&_th]:bg-bg [&_th]:px-2 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:text-faint [&_td]:border-b [&_td]:border-line [&_td]:px-2 [&_td]:py-[6px] [&_td]:font-mono [&_th.r]:text-right [&_td.r]:text-right"
+      >
         <thead>
           <tr><th>Date</th><th>Time</th><th>Symbol</th><th class="r">Qty</th><th class="r">P&L</th><th>Tags</th><th>Note</th><th></th></tr>
         </thead>
@@ -285,36 +302,36 @@
           {#each visible as t (store.tradeId(t))}
             {@const m = metaOf(t)}
             {@const id = store.tradeId(t)}
-            <tr class:editing={editing === id}>
+            <tr class={editing === id ? '[&_td]:border-b-0' : ''}>
               <td>{t.date}</td>
-              <td class="dim">{(t.time || '').slice(11, 16)}</td>
+              <td class="text-dim">{(t.time || '').slice(11, 16)}</td>
               <td>{t.symbol}</td>
               <td class="r">{t.qty || 1}</td>
-              <td class="r" class:pos={t.pnl > 0} class:neg={t.pnl < 0}>{usd(t.pnl)}</td>
+              <td class="r {t.pnl > 0 ? 'text-green' : t.pnl < 0 ? 'text-red' : ''}">{usd(t.pnl)}</td>
               <td class="tags">{(m.tags || []).join(', ')}</td>
-              <td class="note dim">{m.note || ''}</td>
-              <td class="r actions">
-                <button type="button" class="edit" disabled={isDemo} onclick={() => openEdit(t)}>Edit</button>
-                <button type="button" class="del" disabled={isDemo} aria-label="Delete trade" onclick={() => deleteTrade(t)}>Delete</button>
+              <td class="max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap text-dim">{m.note || ''}</td>
+              <td class="r whitespace-nowrap">
+                <button type="button" class="edit cursor-pointer rounded-[5px] border border-line bg-panel2 px-2.5 py-[3px] text-[12px] text-txt disabled:cursor-not-allowed disabled:opacity-45" disabled={isDemo} onclick={() => openEdit(t)}>Edit</button>
+                <button type="button" class="del ml-1.5 cursor-pointer rounded-[5px] border border-line bg-panel2 px-2.5 py-[3px] text-[12px] text-red hover:border-[rgba(240,74,74,0.5)] hover:bg-red-bg disabled:cursor-not-allowed disabled:opacity-45" disabled={isDemo} aria-label="Delete trade" onclick={() => deleteTrade(t)}>Delete</button>
               </td>
             </tr>
             {#if editing === id}
-              <tr class="editor">
+              <tr class="[&>td]:bg-panel">
                 <td colspan="8">
-                  <div class="editrow">
+                  <div class="editrow flex flex-wrap items-end gap-2.5 py-1.5 [&_label]:flex [&_label]:flex-col [&_label]:gap-[3px] [&_label]:font-sans [&_label]:text-[11px] [&_label]:text-faint [&_input]:rounded-md [&_input]:border [&_input]:border-line [&_input]:bg-panel2 [&_input]:px-2 [&_input]:py-1.5 [&_input]:font-sans [&_input]:text-[13px] [&_input]:text-txt">
                     <label>Tags <input type="text" class="etags" bind:value={editTags} placeholder="comma, separated" /></label>
-                    <label class="grow">Note <input type="text" class="enote" bind:value={editNote} placeholder="per-trade note" /></label>
-                    <button type="button" class="save" onclick={saveEdit}>Save</button>
-                    <button type="button" onclick={() => (editing = null)}>Cancel</button>
+                    <label class="!flex-1 !min-w-[200px]">Note <input type="text" class="enote" bind:value={editNote} placeholder="per-trade note" /></label>
+                    <button type="button" class="save cursor-pointer rounded-md border-0 bg-accent px-3.5 py-[7px] font-bold text-[#0d1014]" onclick={saveEdit}>Save</button>
+                    <button type="button" class="cursor-pointer rounded-md border border-line bg-transparent px-3 py-[7px] text-dim" onclick={() => (editing = null)}>Cancel</button>
                   </div>
-                  <div class="editshots">
+                  <div class="editshots flex flex-wrap items-center gap-2 pb-2">
                     {#each editShots as s, i (i)}
-                      <span class="shot">
-                        <img src={s} alt="screenshot {i + 1}" />
-                        <button type="button" class="rm" aria-label="Remove screenshot" onclick={() => (editShots = editShots.filter((_, j) => j !== i))}>×</button>
+                      <span class="shot relative inline-block">
+                        <img src={s} alt="screenshot {i + 1}" class="block h-11 rounded-md border border-line" />
+                        <button type="button" class="absolute -top-1.5 -right-1.5 h-[18px] w-[18px] cursor-pointer rounded-full border-0 bg-red text-[12px] leading-none text-white" aria-label="Remove screenshot" onclick={() => (editShots = editShots.filter((_, j) => j !== i))}>×</button>
                       </span>
                     {/each}
-                    <button type="button" class="addshot" onclick={() => editShotInput?.click()}>+ screenshot</button>
+                    <button type="button" class="cursor-pointer rounded-md border border-dashed border-line bg-panel2 px-3 py-1.5 text-[12px] text-dim" onclick={() => editShotInput?.click()}>+ screenshot</button>
                     <input bind:this={editShotInput} type="file" accept="image/*" hidden onchange={addEditShot} />
                   </div>
                 </td>
@@ -323,376 +340,14 @@
           {/each}
         </tbody>
       </table>
-      {#if !filtered.length}<p class="empty">No trades{search ? ' match the search' : ''}.</p>{/if}
+      {#if !filtered.length}<p class="px-1 py-5 text-[13px] text-dim">No trades{search ? ' match the search' : ''}.</p>{/if}
       {#if paged && filtered.length > PAGE_SIZE}
-        <div class="pager">
-          <button type="button" disabled={page === 0} onclick={() => (page -= 1)}>‹ Prev</button>
-          <span class="pginfo">{page * PAGE_SIZE + 1}–{Math.min(filtered.length, (page + 1) * PAGE_SIZE)} of {filtered.length}</span>
-          <button type="button" disabled={page >= pageCount - 1} onclick={() => (page += 1)}>Next ›</button>
+        <div class="pager mt-2.5 flex items-center justify-center gap-3 text-[12px] text-dim">
+          <button type="button" class="cursor-pointer rounded-md border border-line bg-panel2 px-2.5 py-[5px] text-[12px] text-txt disabled:cursor-not-allowed disabled:opacity-45" disabled={page === 0} onclick={() => (page -= 1)}>‹ Prev</button>
+          <span class="pginfo [font-variant-numeric:tabular-nums]">{page * PAGE_SIZE + 1}–{Math.min(filtered.length, (page + 1) * PAGE_SIZE)} of {filtered.length}</span>
+          <button type="button" class="cursor-pointer rounded-md border border-line bg-panel2 px-2.5 py-[5px] text-[12px] text-txt disabled:cursor-not-allowed disabled:opacity-45" disabled={page >= pageCount - 1} onclick={() => (page += 1)}>Next ›</button>
         </div>
       {/if}
     </div>
   </Dialog.Content>
 </Dialog.Root>
-
-<style>
-  .summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-    gap: 8px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--line);
-  }
-  .dmstat {
-    background: var(--panel2);
-    border: 1px solid var(--line);
-    border-radius: 7px;
-    padding: 7px 9px;
-  }
-  .dk {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    color: var(--faint);
-  }
-  .dv {
-    margin-top: 3px;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--txt);
-  }
-  .dv.mono {
-    font-family: var(--mono);
-    font-size: 12px;
-  }
-  .sfbtn {
-    background: var(--panel2);
-    color: var(--dim);
-    border: 1px solid var(--line);
-    border-radius: 5px;
-    padding: 3px 9px;
-    font-size: 12px;
-    cursor: pointer;
-    flex: none;
-  }
-  .sfbtn:hover {
-    border-color: var(--hover-line);
-    color: var(--txt);
-  }
-  .savedfilters {
-    padding: 8px 16px;
-    border-bottom: 1px solid var(--line);
-  }
-  .savedfilters summary {
-    font-size: 12px;
-    color: var(--faint);
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 700;
-  }
-  .savedfilters ul {
-    list-style: none;
-    margin: 8px 0 0;
-    padding: 0;
-  }
-  .savedfilters li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 5px 0;
-    border-bottom: 1px solid var(--line);
-    font-size: 12px;
-  }
-  .toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--line);
-  }
-  .toolbar button,
-  .search {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 7px 12px;
-    font-size: 13px;
-    cursor: pointer;
-  }
-  .search {
-    cursor: text;
-    margin-left: auto;
-    min-width: 180px;
-  }
-  .toolbar button:hover:not(:disabled) {
-    border-color: var(--hover-line);
-  }
-  .demonote {
-    margin: 0;
-    padding: 8px 16px;
-    font-size: 12px;
-    color: var(--warn);
-    border-bottom: 1px solid var(--line);
-  }
-  button:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-  .danger {
-    color: var(--red);
-    border-color: rgba(240, 74, 74, 0.5) !important;
-  }
-  .danger:hover {
-    background: var(--red-bg);
-  }
-  .msg {
-    margin: 0;
-    padding: 8px 16px;
-    font-size: 12px;
-    color: var(--accent);
-    border-bottom: 1px solid var(--line);
-  }
-  .daynotes {
-    padding: 8px 16px;
-    border-bottom: 1px solid var(--line);
-  }
-  .daynotes summary {
-    font-size: 12px;
-    color: var(--faint);
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 700;
-  }
-  .daynotes ul {
-    list-style: none;
-    margin: 8px 0 0;
-    padding: 0;
-  }
-  .daynotes li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 5px 0;
-    border-bottom: 1px solid var(--line);
-    font-size: 12px;
-  }
-  .opends {
-    background: var(--panel2);
-    color: var(--accent);
-    border: 1px solid var(--line);
-    border-radius: 5px;
-    padding: 3px 9px;
-    font-family: var(--mono);
-    cursor: pointer;
-    flex: none;
-  }
-  .dntext {
-    flex: 1;
-    color: var(--dim);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .dntags {
-    color: var(--faint);
-    font-family: var(--mono);
-    flex: none;
-  }
-  .dndel {
-    background: transparent;
-    border: 0;
-    color: var(--faint);
-    font-size: 16px;
-    line-height: 1;
-    cursor: pointer;
-    flex: none;
-  }
-  .dndel:hover {
-    color: var(--red);
-  }
-  .tablewrap {
-    overflow: auto;
-    padding: 0 16px 16px;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-  th {
-    position: sticky;
-    top: 0;
-    background: var(--bg);
-    text-align: left;
-    color: var(--faint);
-    font-weight: 600;
-    padding: 8px 8px;
-    border-bottom: 1px solid var(--line);
-  }
-  td {
-    padding: 6px 8px;
-    border-bottom: 1px solid var(--line);
-    font-family: var(--mono);
-  }
-  th.r,
-  td.r {
-    text-align: right;
-  }
-  td.dim {
-    color: var(--dim);
-  }
-  td.pos {
-    color: var(--green);
-  }
-  td.neg {
-    color: var(--red);
-  }
-  td.note {
-    max-width: 220px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  td.actions {
-    white-space: nowrap;
-  }
-  .edit,
-  .del {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 5px;
-    padding: 3px 10px;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .del {
-    color: var(--red);
-    margin-left: 6px;
-  }
-  .del:hover {
-    border-color: rgba(240, 74, 74, 0.5);
-    background: var(--red-bg);
-  }
-  tr.editing td {
-    border-bottom: 0;
-  }
-  .editor td {
-    background: var(--panel);
-  }
-  .editrow {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 10px;
-    padding: 6px 0;
-  }
-  .editrow label {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    font-size: 11px;
-    color: var(--faint);
-    font-family: var(--sans);
-  }
-  .editrow label.grow {
-    flex: 1;
-    min-width: 200px;
-  }
-  .editrow input {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 6px 8px;
-    font-size: 13px;
-    font-family: var(--sans);
-  }
-  .editrow .save {
-    background: var(--accent);
-    color: #0d1014;
-    border: 0;
-    border-radius: 6px;
-    padding: 7px 14px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  .editshots {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    padding: 0 0 8px;
-  }
-  .editshots .shot {
-    position: relative;
-    display: inline-block;
-  }
-  .editshots .shot img {
-    height: 44px;
-    border-radius: 6px;
-    border: 1px solid var(--line);
-    display: block;
-  }
-  .editshots .shot .rm {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 0;
-    background: var(--red);
-    color: #fff;
-    font-size: 12px;
-    line-height: 1;
-    cursor: pointer;
-  }
-  .editshots .addshot {
-    background: var(--panel2);
-    color: var(--dim);
-    border: 1px dashed var(--line);
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .editrow button:not(.save) {
-    background: transparent;
-    color: var(--dim);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 7px 12px;
-    cursor: pointer;
-  }
-  .empty {
-    color: var(--dim);
-    padding: 20px 4px;
-    font-size: 13px;
-  }
-  .pager {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    margin-top: 10px;
-    font-size: 12px;
-    color: var(--dim);
-  }
-  .pager button {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 5px 10px;
-    font: inherit;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .pginfo {
-    font-variant-numeric: tabular-nums;
-  }
-</style>
