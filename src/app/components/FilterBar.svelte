@@ -4,6 +4,7 @@
   // deep reactivity propagates to App's deriveds). Scope = all-time vs the calendar's current month.
   // Session + tag filters and saved-filter views from the vanilla bar are deferred to a later slice.
   import type { FilterState, SavedFilter } from '../../lib/types.ts';
+  import * as Select from '$ui/select';
 
   interface Props {
     filters: FilterState;
@@ -33,6 +34,14 @@
     ['eth', 'ETH'],
   ];
   const DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  // bits-ui Select treats '' as no-value, so the "All / Both / All sessions / All tags" default
+  // (filters.* === '') maps to a sentinel internally (A128). Callers + e2e key off the visible labels.
+  const ALL = '__all__';
+  // Item arrays double as Root.items so Select.Value resolves labels while the listbox is closed.
+  const SIDE_ITEMS = SIDES.map(([v, l]) => ({ value: v || ALL, label: l }));
+  const SESSION_ITEMS = SESSIONS.map(([v, l]) => ({ value: v || ALL, label: l }));
+  const rootItems = $derived([{ value: ALL, label: 'All' }, ...roots.map(r => ({ value: r, label: r }))]);
+  const tagItems = $derived([{ value: ALL, label: 'All tags' }, ...tags.map(t => ({ value: t, label: t }))]);
   const toggleDow = (d: number) => (filters.dows = filters.dows.includes(d) ? filters.dows.filter(x => x !== d) : [...filters.dows, d]);
 
   // A97 (R18 — promoted to all surfaces, CH16): the scope-toggle definition rides on the control as a
@@ -48,29 +57,43 @@
   </div>
   <label>From<input type="date" bind:value={filters.from} /></label>
   <label>To<input type="date" bind:value={filters.to} /></label>
-  <label>Symbol
-    <select bind:value={filters.root}>
-      <option value="">All</option>
-      {#each roots as r (r)}<option value={r}>{r}</option>{/each}
-    </select>
-  </label>
-  <label>Side
-    <select bind:value={filters.side}>
-      {#each SIDES as [v, l] (v)}<option value={v}>{l}</option>{/each}
-    </select>
-  </label>
-  <label>Session
-    <select bind:value={filters.session}>
-      {#each SESSIONS as [v, l] (v)}<option value={v}>{l}</option>{/each}
-    </select>
-  </label>
+  <div class="selfield">
+    <span>Symbol</span>
+    <Select.Root type="single" value={filters.root || ALL} onValueChange={v => (filters.root = v === ALL ? '' : v)} items={rootItems}>
+      <Select.Trigger aria-label="Symbol"><Select.Value /></Select.Trigger>
+      <Select.Content>
+        {#each rootItems as it (it.value)}<Select.Item value={it.value} label={it.label} />{/each}
+      </Select.Content>
+    </Select.Root>
+  </div>
+  <div class="selfield">
+    <span>Side</span>
+    <Select.Root type="single" value={filters.side || ALL} onValueChange={v => (filters.side = v === ALL ? '' : v)} items={SIDE_ITEMS}>
+      <Select.Trigger aria-label="Side"><Select.Value /></Select.Trigger>
+      <Select.Content>
+        {#each SIDE_ITEMS as it (it.value)}<Select.Item value={it.value} label={it.label} />{/each}
+      </Select.Content>
+    </Select.Root>
+  </div>
+  <div class="selfield">
+    <span>Session</span>
+    <Select.Root type="single" value={filters.session || ALL} onValueChange={v => (filters.session = v === ALL ? '' : v)} items={SESSION_ITEMS}>
+      <Select.Trigger aria-label="Session"><Select.Value /></Select.Trigger>
+      <Select.Content>
+        {#each SESSION_ITEMS as it (it.value)}<Select.Item value={it.value} label={it.label} />{/each}
+      </Select.Content>
+    </Select.Root>
+  </div>
   {#if tags.length}
-    <label>Tag
-      <select bind:value={filters.tag}>
-        <option value="">All tags</option>
-        {#each tags as tg (tg)}<option value={tg}>{tg}</option>{/each}
-      </select>
-    </label>
+    <div class="selfield">
+      <span>Tag</span>
+      <Select.Root type="single" value={filters.tag || ALL} onValueChange={v => (filters.tag = v === ALL ? '' : v)} items={tagItems}>
+        <Select.Trigger aria-label="Tag"><Select.Value /></Select.Trigger>
+        <Select.Content>
+          {#each tagItems as it (it.value)}<Select.Item value={it.value} label={it.label} />{/each}
+        </Select.Content>
+      </Select.Root>
+    </div>
   {/if}
   <div class="dows" role="group" aria-label="Day of week">
     {#each DOW as d, i (d)}
@@ -129,15 +152,15 @@
     border-color: var(--accent);
     font-weight: 700;
   }
-  label {
+  label,
+  .selfield {
     display: flex;
     flex-direction: column;
     gap: 3px;
     font-size: 11px;
     color: var(--faint);
   }
-  input,
-  select {
+  input {
     background: var(--panel2);
     color: var(--txt);
     border: 1px solid var(--line);
@@ -146,8 +169,7 @@
     font-size: 13px;
     font-family: var(--sans);
   }
-  input:focus,
-  select:focus {
+  input:focus {
     outline: none;
     border-color: var(--accent);
   }

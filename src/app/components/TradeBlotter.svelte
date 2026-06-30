@@ -42,6 +42,7 @@
   // F32 (staging): paginate the blotter. Default 50/page, user-selectable 25/50/100/150/All. On
   // prod/demo (no STAGING_PAGE) the blotter renders every row, exactly as before.
   const PAGE_SIZES = [25, 50, 100, 150];
+  const PAGE_SIZE_ITEMS = [...PAGE_SIZES.map(n => ({ value: String(n), label: String(n) })), { value: 'all', label: 'All' }];
   let pageSize = $state(50); // Infinity = "All"
   let page = $state(0);
   const pageCount = $derived(Math.max(1, Math.ceil(trades.length / pageSize)));
@@ -125,11 +126,10 @@
       <div class="blpager">
         <div class="blpsize">
           <span>Rows</span>
-          <Select.Root type="single" value={pageSize === Infinity ? 'all' : String(pageSize)} onValueChange={setPageSize}>
+          <Select.Root type="single" value={pageSize === Infinity ? 'all' : String(pageSize)} onValueChange={setPageSize} items={PAGE_SIZE_ITEMS}>
             <Select.Trigger aria-label="Rows per page" class="px-2 py-1"><Select.Value /></Select.Trigger>
             <Select.Content class="min-w-[5rem]">
-              {#each PAGE_SIZES as n (n)}<Select.Item value={String(n)} label={String(n)} />{/each}
-              <Select.Item value="all" label="All" />
+              {#each PAGE_SIZE_ITEMS as it (it.value)}<Select.Item value={it.value} label={it.label} />{/each}
             </Select.Content>
           </Select.Root>
         </div>

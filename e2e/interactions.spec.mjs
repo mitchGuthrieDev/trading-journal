@@ -231,7 +231,8 @@ test('staging (Svelte): session filter narrows the dataset', async ({ page }) =>
   const readCount = async () => parseInt(((await count.textContent()) || '').replace(/[^\d]/g, ''), 10);
   const all = await readCount();
   expect(all).toBeGreaterThan(0);
-  await page.getByLabel('Session').selectOption('rth');
+  await page.getByLabel('Session').click(); // bits-ui Select (A128)
+  await page.locator('#sv-app .filterbar').getByRole('option', { name: 'RTH', exact: true }).click();
   await expect(count).not.toHaveText(`${all} trades`); // RTH-only is a strict subset
   expect(await readCount()).toBeLessThan(all);
 
@@ -271,15 +272,19 @@ test('staging (Svelte): panel collapse persists + workspace templates (A36)', as
   // Workspace templates: save the current (perf-collapsed) layout under a name → it joins the select.
   page.on('dialog', d => d.accept('My Layout'));
   await page.click('#sv-app .wsbar .wssave');
-  await expect(page.locator('#sv-app .wsbar select option', { hasText: 'My Layout' })).toHaveCount(1);
+  // bits-ui Select (A128): open the Workspace listbox → it now lists the saved layout.
+  const wsList = page.locator('#sv-app .wsbar');
+  await wsList.locator('[aria-label="Workspace"]').click();
+  await expect(wsList.getByRole('option', { name: 'My Layout' })).toHaveCount(1);
 
   // "— Default —" reverts to the default arrangement → the perf panel expands again.
-  await page.selectOption('#sv-app .wsbar select', '');
+  await wsList.getByRole('option', { name: '— Default —' }).click();
   await expect(page.locator('#sv-app .panel[data-key="perf"] .chev')).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('#sv-app .panel[data-key="perf"] svg.equity')).toBeVisible();
 
   // Reloading the default layout selection → loads my saved template back (perf collapsed again).
-  await page.selectOption('#sv-app .wsbar select', 'My Layout');
+  await wsList.locator('[aria-label="Workspace"]').click();
+  await wsList.getByRole('option', { name: 'My Layout' }).click();
   await expect(page.locator('#sv-app .panel[data-key="perf"] .chev')).toHaveAttribute('aria-expanded', 'false');
 });
 

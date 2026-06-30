@@ -3,6 +3,10 @@
   // panel layout or "— Default —" (revert), and saves the current layout under a name. The template
   // CRUD + persistence live in App (Store.local seam); this is presentation only. Save is disabled
   // in demo (the demo is a 1:1 mirror with data-writing controls off — B23).
+  // A128: native <select> → $ui Select (bits-ui); the save control → the Button primitive.
+  import * as Select from '$ui/select';
+  import { Button } from '$ui/button';
+
   interface Props {
     names?: string[];
     value?: string;
@@ -11,23 +15,33 @@
     saveDisabled?: boolean;
   }
   let { names = [], value = '', onsave = () => {}, onselect = () => {}, saveDisabled = false }: Props = $props();
+
+  // The "default" layout is the empty string in App's model; bits-ui Select treats '' as no-value, so
+  // map it to a sentinel internally (invisible to callers + e2e, which key off the visible labels).
+  const DEFAULT = '__default__';
+  const selValue = $derived(value === '' ? DEFAULT : value);
+  const onSel = (v: string) => onselect(v === DEFAULT ? '' : v);
+  // Pass items to Root so Select.Value resolves the label even while the listbox is closed (A128).
+  const items = $derived([{ value: DEFAULT, label: '— Default —' }, ...names.map(n => ({ value: n, label: n }))]);
 </script>
 
 <div class="wsbar">
-  <label class="wslabel">
+  <div class="wslabel">
     <span>Workspace</span>
-    <select value={value} onchange={e => onselect(e.currentTarget.value)}>
-      <option value="">— Default —</option>
-      {#each names as n (n)}<option value={n}>{n}</option>{/each}
-    </select>
-  </label>
-  <button
-    type="button"
+    <Select.Root type="single" value={selValue} onValueChange={onSel} {items}>
+      <Select.Trigger aria-label="Workspace" class="min-w-[140px]"><Select.Value /></Select.Trigger>
+      <Select.Content>
+        {#each items as it (it.value)}<Select.Item value={it.value} label={it.label} />{/each}
+      </Select.Content>
+    </Select.Root>
+  </div>
+  <Button
     class="wssave"
+    size="sm"
     onclick={onsave}
     disabled={saveDisabled}
-    title={saveDisabled ? 'Saving layouts is disabled in the demo.' : 'Save the current panel layout'}
-  >Save layout</button>
+    title={saveDisabled ? 'Saving layouts is disabled in the demo.' : 'Save the current panel layout'}>Save layout</Button
+  >
 </div>
 
 <style>
@@ -45,34 +59,5 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--faint);
-  }
-  select {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 6px 8px;
-    font-size: 13px;
-    font-family: var(--sans);
-  }
-  select:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  .wssave {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .wssave:hover:not(:disabled) {
-    border-color: var(--hover-line);
-  }
-  .wssave:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
   }
 </style>

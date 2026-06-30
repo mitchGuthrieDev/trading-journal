@@ -12,6 +12,13 @@
   import * as Dialog from '$ui/dialog';
   import * as Select from '$ui/select';
 
+  const FORMATS = [
+    { value: 'pdf', label: 'PDF (print)' },
+    { value: 'md', label: 'Markdown (.md)' },
+    { value: 'png', label: 'Image (.png)' },
+    { value: 'jpeg', label: 'Image (.jpg)' },
+  ];
+
   interface Props {
     metrics: Metrics;
     cost: CostModel;
@@ -127,15 +134,12 @@
     <div class="bar">
       <strong>Performance report</strong>
       <div class="actions">
-        <Select.Root type="single" bind:value={format}>
+        <Select.Root type="single" bind:value={format} items={FORMATS}>
           <Select.Trigger aria-label="Download format" class="max-[560px]:min-w-0 max-[560px]:flex-1"
             ><Select.Value placeholder="Download as…" /></Select.Trigger
           >
           <Select.Content>
-            <Select.Item value="pdf" label="PDF (print)" />
-            <Select.Item value="md" label="Markdown (.md)" />
-            <Select.Item value="png" label="Image (.png)" />
-            <Select.Item value="jpeg" label="Image (.jpg)" />
+            {#each FORMATS as f (f.value)}<Select.Item value={f.value} label={f.label} />{/each}
           </Select.Content>
         </Select.Root>
         <button type="button" class="pri" disabled={!format} onclick={doDownload}>Download</button>
