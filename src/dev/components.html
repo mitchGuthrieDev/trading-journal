@@ -1,0 +1,21 @@
+<!doctype html>
+<!--
+  Blotterbook — DEV component reference (UI mockup workflow, Step 3).
+
+  Standalone Svelte mount (like app/app.html): a marker-free shell that loads ./main.ts and mounts
+  the Styleguide. Dev-only — built + deployed (so it's always reachable) but `noindex` and blocked in
+  robots.txt, and never linked from the product. Served at /dev/components.html.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <title>Components — Blotterbook (dev)</title>
+  </head>
+  <body data-mode="dev">
+    <div id="app"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

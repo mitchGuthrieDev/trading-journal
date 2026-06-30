@@ -58,6 +58,9 @@ export default defineConfig({
         app: r('src/app/app.html'),
         demo: r('src/app/demo.html'),
         staging: r('src/app/staging.html'),
+        // Dev-only component reference (UI mockup workflow, Step 3). Built + deployed so it's always
+        // reachable, but noindex + robots-blocked and never linked from the product.
+        devcomponents: r('src/dev/components.html'),
       },
     },
   },

@@ -169,6 +169,39 @@ writing or changing any Svelte code:
 - **`playground-link`** — only when the user explicitly asks, and NEVER for code already written to
   files in this repo.
 
+## UI mockup workflow
+
+Designing/mocking new screens happens **in code**, not a separate design tool. When asked to build or
+mock up a screen, **walk through these steps in order and say which step you're on** — don't jump
+straight to final code.
+
+1. **Token audit.** Tokens live in [`src/styles/tailwind.css`](src/styles/tailwind.css) (Tailwind v4,
+   CSS-based — there is no `tailwind.config.js`). Colors (semantic set + `chart-1..5`), radius
+   (`--radius` + `sm/md/lg/xl`), and fonts (`--font-sans`/`--font-mono`) are fully defined; spacing +
+   type scale are Tailwind defaults. **Known gap:** there are no semantic positive/negative/warning
+   names — `chart-2` = positive P&L (green), `chart-5`/`destructive` = negative (red), `chart-4` =
+   warning (amber). Use those tokens; never hardcode a raw palette color (`text-green-500`). Single
+   dark theme only (no light mode).
+2. **App shell.** All mockups sit inside the reusable frame
+   [`src/lib/components/shell/AppShell.svelte`](src/lib/components/shell/AppShell.svelte) (topbar +
+   centered content column + responsive gutters, Tailwind layout utilities, adapted from
+   `App.svelte`). It exposes `brand`/`meta`/`actions`/`sidebar`/`children` snippets + a `wide` prop;
+   the `sidebar` rail is off by default (the real app has none).
+3. **Component reference.** The live styleguide is **`/dev/components.html`** (source
+   [`src/dev/Styleguide.svelte`](src/dev/Styleguide.svelte)) — every token + installed shadcn-svelte
+   primitive with all variants/sizes. **Keep it updated:** when you `npx shadcn-svelte@latest add
+   <name>`, add a section for it here. Dev-only — built + deployed but `noindex` + robots-blocked.
+4. **Screen-by-screen.** (a) rough the layout with Tailwind utilities; (b) reach for installed
+   shadcn-svelte components first — check `$lib/components/ui/`, suggest `npx shadcn-svelte@latest add
+   <component>` for anything missing; (c) drop to raw bits-ui / custom only when shadcn-svelte doesn't
+   cover the pattern, and match the existing visual language; (d) iterate via variant/size props +
+   Tailwind `class` overrides, not by rewriting components.
+5. **Animation deferral.** For early mockups default to Svelte's built-in transitions (`fade`/`fly`/
+   `slide` from `svelte/transition`). Flag (and ask if intentional) before pulling in any heavier
+   motion tooling while layouts are still settling.
+6. **Consistency pass.** Periodically check new screens against the tokens + the styleguide for drift:
+   hardcoded colors, one-off spacing, or a custom component that should have been shadcn-svelte.
+
 ## Frontend conventions (Svelte 5 / TS / JSDoc)
 
 This is a Svelte 5 SPA in TypeScript built with Vite — **not SvelteKit** (A62). The repo already
@@ -193,7 +226,7 @@ conforms to the rules below; keep it that way.
 
 > **Caveat vs. the generic "Svelte 5 SPA" template:** this repo is a **multi-page** Vite build, so a
 > few one-size-fits-all conventions don't apply literally. The Vite config is the multi-page
-> [`vite.config.mjs`](vite.config.mjs) (9 HTML entries + the [`vite-ssg.mjs`](scripts/vite-ssg.mjs) plugin),
+> [`vite.config.mjs`](vite.config.mjs) (10 HTML entries + the [`vite-ssg.mjs`](scripts/vite-ssg.mjs) plugin),
 > **not** a 4-line `vite.config.ts`. SPA routing lives in [`static/_redirects`](static/_redirects)
 > (Vite's `publicDir` is `static/`, **there is no `public/`**) and rewrites `/app/` → `/app/app.html`
 > — a `/* /index.html 200` catch-all would break the marketing pages and the demo/staging surfaces.
@@ -239,6 +272,8 @@ conforms to the rules below; keep it that way.
       types.ts          shared TS interfaces (Trade/Fill/CostModel/Metrics/StoreLike/… — A61)
     components/ui/      canonical shadcn-svelte primitives (ADR-002): button, dialog, dropdown-menu,
                         popover, select — composed over bits-ui v2; added via `npx shadcn-svelte add`
+    components/shell/   AppShell.svelte — reusable app frame (topbar + content column, Tailwind
+                        utilities, adapted from App.svelte) every UI mockup sits inside (UI workflow)
     utils.ts            cn() class composer (clsx + tailwind-merge) — `$lib/utils`
   app/                  the journal app — a Svelte 5 SPA (ADR-001; vanilla view layer removed in A33)
     app.html            Svelte mount, data-mode="app" (served at /app/ via _redirects rewrite)
@@ -253,6 +288,10 @@ conforms to the rules below; keep it that way.
     components/         Home / Howto / Roadmap / Changelog / Legal / Admin .svelte (the page components)
     lib/                shared chrome: Nav.svelte, Footer.svelte, SiteShell.svelte (base/typography styles + globals)
     entries/            per-page client entries (hydrate the prerendered component) — *.ts
+  dev/                  DEV-ONLY surface (UI mockup workflow) — built + deployed but noindex + robots-blocked
+    components.html     Svelte mount, data-mode="dev" → /dev/components.html (the live component reference)
+    main.ts             entry: imports tailwind.css + mount(Styleguide)
+    Styleguide.svelte   renders every design token + installed shadcn-svelte primitive (all variants/sizes)
   assets/               bundled chrome: favicon.svg, banner.svg, why-*.svg (Vite fingerprints these)
   styles/               tailwind.css — the single Tailwind entry AND the single source of design-token
                         values: shadcn-svelte semantic vars in :root + @theme inline mapping + chart-1..5 (ADR-002)
@@ -282,7 +321,7 @@ conforms to the rules below; keep it that way.
   test-*.mjs            the CI test suite (adapters / auth / version / flags / tax / demostore / curveandreport)
 /e2e/                   Playwright render/E2E specs (dev-only — R19 Tier A)
 /dist/                  Vite build output (GITIGNORED) — the artifact Cloudflare Pages serves (A26)
-vite.config.mjs         Vite multi-page build config (root:src, publicDir:static, 9 HTML entries → dist/)
+vite.config.mjs         Vite multi-page build config (root:src, publicDir:static, 10 HTML entries → dist/)
 .node-version           pins Node 22 for the Cloudflare Pages build
 package.json            deps manifest — Vite + Tailwind v4 + shadcn-svelte/bits-ui + dev tooling (pinned, lockfiled)
 components.json         shadcn-svelte CLI config (`npx shadcn-svelte add <name>`)  ·  ADR-002
