@@ -20,6 +20,9 @@
   import Reports, { type ReportVM, type ReportRange, type ExportKind } from './screens/Reports.svelte';
   import { buildReportVM } from './lib/reports.ts';
   import { downloadBlob } from './lib/files.ts';
+  import CsvLibrary, { type Csv, type ImportPreview } from './screens/CsvLibrary.svelte';
+  import { Adapters } from '../lib/core/adapters.ts';
+  import type { Trade } from '../lib/core/types.ts';
 
   const store = Store;
   setContext('bb:store', store);
@@ -185,6 +188,48 @@
     }
   }
 
+  // ── CSV Library ──────────────────────────────────────────────────────────────────────────────
+  // No per-file provenance is stored (only the merged trade set), so file storage is deferred: the
+  // table shows one derived "active dataset" row, and the upload zone is a real Adapters→addTrades
+  // importer. The parsed trades are stashed between parse() and import() (one preview at a time).
+  const csvFiles = $derived<Csv[]>(
+    dash.allTrades.length
+      ? [
+          {
+            id: 'dataset',
+            name: 'Imported trades',
+            platform: 'Imported',
+            rows: dash.allTrades.length,
+            trades: dash.allTrades.length,
+            imported: '',
+            from: dash.allTrades[0].date,
+            to: dash.allTrades[dash.allTrades.length - 1].date,
+            status: 'ok',
+            sizeKb: 0,
+            overlap: 0,
+            included: true,
+          },
+        ]
+      : []
+  );
+  let pendingTrades: Trade[] = [];
+  function parseCsv(text: string, name: string): ImportPreview {
+    const r = Adapters.parse(text);
+    if (!r.ok || !r.trades) {
+      pendingTrades = [];
+      return { name, platform: '', rows: 0, tradeCount: 0, from: '', to: '', estimatedRoots: [], sample: [], error: r.ok ? 'No completed trades found.' : r.error };
+    }
+    const trades = r.trades;
+    pendingTrades = trades;
+    const rows = Math.max(0, text.trim().split(/\r?\n/).length - 1);
+    const sample = trades.slice(0, 3).map(t => ({ time: (t.time || '').slice(11, 16), sym: t.root, side: t.side === 'short' ? 'Short' : 'Long', qty: t.qty ?? 1, pnl: t.pnl, up: t.pnl >= 0 }));
+    return { name, platform: r.label ?? 'CSV', rows, tradeCount: trades.length, from: trades[0]?.date ?? '', to: trades[trades.length - 1]?.date ?? '', estimatedRoots: r.estimatedRoots ?? [], sample };
+  }
+  async function importPreview() {
+    if (pendingTrades.length) await dash.importTrades(pendingTrades);
+    pendingTrades = [];
+  }
+
   onMount(() => {
     dash.boot().catch((e: unknown) => {
       console.error('staging app boot failed', e);
@@ -257,6 +302,8 @@
       build={buildReport}
       onexport={onReportExport}
     />
+  {:else if active === 'csv'}
+    <CsvLibrary files={csvFiles} perFileActions={false} blotterHref="#blotter" parse={parseCsv} onimport={importPreview} ondelete={() => dash.purgeAll()} />
   {:else}
     <div class="grid min-h-[60vh] place-items-center">
       <div class="flex max-w-md flex-col items-center gap-2 text-center">

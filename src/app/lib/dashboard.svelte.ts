@@ -127,6 +127,15 @@ export function createDashboard(store: StoreLike, opts: { seed: boolean }) {
     for (const id of ids) await store.deleteTrade(id);
     await reloadAll();
   }
+  async function importTrades(trades: Trade[]) {
+    const res = await store.addTrades(trades);
+    await reloadAll();
+    return res;
+  }
+  async function purgeAll() {
+    await store.purge();
+    await reloadAll();
+  }
   const noteFor = (date: string) => journal.get(date)?.text ?? '';
   async function saveNote(date: string, text: string) {
     const ex = journal.get(date);
@@ -221,6 +230,8 @@ export function createDashboard(store: StoreLike, opts: { seed: boolean }) {
     saveNote,
     saveTradeMeta,
     deleteTrades,
+    importTrades,
+    purgeAll,
     sessionOf,
   };
 }

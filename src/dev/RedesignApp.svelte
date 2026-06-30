@@ -12,7 +12,7 @@
   import Calendar from '../app/screens/Calendar.svelte';
   import Analytics from '../app/screens/Analytics.svelte';
   import Blotter from '../app/screens/Blotter.svelte';
-  import CsvLibrary from './screens/CsvLibrary.svelte';
+  import CsvLibrary from '../app/screens/CsvLibrary.svelte';
   import TradeEditor from '../app/screens/TradeEditor.svelte';
   import Reports from '../app/screens/Reports.svelte';
   import Placeholder from './screens/Placeholder.svelte';
