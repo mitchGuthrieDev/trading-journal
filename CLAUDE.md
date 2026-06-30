@@ -185,7 +185,9 @@ writing or changing any Svelte code:
 
 Designing/mocking new screens happens **in code**, not a separate design tool. When asked to build or
 mock up a screen, **walk through these steps in order and say which step you're on** — don't jump
-straight to final code.
+straight to final code. How the `/dev` sandbox relates to the real app — what's already global (tokens)
+vs. preview-only (shell/screens), and the cutover + staging plan — is in
+[`docs/ui-redesign.md`](docs/ui-redesign.md).
 
 1. **Token audit.** Tokens live in [`src/styles/tailwind.css`](src/styles/tailwind.css) (Tailwind v4,
    CSS-based — there is no `tailwind.config.js`). **Greyscale UI** (semantic set is a neutral ramp;
