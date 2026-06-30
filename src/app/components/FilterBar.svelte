@@ -5,6 +5,7 @@
   // Session + tag filters and saved-filter views from the vanilla bar are deferred to a later slice.
   import type { FilterState, SavedFilter } from '../../lib/types.ts';
   import * as Select from '$ui/select';
+  import { Button } from '$ui/button';
 
   interface Props {
     filters: FilterState;
@@ -120,7 +121,7 @@
     {/each}
   </div>
   <span class="count ml-auto self-center font-mono text-xs text-faint">{count} trade{count === 1 ? '' : 's'}</span>
-  <button type="button" class="clear cursor-pointer rounded-md border border-line bg-transparent px-3 py-[7px] text-xs text-dim hover:border-hover-line hover:text-txt" onclick={onclear}>Clear</button>
+  <Button variant="outline" class="clear text-dim" onclick={onclear}>Clear</Button>
 </section>
 
 <section class="saved mb-4 mt-[-8px] flex flex-wrap items-center gap-2">
@@ -131,7 +132,7 @@
     bind:value={viewName}
     onkeydown={e => e.key === 'Enter' && save()}
   />
-  <button type="button" class="savebtn cursor-pointer rounded-md border border-line bg-panel2 px-3 py-1.5 text-xs text-txt" onclick={save}>Save view</button>
+  <Button size="sm" class="savebtn" onclick={save}>Save view</Button>
   {#each savedFilters as sf (sf.id)}
     <span class="chip inline-flex items-stretch overflow-hidden rounded-md border border-line">
       <button type="button" class="apply cursor-pointer border-0 bg-panel px-2.5 py-1.5 text-xs text-accent" onclick={() => onapply(sf)}>{sf.name}</button>

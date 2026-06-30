@@ -8,7 +8,7 @@
   import { tv, type VariantProps } from 'tailwind-variants';
 
   export const buttonVariants = tv({
-    base: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border font-sans leading-none cursor-pointer select-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 disabled:cursor-not-allowed',
+    base: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border font-sans leading-none no-underline cursor-pointer select-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 disabled:cursor-not-allowed',
     variants: {
       variant: {
         default: 'border-line bg-panel2 text-txt hover:border-hover-line',
@@ -43,9 +43,9 @@
     children?: Snippet;
   }
 
-  let { variant = 'default', size = 'default', class: className, children, ...rest }: Props = $props();
+  let { variant = 'default', size = 'default', type = 'button', class: className, children, ...rest }: Props = $props();
 </script>
 
-<button class={cn(buttonVariants({ variant, size }), className)} {...rest}>
+<button {type} class={cn(buttonVariants({ variant, size }), className)} {...rest}>
   {@render children?.()}
 </button>

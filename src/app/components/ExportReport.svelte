@@ -11,6 +11,7 @@
   import { downloadBlob } from '../lib/files.ts';
   import * as Dialog from '$ui/dialog';
   import * as Select from '$ui/select';
+  import { Button, buttonVariants } from '$ui/button';
 
   const FORMATS = [
     { value: 'pdf', label: 'PDF (print)' },
@@ -142,22 +143,9 @@
             {#each FORMATS as f (f.value)}<Select.Item value={f.value} label={f.label} />{/each}
           </Select.Content>
         </Select.Root>
-        <button
-          type="button"
-          class="pri cursor-pointer rounded-md border border-accent bg-accent px-3.5 py-[7px] text-[13px] font-semibold text-bg disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={!format}
-          onclick={doDownload}>Download</button
-        >
-        <a
-          class="cursor-pointer rounded-md border border-line bg-panel2 px-3.5 py-[7px] text-[13px] text-txt no-underline"
-          href={rep.mailto}>Email a copy</a
-        >
-        <button
-          type="button"
-          class="cursor-pointer rounded-md border border-line bg-panel2 px-3.5 py-[7px] text-[13px] text-txt"
-          data-expclose
-          onclick={onclose}>Close</button
-        >
+        <Button variant="primary" class="pri" disabled={!format} onclick={doDownload}>Download</Button>
+        <a href={rep.mailto} class={buttonVariants({ variant: 'default' })}>Email a copy</a>
+        <Button data-expclose onclick={onclose}>Close</Button>
       </div>
     </div>
     {#if note}<div

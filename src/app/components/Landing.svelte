@@ -6,6 +6,7 @@
   import type { AppSetup } from '../../lib/types.ts';
   import { Adapters } from '../../lib/adapters.ts';
   import * as Select from '$ui/select';
+  import { Button } from '$ui/button';
 
   interface Props {
     setup: AppSetup;
@@ -93,7 +94,7 @@
   </div>
 
   <div class="mt-[18px] flex items-center gap-[14px]">
-    <button type="button" class="cursor-pointer rounded-lg border-0 bg-accent px-[22px] py-[11px] text-[15px] font-bold text-bg" onclick={() => fileInput.click()}>Load CSV</button>
+    <Button variant="primary" size="lg" onclick={() => fileInput.click()}>Load CSV</Button>
     <div class="field flex flex-col gap-1 text-[11px] text-faint">
       <span>Platform</span>
       <Select.Root
