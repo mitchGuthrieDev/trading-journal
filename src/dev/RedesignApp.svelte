@@ -14,6 +14,7 @@
   import Blotter from './screens/Blotter.svelte';
   import CsvLibrary from './screens/CsvLibrary.svelte';
   import TradeEditor from './screens/TradeEditor.svelte';
+  import Reports from './screens/Reports.svelte';
   import Placeholder from './screens/Placeholder.svelte';
 
   // Screens are registered here as they're built; unregistered keys fall back to the Placeholder.
@@ -24,6 +25,7 @@
     blotter: Blotter,
     csv: CsvLibrary,
     trades: TradeEditor,
+    reports: Reports,
   };
 
   const fromHash = (): string => {

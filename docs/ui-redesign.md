@@ -68,6 +68,7 @@ complementary — `/dev` settles the design, staging proves the real behavior be
 
 - **Phase 1 (foundation):** ✅ greyscale tokens, mono type, 4px radius (global); sidebar `AppShell` +
   `SidebarNav`; styleguide.
-- **Phase 2 (screens, in `/dev`):** ✅ Dashboard · Calendar · Analytics · Blotter · CSV Library ·
-  Trade Editor — ⬜ Reports.
-- **Cutover:** not started (the live `/app/` is untouched beyond the global tokens).
+- **Phase 2 (screens, in `/dev`):** ✅ **complete** — Dashboard · Calendar · Analytics · Blotter ·
+  CSV Library · Trade Editor · Reports (all seven mocked in the harness).
+- **Cutover (Phase 3):** not started (the live `/app/` is untouched beyond the global tokens). Next:
+  wire the screens to the real engine, swap `App.svelte` onto `AppShell`, ship to staging, promote.
