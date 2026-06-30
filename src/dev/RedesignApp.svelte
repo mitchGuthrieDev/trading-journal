@@ -10,7 +10,7 @@
   import { navSections, navItems, navLabel } from './nav';
   import Dashboard from '../app/screens/Dashboard.svelte';
   import Calendar from '../app/screens/Calendar.svelte';
-  import Analytics from './screens/Analytics.svelte';
+  import Analytics from '../app/screens/Analytics.svelte';
   import Blotter from '../app/screens/Blotter.svelte';
   import CsvLibrary from './screens/CsvLibrary.svelte';
   import TradeEditor from './screens/TradeEditor.svelte';

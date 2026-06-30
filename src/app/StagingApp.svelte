@@ -13,6 +13,8 @@
   import { navSections, navLabel, navItems } from './lib/nav';
   import Dashboard, { type DashStat, type DayCell } from './screens/Dashboard.svelte';
   import Calendar, { type CalDay, type DayTrade } from './screens/Calendar.svelte';
+  import Analytics from './screens/Analytics.svelte';
+  import { buildAnalytics } from './lib/analytics.ts';
   import Blotter, { type BlotterRow } from './screens/Blotter.svelte';
 
   const store = Store;
@@ -94,6 +96,9 @@
       pnl: t.pnl,
     }));
 
+  // ── Analytics ────────────────────────────────────────────────────────────────────────────────
+  const analytics = $derived(buildAnalytics(dash.metricsActive, dash.metricsActive.trades));
+
   // ── Blotter ──────────────────────────────────────────────────────────────────────────────────
   // Entry/exit prices aren't in the trade model (P&L events, not bars) → undefined → "—"; hold from
   // holdMs (fills exports only); fees from the broker rate (round-turn = rate × 2 × qty); tags/note
@@ -163,6 +168,22 @@
       tradesForDay={calTradesForDay}
       getNote={day => dash.noteFor(dateOf(day))}
       onsavenote={(day, text) => dash.saveNote(dateOf(day), text)}
+    />
+  {:else if active === 'analytics'}
+    <Analytics
+      kpis={analytics.kpis}
+      dist={analytics.dist}
+      wins={analytics.wins}
+      losses={analytics.losses}
+      curve={dash.metricsActive.curve}
+      maxDD={dash.metricsActive.maxDD}
+      maxDDpct={dash.metricsActive.maxDDpct}
+      long={analytics.long}
+      short={analytics.short}
+      hours={analytics.hours}
+      wdays={analytics.wdays}
+      symbols={analytics.symbols}
+      statRows={analytics.statRows}
     />
   {:else if active === 'blotter'}
     <Blotter rows={blotterRows} />
