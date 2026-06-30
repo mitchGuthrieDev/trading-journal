@@ -126,22 +126,34 @@ So:
   `secondary`/`muted`/`accent`/`destructive`/`border`/`input`/`ring` + `chart-1..5` — and maps it via
   `@theme inline`. Components use the **semantic utilities**: `bg-background`/`bg-card`/`bg-secondary`,
   `text-foreground`/`text-muted-foreground`, `bg-primary`/`text-primary-foreground`, `border-border`,
-  `hover:bg-accent`. Note the naming: the brand blue is shadcn's **`primary`** (+ `ring`); shadcn's
-  **`accent`** is the subtle item-hover surface. Trading-domain hues with no shadcn equivalent live in
-  **`chart-1..5`**: chart-1 brand-blue, chart-2 P&L-up (green), chart-3 take-home (purple), chart-4
-  warning (amber), chart-5 P&L-down (red) — so `text-chart-2` = positive P&L and `text-destructive` =
-  negative/red. `tw-animate-css` supplies component animations.
-- **UI primitives = canonical shadcn-svelte at `$lib/components/ui/` (ADR-002).** `button`, `dialog`,
-  `dropdown-menu`, `popover`, `select` — composed over **bits-ui v2** with `data-slot` attrs and `cn`
-  from `$lib/utils`. Use these for dialogs/menus/popovers/selects instead of hand-rolling a11y; you
+  `hover:bg-accent`. **The UI chrome is a greyscale ramp (UI redesign initiative):** `primary` is
+  near-white (the "action" treatment), `ring` is mid-grey — there is no brand blue in the chrome;
+  shadcn's **`accent`** is the subtle item-hover surface. **Color survives only in the data layer:**
+  `destructive` stays red (error / P&L loss) and the trading-domain **`chart-1..5`** are unchanged —
+  chart-1 series-blue, chart-2 P&L-up (green), chart-3 take-home (purple), chart-4 warning (amber),
+  chart-5 P&L-down (red) — so `text-chart-2` = positive P&L and `text-destructive`/`text-chart-5` =
+  negative. Corners are angular (`--radius` 4px). **Type is mono-forward:** self-hosted Geist Mono
+  (`@font-face`, variable woff2 in `src/assets/fonts/`, CSP font-src 'self') is the primary UI
+  typeface — both `--font-sans` and `--font-mono` resolve to it. `tw-animate-css` supplies animations.
+- **UI primitives = canonical shadcn-svelte at `$lib/components/ui/` (ADR-002).** `button`, `badge`,
+  `card`, `checkbox`, `input`, `textarea`, `label`, `switch`, `table`, `tabs`, `tooltip`, `breadcrumb`,
+  `separator`, `skeleton`, `dialog`, `sheet`, `alert-dialog`, `dropdown-menu`, `popover`, `select` —
+  composed over **bits-ui v2** with `data-slot` attrs and `cn` from `$lib/utils`. Use these for dialogs/menus/popovers/selects instead of hand-rolling a11y; you
   **own the source**, so customize them in place. They render canonically (Dialog/menus/popover/select
   **portal to body**). Add/maintain them with the **shadcn-svelte CLI** — `components.json` is wired,
-  so `npx shadcn-svelte add <name>` works. A class applied via prop onto a primitive's ROOT element
+  so `npx shadcn-svelte add <name>` works. **Icons = [`@lucide/svelte`](https://lucide.dev)** (the
+  shadcn-standard set; named imports `import { Calendar } from '@lucide/svelte'`, rendered as
+  components with a `class` for sizing/color, e.g. `<Calendar class="size-4" />`). A class applied via prop onto a primitive's ROOT element
   doesn't get the parent's Svelte scope hash, so style such elements with utilities (or the primitive),
   not scoped descendant CSS; for a trigger that must keep scoped styling, use bits-ui's `child` snippet
   so the real element stays in your template. Consult the Svelte MCP server + the shadcn-svelte/bits-ui
   docs when touching these. After UI work, grep `src/` for a new `style="` (CSP) and keep the e2e
-  specs + `_headers` green.
+  specs + `_headers` green. **No Tailwind preflight** ships (tailwind.css imports only theme +
+  utilities, not preflight — to avoid resetting the hand-styled app/site), so native form controls
+  keep their UA chrome: a raw `<button>` shows a light UA background unless a `bg-*` utility overrides
+  it (and a bare `<a>` gets UA blue + underline). The dev/redesign surfaces neutralize both with
+  `[data-mode='dev'] button`/`a` resets in tailwind.css; elsewhere, give bare buttons/links explicit
+  styling.
 - **Marketing/info site = Svelte SSG (A69).** `index/howto/roadmap/changelog/legal/admin.html` are
   hand-authored, marker-free **templates** (head meta + `<div id="app"><!--ssg-outlet--></div>`
   + a client-entry `<script>`). At build time [`vite-ssg.mjs`](scripts/vite-ssg.mjs) server-renders each page
@@ -169,6 +181,47 @@ writing or changing any Svelte code:
 - **`playground-link`** — only when the user explicitly asks, and NEVER for code already written to
   files in this repo.
 
+## UI mockup workflow
+
+Designing/mocking new screens happens **in code**, not a separate design tool. When asked to build or
+mock up a screen, **walk through these steps in order and say which step you're on** — don't jump
+straight to final code. How the `/dev` sandbox relates to the real app — what's already global (tokens)
+vs. preview-only (shell/screens), and the cutover + staging plan — is in
+[`docs/ui-redesign.md`](docs/ui-redesign.md).
+
+1. **Token audit.** Tokens live in [`src/styles/tailwind.css`](src/styles/tailwind.css) (Tailwind v4,
+   CSS-based — there is no `tailwind.config.js`). **Greyscale UI** (semantic set is a neutral ramp;
+   `primary` near-white, `ring` mid-grey), **angular** corners (`--radius` 4px + `sm/md/lg/xl`), and
+   **mono-forward** type (self-hosted Geist Mono; `--font-sans`/`--font-mono` both resolve to it);
+   spacing + type scale are Tailwind defaults. **Color lives only in the data layer:** `chart-2` =
+   positive P&L (green), `chart-5`/`destructive` = negative (red), `chart-4` = warning (amber),
+   `chart-1` series-blue. Use those tokens; never hardcode a raw palette color (`text-green-500`).
+   Single dark theme only (no light mode).
+2. **App shell.** All mockups sit inside the reusable sidebar frame
+   [`src/lib/components/shell/AppShell.svelte`](src/lib/components/shell/AppShell.svelte) — a persistent
+   left [`SidebarNav`](src/lib/components/shell/SidebarNav.svelte) (collapsible on desktop, slide-over
+   drawer on mobile) + a content column (slim topbar with the sidebar toggle + page `title` + `actions`
+   snippet, then scrollable `children`). Props: `brand`/`brandHref` (defaults `Blotterbook` → `/`),
+   data-driven `sections` (`NavSection[]`), `active`, `onnavigate`. Tailwind layout utilities only.
+3. **Component reference.** The live styleguide is **`/dev/components.html`** (source
+   [`src/dev/Styleguide.svelte`](src/dev/Styleguide.svelte)) — every token + installed shadcn-svelte
+   primitive with all variants/sizes. **Keep it updated:** when you `npx shadcn-svelte@latest add
+   <name>`, add a section for it here. Dev-only — built + deployed but `noindex` + robots-blocked.
+4. **Screen-by-screen.** Redesign screens are mocked in the preview harness **`/dev/app.html`**
+   (source [`src/dev/RedesignApp.svelte`](src/dev/RedesignApp.svelte) + `src/dev/screens/`) — the
+   sidebar shell + a hash router; register each new screen in `RedesignApp`'s `SCREENS` map. The live
+   `/app/` surface is untouched until the redesign is approved and cut over. Per screen: (a) rough the
+   layout with Tailwind utilities; (b) reach for installed shadcn-svelte components first — check
+   `$lib/components/ui/`, suggest `npx shadcn-svelte@latest add <component>` for anything missing; (c)
+   drop to raw bits-ui / custom only when shadcn-svelte doesn't cover the pattern, and match the
+   existing visual language; (d) iterate via variant/size props + Tailwind `class` overrides, not by
+   rewriting components.
+5. **Animation deferral.** For early mockups default to Svelte's built-in transitions (`fade`/`fly`/
+   `slide` from `svelte/transition`). Flag (and ask if intentional) before pulling in any heavier
+   motion tooling while layouts are still settling.
+6. **Consistency pass.** Periodically check new screens against the tokens + the styleguide for drift:
+   hardcoded colors, one-off spacing, or a custom component that should have been shadcn-svelte.
+
 ## Frontend conventions (Svelte 5 / TS / JSDoc)
 
 This is a Svelte 5 SPA in TypeScript built with Vite — **not SvelteKit** (A62). The repo already
@@ -193,7 +246,7 @@ conforms to the rules below; keep it that way.
 
 > **Caveat vs. the generic "Svelte 5 SPA" template:** this repo is a **multi-page** Vite build, so a
 > few one-size-fits-all conventions don't apply literally. The Vite config is the multi-page
-> [`vite.config.mjs`](vite.config.mjs) (9 HTML entries + the [`vite-ssg.mjs`](scripts/vite-ssg.mjs) plugin),
+> [`vite.config.mjs`](vite.config.mjs) (11 HTML entries + the [`vite-ssg.mjs`](scripts/vite-ssg.mjs) plugin),
 > **not** a 4-line `vite.config.ts`. SPA routing lives in [`static/_redirects`](static/_redirects)
 > (Vite's `publicDir` is `static/`, **there is no `public/`**) and rewrites `/app/` → `/app/app.html`
 > — a `/* /index.html 200` catch-all would break the marketing pages and the demo/staging surfaces.
@@ -237,8 +290,12 @@ conforms to the rules below; keep it that way.
       entitlements.ts   storage-tier resolver (scaffold; INTENTIONALLY not loaded)
       format.ts         shared esc/platformLabel + version-badge IIFE (ex assets/util.js — A76)
       types.ts          shared TS interfaces (Trade/Fill/CostModel/Metrics/StoreLike/… — A61)
-    components/ui/      canonical shadcn-svelte primitives (ADR-002): button, dialog, dropdown-menu,
-                        popover, select — composed over bits-ui v2; added via `npx shadcn-svelte add`
+    components/ui/      canonical shadcn-svelte primitives (ADR-002): button, badge, card, checkbox,
+                        input, textarea, label, switch, table, tabs, tooltip, breadcrumb, separator,
+                        skeleton, dialog, sheet, alert-dialog, dropdown-menu, popover, select (bits-ui v2).
+                        CLI registry is egress-blocked → vendor new ones by hand (canonical source)
+    components/shell/   reusable sidebar app frame (UI redesign): AppShell.svelte (rail + content
+                        column) + SidebarNav.svelte (data-driven nav rail) — every UI mockup sits inside
     utils.ts            cn() class composer (clsx + tailwind-merge) — `$lib/utils`
   app/                  the journal app — a Svelte 5 SPA (ADR-001; vanilla view layer removed in A33)
     app.html            Svelte mount, data-mode="app" (served at /app/ via _redirects rewrite)
@@ -253,7 +310,14 @@ conforms to the rules below; keep it that way.
     components/         Home / Howto / Roadmap / Changelog / Legal / Admin .svelte (the page components)
     lib/                shared chrome: Nav.svelte, Footer.svelte, SiteShell.svelte (base/typography styles + globals)
     entries/            per-page client entries (hydrate the prerendered component) — *.ts
+  dev/                  DEV-ONLY surfaces (UI mockup workflow) — built + deployed but noindex + robots-blocked
+    components.html  +  main.ts  +  Styleguide.svelte   the live component reference → /dev/components.html
+    app.html  +  app-main.ts  +  RedesignApp.svelte     redesign preview harness (Phase 2) → /dev/app.html
+    nav.ts              shared sidebar nav config (lucide icons) — used by the styleguide + harness
+    screens/            redesign screen mockups — Dashboard/Calendar/Analytics/Blotter/CsvLibrary/
+                        TradeEditor/Reports.svelte (Phase 2 complete) + Placeholder.svelte
   assets/               bundled chrome: favicon.svg, banner.svg, why-*.svg (Vite fingerprints these)
+    fonts/              self-hosted Geist Mono variable woff2 (mono-forward UI; @font-face in tailwind.css)
   styles/               tailwind.css — the single Tailwind entry AND the single source of design-token
                         values: shadcn-svelte semantic vars in :root + @theme inline mapping + chart-1..5 (ADR-002)
 /static/                Vite publicDir → copied verbatim to dist/ root (A30; retired copy-static.mjs)
@@ -282,9 +346,9 @@ conforms to the rules below; keep it that way.
   test-*.mjs            the CI test suite (adapters / auth / version / flags / tax / demostore / curveandreport)
 /e2e/                   Playwright render/E2E specs (dev-only — R19 Tier A)
 /dist/                  Vite build output (GITIGNORED) — the artifact Cloudflare Pages serves (A26)
-vite.config.mjs         Vite multi-page build config (root:src, publicDir:static, 9 HTML entries → dist/)
+vite.config.mjs         Vite multi-page build config (root:src, publicDir:static, 11 HTML entries → dist/)
 .node-version           pins Node 22 for the Cloudflare Pages build
-package.json            deps manifest — Vite + Tailwind v4 + shadcn-svelte/bits-ui + dev tooling (pinned, lockfiled)
+package.json            deps manifest — Vite + Tailwind v4 + shadcn-svelte/bits-ui + @lucide/svelte + dev tooling (pinned, lockfiled)
 components.json         shadcn-svelte CLI config (`npx shadcn-svelte add <name>`)  ·  ADR-002
 eslint.config.mjs       ESLint flat config  ·  .prettierrc.json  Prettier  ·  tsconfig.json (tsc: src/lib/**/*.ts except src/lib/components) + tsconfig.svelte.json (svelte-check: src/app + src/site + src/lib/components) + tsconfig.functions.json  ·  playwright.config.mjs  e2e
 svelte.config.js        vitePreprocess — enables <script lang="ts"> in components (A61)

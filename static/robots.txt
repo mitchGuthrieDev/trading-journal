@@ -10,6 +10,7 @@ Content-Signal: search=yes,ai-train=no
 Allow: /
 Disallow: /app/
 Disallow: /admin.html
+Disallow: /dev/
 
 # Block known AI scrapers/crawlers outright (parity with the prior managed file).
 User-agent: Amazonbot

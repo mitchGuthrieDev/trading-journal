@@ -1,0 +1,21 @@
+<!doctype html>
+<!--
+  Blotterbook — DEV redesign preview (UI mockup workflow, Phase 2).
+
+  Standalone Svelte mount (like /dev/components.html): loads ./app-main.ts and mounts the redesign
+  harness (sidebar shell + screen router). Dev-only — built + deployed but `noindex` + robots-blocked,
+  never linked from the product. Served at /dev/app.html. The live /app/ surface is untouched.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <title>Redesign preview — Blotterbook (dev)</title>
+  </head>
+  <body data-mode="dev">
+    <div id="app"></div>
+    <script type="module" src="./app-main.ts"></script>
+  </body>
+</html>
