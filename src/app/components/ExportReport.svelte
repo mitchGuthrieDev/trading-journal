@@ -4,14 +4,14 @@
   // and the email summary) and renders it in an isolated <iframe> (its own baked-token palette, so
   // it tracks tokens.css — A8). Download is disabled until a real format is chosen; PDF prints the
   // iframe, PNG/JPEG rasterize it, Markdown/Email reuse the builder's strings.
-  import { buildReport, reportHtmlDoc } from '../../lib/report.ts';
-  import { fmtDate } from '../../lib/core.ts';
-  import type { Metrics } from '../../lib/core.ts';
-  import type { CostModel, ReportLabels } from '../../lib/types.ts';
+  import { buildReport, reportHtmlDoc } from '../../lib/core/report.ts';
+  import { fmtDate } from '../../lib/core/core.ts';
+  import type { Metrics } from '../../lib/core/core.ts';
+  import type { CostModel, ReportLabels } from '../../lib/core/types.ts';
   import { downloadBlob } from '../lib/files.ts';
-  import * as Dialog from '$ui/dialog';
-  import * as Select from '$ui/select';
-  import { Button, buttonVariants } from '$ui/button';
+  import * as Dialog from '$lib/components/ui/dialog';
+  import * as Select from '$lib/components/ui/select';
+  import { Button, buttonVariants } from '$lib/components/ui/button';
 
   const FORMATS = [
     { value: 'pdf', label: 'PDF (print)' },
@@ -29,11 +29,11 @@
   }
   let { metrics: m, cost: c, labels, onclose }: Props = $props();
 
-  // Bake the live design tokens into a :root{…} block so the standalone report matches tokens.css
-  // without report.js touching the DOM (A8). System fonts + a CSS-gradient dot → no external assets.
+  // Bake the live shadcn design tokens into a :root{…} block so the standalone report matches the app
+  // theme without report.ts touching the DOM (A8). System fonts + a CSS-gradient dot → no external assets.
   function tokenBlock() {
     const cs = getComputedStyle(document.documentElement);
-    const vars = ['--bg', '--panel', '--panel2', '--line', '--txt', '--dim', '--faint', '--green', '--red', '--accent', '--take', '--mono', '--sans'];
+    const vars = ['--background', '--card', '--secondary', '--border', '--foreground', '--muted-foreground', '--chart-2', '--chart-3', '--chart-4', '--destructive', '--primary', '--font-mono', '--font-sans'];
     return ':root{' + vars.map(n => `${n}:${cs.getPropertyValue(n).trim()}`).join(';') + ';}';
   }
 
@@ -92,7 +92,7 @@
             const ctx = cv.getContext('2d');
             if (!ctx) return reject(new Error('no 2d context'));
             ctx.scale(sc, sc);
-            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0d1014';
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--background').trim() || '#0d1014';
             ctx.fillRect(0, 0, w, h);
             ctx.drawImage(img, 0, 0);
             cv.toBlob(b => (b ? resolve(b) : reject(new Error('toBlob returned null'))), type, type === 'image/jpeg' ? 0.92 : undefined);
@@ -131,8 +131,8 @@
 </script>
 
 <Dialog.Root open onOpenChange={(o: boolean) => !o && onclose()}>
-  <Dialog.Content class="modal top-[5vh] flex max-h-[90vh] max-w-[880px] flex-col overflow-hidden" aria-label="Export performance report">
-    <div class="flex items-center justify-between gap-3 border-b border-line bg-panel px-3.5 py-3 max-[560px]:flex-wrap">
+  <Dialog.Content class="modal max-w-[880px] gap-0 p-0 max-h-[90vh] overflow-hidden flex flex-col" aria-label="Export performance report">
+    <div class="flex items-center justify-between gap-3 border-b border-border bg-card px-3.5 py-3 max-[560px]:flex-wrap">
       <strong class="text-[13px]">Performance report</strong>
       <div class="flex items-center gap-2 max-[560px]:w-full max-[560px]:flex-wrap max-[560px]:justify-start">
         <Select.Root type="single" bind:value={format} items={FORMATS}>
@@ -143,19 +143,19 @@
             {#each FORMATS as f (f.value)}<Select.Item value={f.value} label={f.label} />{/each}
           </Select.Content>
         </Select.Root>
-        <Button variant="primary" class="pri" disabled={!format} onclick={doDownload}>Download</Button>
-        <a href={rep.mailto} class={buttonVariants({ variant: 'default' })}>Email a copy</a>
-        <Button data-expclose onclick={onclose}>Close</Button>
+        <Button class="pri" disabled={!format} onclick={doDownload}>Download</Button>
+        <a href={rep.mailto} class={buttonVariants({ variant: 'secondary' })}>Email a copy</a>
+        <Button variant="secondary" onclick={onclose}>Close</Button>
       </div>
     </div>
     {#if note}<div
-        class="border-b border-line px-3.5 py-1.5 text-xs {noteKind === 'ok' ? 'text-green' : noteKind === 'err' ? 'text-red' : 'text-dim'}"
+        class="border-b border-border px-3.5 py-1.5 text-xs {noteKind === 'ok' ? 'text-chart-2' : noteKind === 'err' ? 'text-destructive' : 'text-muted-foreground'}"
       >
         {note}
       </div>{/if}
     <!-- S24: same-origin srcdoc (print + CSSOM styling need it) but NO allow-scripts — defense-in-depth
          should an escaping bug ever slip past report.ts's esc(). The report carries no scripts of its own;
          allow-modals keeps the parent-triggered print() dialog working. -->
-    <iframe bind:this={iframeEl} class="min-h-[50vh] w-full flex-1 border-0 bg-bg" title="Performance report preview" sandbox="allow-same-origin allow-modals" srcdoc={built.html} onload={applyStyles}></iframe>
+    <iframe bind:this={iframeEl} class="min-h-[50vh] w-full flex-1 border-0 bg-background" title="Performance report preview" sandbox="allow-same-origin allow-modals" srcdoc={built.html} onload={applyStyles}></iframe>
   </Dialog.Content>
 </Dialog.Root>

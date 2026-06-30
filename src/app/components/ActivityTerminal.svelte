@@ -3,9 +3,9 @@
   // logs the action events shared code emits (note saved, CSV imported, backup, erase, trade edit).
   // The vanilla terminal does the same; here the Svelte components fire the emits.
   import { onMount } from 'svelte';
-  import { onEvent, pad2 } from '../../lib/core.ts';
+  import { onEvent, pad2 } from '../../lib/core/core.ts';
   import Panel from './Panel.svelte';
-  import type { PanelBundle } from '../../lib/types.ts';
+  import type { PanelBundle } from '../../lib/core/types.ts';
 
   interface Line {
     id: number;
@@ -67,14 +67,14 @@
 <Panel {...panel} title="Activity">
   <div class="terminal">
     <div
-      class="log max-h-40 overflow-auto rounded-[7px] border border-line bg-bg px-2.5 py-2 font-mono text-xs"
+      class="log max-h-40 overflow-auto rounded-[7px] border border-border bg-background px-2.5 py-2 font-mono text-xs"
       bind:this={box}
       role="log"
       aria-live="polite"
     >
       {#each lines as l (l.id)}
         <div class="flex gap-2.5 py-0.5">
-          <span class="text-faint">{l.ts}</span><span class="text-green">{l.msg}</span>
+          <span class="text-muted-foreground">{l.ts}</span><span class="text-chart-2">{l.msg}</span>
         </div>
       {/each}
     </div>

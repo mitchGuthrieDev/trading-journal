@@ -21,7 +21,10 @@ const ENTRY = resolve(DIST, 'app/app.html');
 // the R22 "keep it lean" decline — the shipped JS grows in exchange for a consistent, accessible
 // primitive system. The ceiling keeps headroom over the full-primitive total to still catch an
 // *accidental* regression on top of the intentional growth.
-const BUDGET_BYTES = 400 * 1024;
+// Raised 400 → 480 KiB for the canonical shadcn-svelte components (the full bits-ui primitive
+// source — Dialog/Select/DropdownMenu/Popover with portals, scroll buttons, etc. — is heavier than
+// the trimmed in-house wrappers it replaced). Headroom restored to catch accidental regressions.
+const BUDGET_BYTES = 480 * 1024;
 
 let html;
 try {

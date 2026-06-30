@@ -9,13 +9,13 @@
   // Staging-only chrome (the "Staging" badge / proving-ground meta) is gated on `isStaging`; demo
   // never persists (DemoStore) and every write path is additionally `isDemo`-guarded (A87).
   import { onMount, setContext } from 'svelte';
-  import { loadRefData, compute, costModel, emit, sessionOf, PAGE_MODE, STATES, BROKERS, DEMO_BROKER, DEMO_FEED, DEMO_STATE } from '../lib/core.ts';
-  import { Store } from '../lib/store.ts';
-  import { createDemoStore } from '../lib/demostore.ts';
-  import { Adapters } from '../lib/adapters.ts';
-  import { demoCSV } from '../lib/sampledata.ts';
+  import { loadRefData, compute, costModel, emit, sessionOf, PAGE_MODE, STATES, BROKERS, DEMO_BROKER, DEMO_FEED, DEMO_STATE } from '../lib/core/core.ts';
+  import { Store } from '../lib/core/store.ts';
+  import { createDemoStore } from '../lib/core/demostore.ts';
+  import { Adapters } from '../lib/core/adapters.ts';
+  import { demoCSV } from '../lib/core/sampledata.ts';
   import { APP_FLAGS, loadFlags, type AppFlags } from './lib/flags.ts';
-  import type { Trade, FilterState, SavedFilter, SavedFilterDef, AppSetup, PanelBundle, Setup, StoredTradeMeta } from '../lib/types.ts';
+  import type { Trade, FilterState, SavedFilter, SavedFilterDef, AppSetup, PanelBundle, Setup, StoredTradeMeta } from '../lib/core/types.ts';
 
   // Pick the backend by mode and share it with every child (they read getContext('bb:store')).
   const isDemo = PAGE_MODE === 'demo';
@@ -41,8 +41,8 @@
   import ExportReport from './components/ExportReport.svelte';
   import WorkspaceBar from './components/WorkspaceBar.svelte';
   import Landing from './components/Landing.svelte';
-  import * as Popover from '$ui/popover';
-  import * as DropdownMenu from '$ui/dropdown-menu';
+  import * as Popover from '$lib/components/ui/popover';
+  import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 
   let allTrades = $state<Trade[]>([]);
   let loaded = $state(false);
@@ -670,7 +670,7 @@
             <p class="pophd">Session status</p>
             <!-- Inner legend styling is utility-based (not `.sesspop X` scoped) so it applies across
                  the bits-ui Popover.Content component boundary (A128). -->
-            <ul class="m-0 grid list-none gap-1.5 p-0 text-xs leading-[1.4] text-dim [&_b]:text-txt">
+            <ul class="m-0 grid list-none gap-1.5 p-0 text-xs leading-[1.4] text-muted-foreground [&_b]:text-foreground">
               <li><span class="sdot on"></span> <b>Online</b> — ref-data &amp; functions reachable.</li>
               <li><span class="sdot off"></span> <b>Offline</b> — no network; the app keeps working on your local data.</li>
               <li><span class="sdot deg"></span> <b>Degraded</b> — reserved for partial connectivity.</li>
@@ -804,9 +804,9 @@
   }
   :global(body) {
     margin: 0;
-    background: var(--bg);
-    color: var(--txt);
-    font-family: var(--sans);
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
   }
   #sv-app {
     max-width: 1100px;
@@ -837,7 +837,7 @@
     justify-content: space-between;
     gap: 8px 16px;
     padding-bottom: 14px;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--border);
     margin-bottom: 20px;
   }
   .brand {
@@ -851,10 +851,10 @@
     text-decoration: none;
   }
   .brandlink:hover {
-    color: var(--accent);
+    color: var(--primary);
   }
   .brandlink:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--primary);
     outline-offset: 2px;
     border-radius: 3px;
   }
@@ -863,24 +863,24 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.6px;
-    color: var(--warn);
-    border: 1px solid var(--warn);
+    color: var(--chart-4);
+    border: 1px solid var(--chart-4);
     border-radius: 5px;
     padding: 2px 6px;
     vertical-align: middle;
   }
   /* A89: the betaRibbon flag badge — accent-toned so it reads distinctly from the staging badge. */
   .badge.beta {
-    color: var(--accent);
-    border-color: var(--accent);
+    color: var(--primary);
+    border-color: var(--primary);
     margin-left: 6px;
   }
   /* A89: admin maintenanceBanner flag. */
   .maintbanner {
-    background: var(--panel2);
-    border: 1px solid var(--warn);
-    border-left: 3px solid var(--warn);
-    color: var(--txt);
+    background: var(--secondary);
+    border: 1px solid var(--chart-4);
+    border-left: 3px solid var(--chart-4);
+    color: var(--foreground);
     border-radius: 8px;
     padding: 9px 14px;
     margin-bottom: 16px;
@@ -890,10 +890,10 @@
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    background: var(--panel2);
-    border: 1px solid var(--warn);
-    border-left: 3px solid var(--warn);
-    color: var(--txt);
+    background: var(--secondary);
+    border: 1px solid var(--chart-4);
+    border-left: 3px solid var(--chart-4);
+    color: var(--foreground);
     border-radius: 8px;
     padding: 9px 14px;
     margin-bottom: 16px;
@@ -904,19 +904,19 @@
     flex: none;
     background: none;
     border: none;
-    color: var(--dim);
+    color: var(--muted-foreground);
     font-size: 18px;
     line-height: 1;
     cursor: pointer;
     padding: 0 2px;
   }
   .warndismiss:hover {
-    color: var(--txt);
+    color: var(--foreground);
   }
   .meta {
     font-size: 12px;
-    color: var(--faint);
-    font-family: var(--mono);
+    color: var(--muted-foreground);
+    font-family: var(--font-mono);
   }
   .topactions {
     display: flex;
@@ -928,10 +928,10 @@
   }
   .pill {
     font-size: 11px;
-    font-family: var(--mono);
-    color: var(--green);
+    font-family: var(--font-mono);
+    color: var(--chart-2);
     background: transparent;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: 999px;
     padding: 3px 9px;
     cursor: pointer;
@@ -942,15 +942,15 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--green);
+    background: var(--chart-2);
     margin-right: 5px;
     vertical-align: middle;
   }
   .pill.off {
-    color: var(--faint);
+    color: var(--muted-foreground);
   }
   .pill.off::before {
-    background: var(--faint);
+    background: var(--muted-foreground);
   }
   /* A128: card chrome + positioning now come from the Popover primitive (bits-ui Floating UI keeps it
      on-screen — replacing the old A127 mobile-anchoring hack). Only the legend's inner styles remain. */
@@ -959,7 +959,7 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--faint);
+    color: var(--muted-foreground);
     font-weight: 700;
   }
   .sdot {
@@ -971,23 +971,23 @@
     vertical-align: middle;
   }
   .sdot.on {
-    background: var(--green);
+    background: var(--chart-2);
   }
   .sdot.off {
-    background: var(--faint);
+    background: var(--muted-foreground);
   }
   .sdot.deg {
-    background: var(--warn);
+    background: var(--chart-4);
   }
   .popnote {
     margin: 8px 0 0;
     font-size: 11px;
-    color: var(--faint);
+    color: var(--muted-foreground);
     line-height: 1.4;
   }
   .link {
     font-size: 13px;
-    color: var(--accent);
+    color: var(--primary);
     text-decoration: none;
   }
   .link:hover {
@@ -995,9 +995,9 @@
   }
   .managebtn,
   .exportbtn {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
+    background: var(--secondary);
+    color: var(--foreground);
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 7px 14px;
     font-size: 13px;
@@ -1005,13 +1005,13 @@
   }
   .managebtn:hover,
   .exportbtn:hover {
-    border-color: var(--hover-line);
+    border-color: var(--ring);
   }
   /* F24 (staging): the Donate button — accent-toned so it reads as the primary "support" call. */
   .donatebtn {
-    background: var(--accent);
-    color: var(--bg);
-    border: 1px solid var(--accent);
+    background: var(--primary);
+    color: var(--background);
+    border: 1px solid var(--primary);
     border-radius: 6px;
     padding: 7px 14px;
     font: inherit;
@@ -1023,7 +1023,7 @@
     filter: brightness(1.08);
   }
   .donatebtn:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--primary);
     outline-offset: 2px;
   }
   /* F26 (staging): the grid modules lined up parallel. auto-fit fits as many ≥360px columns as the
@@ -1054,9 +1054,9 @@
     position: relative;
   }
   .addmodbtn {
-    background: var(--panel2);
-    color: var(--txt);
-    border: 1px solid var(--line);
+    background: var(--secondary);
+    color: var(--foreground);
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 6px 12px;
     font: inherit;
@@ -1064,13 +1064,13 @@
     cursor: pointer;
   }
   .addmodbtn:hover {
-    border-color: var(--hover-line);
+    border-color: var(--ring);
   }
   .msg {
-    color: var(--dim);
+    color: var(--muted-foreground);
     padding: 24px 4px;
   }
   .error {
-    color: var(--red);
+    color: var(--destructive);
   }
 </style>

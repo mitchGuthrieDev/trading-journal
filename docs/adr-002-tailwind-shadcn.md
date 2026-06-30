@@ -1,74 +1,104 @@
-# ADR-002 — Adopt Tailwind v4 + shadcn-svelte + bits-ui + tailwind-variants
+# ADR-002 — Re-platform onto canonical shadcn-svelte (Tailwind v4 + bits-ui)
 
-**Status:** Accepted (2026-06-30). Implements backlog **A128**; deliberately reverses the **A104**
-"keep scoped CSS, decline utility-first" recommendation and the **R22** declines of
-tailwind / tailwind-variants / bits-ui.
+**Status:** Accepted (2026-06-30). Implements backlog **A128**; supersedes the original phased-hybrid
+adoption and deliberately reverses the earlier **A104** "keep scoped CSS, decline utility-first"
+recommendation and the **R22** declines of tailwind / tailwind-variants / bits-ui.
 
 ## Context
 
-Blotterbook started as a deliberately dependency-light tool: design tokens in a single
-[`tokens.css`](../src/styles/tokens.css) (~20 CSS vars), scoped per-component `<style>` blocks
-(~4,575 lines across 28 components), hand-rolled a11y for the dialogs/menus/popovers
-(`modal.ts` + `menuOpen`/`pillOpen` state + `svelte:window` outside-click), and native `<select>`s.
-A104 and R22 both concluded — correctly, for the time — that this small, CSP-clean, scoped-CSS
-implementation didn't justify a framework dependency.
+Blotterbook started as a deliberately dependency-light tool: design tokens in a single `tokens.css`
+(~20 CSS vars), scoped per-component `<style>` blocks (~4,575 lines across 28 components),
+hand-rolled a11y for the dialogs/menus/popovers (`modal.ts` + `menuOpen`/`pillOpen` state +
+`svelte:window` outside-click), and native `<select>`s. A104 and R22 both concluded — correctly, for
+the time — that this small, scoped-CSS implementation didn't justify a framework dependency.
 
-The product is now growing past "a simple tool." The roadmap (richer, interactive dashboard UI)
-makes hand-rolling accessible primitives increasingly costly and inconsistent. Pre-launch is the
-cheap moment to change foundations. So the decision owner approved a **full** adoption of a
-utility-first + accessible-component system.
+The product has grown past "a simple tool." The roadmap (richer, interactive dashboard UI) makes
+hand-rolling accessible primitives increasingly costly and inconsistent, and the decision owner has
+**retired the old pillars** — the local-compute-only / no-trade-data-egress moat, the
+"minimal/pinned/audited dependencies" posture, and the "`tokens.css` is the single source" rule.
+Blotterbook is now a conventional modern **Svelte 5 (runes) + Tailwind v4 + shadcn-svelte** app, so
+the right move is to adopt the canonical stack outright rather than maintain a bespoke half-measure.
+Pre-launch is the cheap moment to change foundations.
 
 ## Decision
 
-Adopt, as build-time + client dependencies (pinned, lockfile committed, `npm audit` clean — A28):
+Adopt the **canonical shadcn-svelte stack**, fully — not a phased hybrid. As build-time + client
+dependencies (pinned, lockfile committed):
 
 - **Tailwind CSS v4** via `@tailwindcss/vite` (build-time; emits a linked utility stylesheet).
-- **bits-ui** — headless, accessible Svelte 5 primitives (Dialog/DropdownMenu/Popover/Select…).
-- **tailwind-variants** — typed component variant recipes (`tv()`).
+- **bits-ui v2** — headless, accessible Svelte 5 primitives (Dialog/DropdownMenu/Popover/Select…).
 - **tailwind-merge** + **clsx** — the `cn()` class composer.
-- **shadcn-svelte** patterns/config (`components.json`) — we hand-author the primitives in `src/ui/`
-  following its composition style rather than depending on its registry at runtime.
+- **tw-animate-css** — component animations (enter/exit, fades, etc.).
+- **shadcn-svelte** — the canonical components, vendored into the repo and maintained through the
+  **shadcn-svelte CLI** (`components.json` is wired; `npx shadcn-svelte add <name>` works). We own
+  the source and customize it in place.
 
-### Key constraints honoured
+### Token model (the single source is `tailwind.css`)
 
-- **CSP `style-src 'self'` stays** (static/_headers, S18/A55). Tailwind utilities are a *linked
-  stylesheet of classes* (`class="bg-accent"`), **never** an inline `style=""` attribute — so they
-  are not "inline styles." bits-ui / Floating UI position popovers/menus by setting `element.style`
-  in JS (CSSOM), which CSP does **not** gate — the same mechanism as the `styleProps` action. The
-  S18 invariant (no literal `style=""` in markup) is unchanged and still enforced.
-- **`tokens.css` is the single source of design-token values.** Tailwind's `@theme`
-  ([`src/styles/tailwind.css`](../src/styles/tailwind.css)) only *maps* the existing token CSS vars
-  into Tailwind's theme namespace (`--color-accent: var(--accent)` → `bg-accent`/`text-take`/
-  `font-mono`…). No values are duplicated into a JS config.
-- **Preflight is intentionally omitted** for now (only `@tailwindcss/utilities` + `@tailwindcss/theme`
-  are imported, plus a `border-box` base) so utilities are *additive* over the not-yet-migrated
-  scoped CSS during the phased migration.
-- **A96 size budget** raised 200 → 400 KiB (`scripts/check-bundle-size.mjs`) for the bits-ui +
-  Floating-UI JS — the explicit, documented cost of the accessible-component system.
+`tokens.css` is **deleted**. The single source of design-token values is now
+[`src/styles/tailwind.css`](../src/styles/tailwind.css), which defines the **canonical shadcn-svelte
+semantic set** in `:root` from Blotterbook's palette and maps it into Tailwind's theme namespace via
+`@theme inline`:
+
+- `background` / `foreground` / `card` / `popover` / `primary` / `secondary` / `muted` / `accent` /
+  `destructive` / `border` / `input` / `ring` — the standard shadcn semantic roles. Components use the
+  semantic utilities (`bg-background`, `bg-card`, `bg-secondary`, `text-foreground`,
+  `text-muted-foreground`, `bg-primary`/`text-primary-foreground`, `border-border`, `hover:bg-accent`).
+
+- **The accent/primary collision.** shadcn's `accent` is the *subtle item-hover surface*, not a brand
+  color. So Blotterbook's brand blue maps to shadcn's **`primary`** (with `ring` for focus), and
+  `accent` keeps its shadcn meaning (hover surface for menu items, etc.). Don't reach for `accent` to
+  mean "the blue."
+
+- **Trading-domain hues live in `chart-1..5`.** Several Blotterbook colors have no shadcn semantic
+  equivalent, so they ride the chart palette: **chart-1** brand-blue, **chart-2** P&L-up (green),
+  **chart-3** take-home (purple), **chart-4** warning (amber), **chart-5** P&L-down (red). Hence
+  `text-chart-2` = positive P&L and `text-destructive` = negative/red.
 
 ### Where things live
 
-- `src/ui/` — the shared design system (used by `src/app` **and** `src/site`), aliased `$ui`:
-  `utils.ts` (`cn`), `button/`, `dialog/`, `dropdown-menu/`, `popover/`, `select/`.
-- `src/styles/tailwind.css` — the Tailwind entry (`@theme` token mapping). Imported by
-  `src/app/main.ts` and each `src/site/entries/*.ts`, so the utility sheet ships on every surface
-  (the app SPA + the prerendered SSG marketing pages).
-- The `$ui` alias is mirrored in `scripts/vite-ssg.mjs` so the SSG prerender resolves the primitives.
+- `src/lib/components/ui/` — the canonical shadcn-svelte primitives (`button`, `dialog`,
+  `dropdown-menu`, `popover`, `select`), composed over bits-ui v2 with `data-slot` attrs and `cn` from
+  `$lib/utils`. Used by `src/app` **and** `src/site`.
+- `src/lib/utils.ts` — the `cn()` composer (`$lib/utils`).
+- `src/lib/core/` — the framework-agnostic pure-logic core (adapters/core/store/types/format/report/
+  sampledata/demostore/curveseries/entitlements/…).
+- `src/styles/tailwind.css` — the Tailwind entry **and** the token source (see above). Imported by
+  `src/app/main.ts` and each `src/site/entries/*.ts`, so the utility sheet ships on every surface (the
+  app SPA + the prerendered SSG marketing pages). It's also resolved in `scripts/vite-ssg.mjs` so the
+  SSG prerender picks up the utilities.
+- The `$lib` alias points at `src/lib`. The old in-house `src/ui` primitives and the `$ui` alias are
+  **gone**.
+
+### TypeScript split
+
+The core `tsc` (tsconfig.json) checks `src/lib/**/*.ts` **except** `src/lib/components` — the
+component `.ts` barrels import `.svelte`, which plain `tsc` can't resolve. `svelte-check`
+(tsconfig.svelte.json) covers `src/app` + `src/site` + `src/lib/components`. App-only glue stays at
+`src/app/lib/` (actions/files/flags/modules). `tsconfig.functions.json` covers `functions/`.
+
+### CSP still holds
+
+**CSP `style-src 'self'` is unchanged** (`static/_headers`, S18/A55). Tailwind utilities are a *linked
+stylesheet of classes* (`class="bg-card"`), **never** an inline `style=""` attribute — so they are
+not "inline styles." bits-ui / Floating UI position popovers/menus by setting `element.style` in JS
+(CSSOM), which CSP does **not** gate — the same mechanism as the `styleProps` action. The S18
+invariant (no literal `style=""` in markup) is unchanged and still enforced.
 
 ## Consequences
 
-- Hand-rolled a11y is replaced by audited primitives: `modal.ts` deleted; the dialogs, the Panel /
-  Add-module menus, the session pill, and the first selects now get focus trap / scroll lock /
-  Escape / outside-click / keyboard nav / ARIA roles from bits-ui for free.
-- App-tree rendering: primitives render **in place (no Portal)** because the modals/menus live inside
-  `<main id="sv-app">` and the e2e specs (and a few styles) target `#sv-app …`. Fixed positioning
-  still escapes panel clipping.
-- Triggers that keep bespoke scoped styling (`.pill`, `.addmodbtn`) use bits-ui's `child` snippet so
-  the real element stays in the parent template (Svelte scoping + `class:` directives keep working).
-  A class applied via prop onto a primitive's root element does **not** receive the parent's scope
-  hash — style such elements with utilities (global) or the primitive, not scoped descendant CSS.
-- Migration is phased (A128 stays open until the scoped-CSS → utility conversion is complete);
-  hybrid is fine — genuinely bespoke things (the EquityCurve SVG, the CalendarMonth grid) stay in
-  scoped CSS where utilities would be worse.
+- Hand-rolled a11y is **replaced** by canonical primitives: `modal.ts` is gone; dialogs, the Panel /
+  Add-module menus, the session pill, and the selects get focus trap / scroll lock / Escape /
+  outside-click / keyboard nav / ARIA roles from bits-ui.
+- Primitives render **canonically — Dialog/menus/popover/select portal to body** (the standard
+  shadcn-svelte behavior), not the earlier "in place, no Portal" workaround.
+- A class applied via prop onto a primitive's ROOT element does **not** receive the parent's scope
+  hash — style such elements with utilities (global) or the primitive itself, not scoped descendant
+  CSS. For a trigger that must keep bespoke scoped styling, use bits-ui's `child` snippet so the real
+  element stays in the parent template (Svelte scoping + `class:` directives keep working).
+- The **A96 size budget** is **480 KiB** (`scripts/check-bundle-size.mjs`) — the documented cost of
+  the bits-ui + Floating-UI accessible-component system.
+- New components are added with `npx shadcn-svelte add <name>`; because we own the vendored source,
+  bespoke customization happens in place.
 
 See [`CLAUDE.md`](../CLAUDE.md) (styling / frontend conventions) for the day-to-day rules.

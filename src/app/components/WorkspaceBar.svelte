@@ -4,8 +4,8 @@
   // CRUD + persistence live in App (Store.local seam); this is presentation only. Save is disabled
   // in demo (the demo is a 1:1 mirror with data-writing controls off — B23).
   // A128: native <select> → $ui Select (bits-ui); the save control → the Button primitive.
-  import * as Select from '$ui/select';
-  import { Button } from '$ui/button';
+  import * as Select from '$lib/components/ui/select';
+  import { Button } from '$lib/components/ui/button';
 
   interface Props {
     names?: string[];
@@ -26,7 +26,7 @@
 </script>
 
 <div class="wsbar mt-4 flex items-center gap-2.5">
-  <div class="wslabel flex items-center gap-2 text-[11px] uppercase tracking-[0.5px] text-faint">
+  <div class="wslabel flex items-center gap-2 text-[11px] uppercase tracking-[0.5px] text-muted-foreground">
     <span>Workspace</span>
     <Select.Root type="single" value={selValue} onValueChange={onSel} {items}>
       <Select.Trigger aria-label="Workspace" class="min-w-[140px]"><Select.Value /></Select.Trigger>
@@ -36,6 +36,7 @@
     </Select.Root>
   </div>
   <Button
+    variant="secondary"
     class="wssave"
     size="sm"
     onclick={onsave}

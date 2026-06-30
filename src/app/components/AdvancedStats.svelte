@@ -2,9 +2,9 @@
   // Advanced statistics — the deeper compute() metrics not shown in the Overview, presented as
   // label/value rows (A29: pure presentation of the existing metrics object). DOW_LABEL/usd/cls
   // are imported verbatim from the core.
-  import { usd, cls, ratio, num, fmtDur, DOW_LABEL, STAGING_PAGE } from '../../lib/core.ts';
-  import type { Metrics } from '../../lib/core.ts';
-  import type { PanelBundle } from '../../lib/types.ts';
+  import { usd, cls, ratio, num, fmtDur, DOW_LABEL, STAGING_PAGE } from '../../lib/core/core.ts';
+  import type { Metrics } from '../../lib/core/core.ts';
+  import type { PanelBundle } from '../../lib/core/types.ts';
   import Panel from './Panel.svelte';
   import Caveats from './Caveats.svelte';
 
@@ -71,14 +71,14 @@
 <Panel {...panel} title="Advanced Statistics">
   <div class="advstats grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-6 gap-y-0.5">
     {#each rows as r (r.k)}
-      <div class="row flex items-baseline justify-between gap-3 border-b border-line py-[7px]">
-        <span class="text-xs text-dim">{r.k}</span>
+      <div class="row flex items-baseline justify-between gap-3 border-b border-border py-[7px]">
+        <span class="text-xs text-muted-foreground">{r.k}</span>
         <span
           class="font-mono text-[13px] font-bold whitespace-nowrap {r.tone === 'pos'
-            ? 'text-green'
+            ? 'text-chart-2'
             : r.tone === 'neg'
-              ? 'text-red'
-              : 'text-txt'}">{r.v}</span>
+              ? 'text-destructive'
+              : 'text-foreground'}">{r.v}</span>
       </div>
     {/each}
   </div>

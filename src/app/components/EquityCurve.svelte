@@ -7,11 +7,11 @@
   //
   // The viewBox WIDTH tracks the measured pixel width (like vanilla renderCurve) so the SVG text
   // labels aren't horizontally stretched — height is fixed, so both axes render at ~1:1.
-  import { usd, money, axMoney, niceTicks, linePath, blendedRateFor } from '../../lib/core.ts';
-  import type { Metrics } from '../../lib/core.ts';
-  import { dailySeries } from '../../lib/curveseries.ts';
-  import type { DailyPoint } from '../../lib/curveseries.ts';
-  import type { CostInputs, PanelBundle } from '../../lib/types.ts';
+  import { usd, money, axMoney, niceTicks, linePath, blendedRateFor } from '../../lib/core/core.ts';
+  import type { Metrics } from '../../lib/core/core.ts';
+  import { dailySeries } from '../../lib/core/curveseries.ts';
+  import type { DailyPoint } from '../../lib/core/curveseries.ts';
+  import type { CostInputs, PanelBundle } from '../../lib/core/types.ts';
   import Panel from './Panel.svelte';
   import { styleProps } from '../lib/actions.ts';
 
@@ -69,9 +69,9 @@
   const padT = 14;
   const padB = 22; // x-axis date labels
   const SERIES: Series[] = [
-    { key: 'gross', label: 'Gross', color: 'var(--green)' },
-    { key: 'net', label: 'Net', color: 'var(--accent)' },
-    { key: 'take', label: 'Take-home', color: 'var(--take)' },
+    { key: 'gross', label: 'Gross', color: 'var(--chart-2)' },
+    { key: 'net', label: 'Net', color: 'var(--primary)' },
+    { key: 'take', label: 'Take-home', color: 'var(--chart-3)' },
   ];
 
   let sel = $state<Record<SeriesKey, boolean>>({ gross: true, net: false, take: false });
@@ -185,8 +185,8 @@
         <button
           type="button"
           class={[
-            'cursor-pointer rounded-[5px] border border-line bg-panel2 px-[9px] py-1 text-[11px]',
-            sel[s.key] ? 'border-[var(--sw)] text-txt shadow-[inset_0_-2px_0_var(--sw)]' : 'text-dim',
+            'cursor-pointer rounded-[5px] border border-border bg-secondary px-[9px] py-1 text-[11px]',
+            sel[s.key] ? 'border-[var(--sw)] text-foreground shadow-[inset_0_-2px_0_var(--sw)]' : 'text-muted-foreground',
           ]}
           aria-pressed={sel[s.key]}
           use:styleProps={{ '--sw': s.color }}
@@ -218,16 +218,16 @@
         <defs>
           <!-- F28: one gradient per series, in its own color — gross/green, net/accent, take-home/take. -->
           <linearGradient id="eqfill-gross" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="var(--green)" stop-opacity="0.24" />
-            <stop offset="100%" stop-color="var(--green)" stop-opacity="0" />
+            <stop offset="0%" stop-color="var(--chart-2)" stop-opacity="0.24" />
+            <stop offset="100%" stop-color="var(--chart-2)" stop-opacity="0" />
           </linearGradient>
           <linearGradient id="eqfill-net" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.24" />
-            <stop offset="100%" stop-color="var(--accent)" stop-opacity="0" />
+            <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.24" />
+            <stop offset="100%" stop-color="var(--primary)" stop-opacity="0" />
           </linearGradient>
           <linearGradient id="eqfill-take" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="var(--take)" stop-opacity="0.24" />
-            <stop offset="100%" stop-color="var(--take)" stop-opacity="0" />
+            <stop offset="0%" stop-color="var(--chart-3)" stop-opacity="0.24" />
+            <stop offset="100%" stop-color="var(--chart-3)" stop-opacity="0" />
           </linearGradient>
         </defs>
         <!-- horizontal gridlines + y-axis $ labels -->
@@ -262,11 +262,11 @@
       </svg>
     </div>
     <div class="axis mt-1 flex justify-center font-mono text-[11px]">
-      <span class="tip text-center text-dim" aria-live="polite">{tip || 'cumulative P&L'}</span>
+      <span class="tip text-center text-muted-foreground" aria-live="polite">{tip || 'cumulative P&L'}</span>
     </div>
-    <p class="mt-2 text-[11px] leading-[1.45] text-dim">X axis is the calendar date (the selected month's first to last day, or the full sample in All-time scope); Y axis is cumulative PnL. Toggle the Gross / Net / Take-home overlays above; clicking a calendar day marks it here.</p>
+    <p class="mt-2 text-[11px] leading-[1.45] text-muted-foreground">X axis is the calendar date (the selected month's first to last day, or the full sample in All-time scope); Y axis is cumulative PnL. Toggle the Gross / Net / Take-home overlays above; clicking a calendar day marks it here.</p>
   {:else}
-    <p class="px-1 py-6 text-dim">Not enough trades to plot a curve.</p>
+    <p class="px-1 py-6 text-muted-foreground">Not enough trades to plot a curve.</p>
   {/if}
 </Panel>
 
@@ -287,7 +287,7 @@
     outline: none;
   }
   .equity:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--primary);
     outline-offset: 2px;
   }
   /* F28: the per-series gradient area fills sit behind the lines; they never intercept the pointer. */
@@ -295,14 +295,14 @@
     pointer-events: none;
   }
   .grid {
-    stroke: var(--line);
+    stroke: var(--border);
     stroke-width: 1;
     vector-effect: non-scaling-stroke;
   }
   .ylab,
   .xlab {
-    fill: var(--faint);
-    font-family: var(--mono);
+    fill: var(--muted-foreground);
+    font-family: var(--font-mono);
     font-size: 10px;
   }
   .line {
@@ -311,34 +311,34 @@
     stroke-linecap: round;
   }
   .zero {
-    stroke: var(--dim);
+    stroke: var(--muted-foreground);
     stroke-width: 1;
     stroke-dasharray: 3 3;
   }
   .sel {
-    stroke: var(--accent);
+    stroke: var(--primary);
     stroke-width: 1.5;
     stroke-dasharray: 4 3;
   }
   .cursor {
-    stroke: var(--dim);
+    stroke: var(--muted-foreground);
     stroke-width: 1;
   }
   .dot {
-    fill: var(--txt);
+    fill: var(--foreground);
   }
   .enddot {
-    stroke: var(--bg);
+    stroke: var(--background);
     stroke-width: 1;
   }
   .endlab {
-    font-family: var(--mono);
+    font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 700;
   }
   .notedot {
-    fill: var(--accent);
-    stroke: var(--bg);
+    fill: var(--primary);
+    stroke: var(--background);
     stroke-width: 1.5;
   }
 </style>

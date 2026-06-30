@@ -64,11 +64,10 @@ export function isProdShipping(f) {
   // A59/A30: every JS/TS/Svelte module under src/app/ (the SPA + glue, shared by all surfaces since
   // A33) and every module of the pure-logic core under src/lib/ ships to every surface.
   if (/^src\/app\/.*\.(?:js|ts|svelte)$/.test(f)) return true;
-  if (/^src\/lib\/.*\.ts$/.test(f)) return true;
-  // A128: the shared design-system primitives ($ui — Button/Dialog/DropdownMenu/Popover/Select +
-  // cn()) ship in the app + site bundles, and the design-token / Tailwind entry CSS ships to every
-  // surface (tokens.css + tailwind.css). All bump prod+staging when changed.
-  if (/^src\/ui\/.*\.(?:js|ts|svelte)$/.test(f) && !/\.d\.ts$/.test(f)) return true;
+  // src/lib = the pure-logic core ($lib/core/*.ts) + the shadcn-svelte design system
+  // ($lib/components/ui/*.svelte, $lib/utils.ts cn()); all ship in the app + site bundles.
+  if (/^src\/lib\/.*\.(?:ts|svelte)$/.test(f) && !/\.d\.ts$/.test(f)) return true;
+  // The Tailwind entry CSS (src/styles/tailwind.css — the single token source) ships everywhere.
   if (/^src\/styles\/.*\.css$/.test(f)) return true;
   if (/^src\/assets\//.test(f)) return true; // bundled chrome (favicon/banner/icons), shared
   if (/^static\/data\//.test(f) && !NON_SHIPPING_DATA.has(f)) return true;

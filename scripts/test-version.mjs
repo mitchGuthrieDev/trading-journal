@@ -27,18 +27,25 @@ ok('BREAKING CHANGE footer → major', bumpLevel('feat: x\n\nBREAKING CHANGE: re
 ok('untyped → patch', bumpLevel('just some title') === 'patch');
 
 console.log('\nProd-shipping classification:');
-ok('shared app JS is prod', isProdShipping('src/lib/adapters.ts') && isProdShipping('src/lib/core.ts'));
+ok('shared app JS is prod', isProdShipping('src/lib/core/adapters.ts') && isProdShipping('src/lib/core/core.ts'));
 ok(
   'Svelte SPA modules ARE prod (A59 — shared by all surfaces post-A33)',
   isProdShipping('src/app/App.svelte') && isProdShipping('src/app/components/EquityCurve.svelte')
 );
 ok('app/staging.html is NOT prod', !isProdShipping('src/app/staging.html'));
-ok('app+demo shells + tokens are prod', ['src/app/app.html', 'src/app/demo.html', 'src/styles/tokens.css'].every(isProdShipping));
 ok(
-  'A128: $ui primitives + the Tailwind entry CSS are prod (shared design system)',
-  ['src/ui/button/button.svelte', 'src/ui/select/select-trigger.svelte', 'src/ui/utils.ts', 'src/styles/tailwind.css'].every(isProdShipping)
+  'app+demo shells + tailwind entry CSS are prod',
+  ['src/app/app.html', 'src/app/demo.html', 'src/styles/tailwind.css'].every(isProdShipping)
+);
+ok(
+  'shadcn-svelte UI + cn + Tailwind entry CSS are prod',
+  ['src/lib/components/ui/button/button.svelte', 'src/lib/utils.ts', 'src/styles/tailwind.css'].every(isProdShipping)
 );
 ok('A128: an ambient .d.ts ships nothing (no bump)', !isProdShipping('src/vite-env.d.ts'));
+ok(
+  'canonical shadcn-svelte UI under /components is prod',
+  isProdShipping('src/lib/components/ui/dialog/dialog-content.svelte') && isProdShipping('src/lib/components/ui/button/index.ts')
+);
 ok(
   'site Svelte page is prod-only (A69 — marketing/info ships to prod, not staging)',
   isProdShipping('src/site/components/Home.svelte') === false &&
@@ -57,7 +64,7 @@ ok(
 );
 ok(
   'bundled chrome + core + data are prod',
-  isProdShipping('src/assets/favicon.svg') && isProdShipping('src/lib/format.ts') && isProdShipping('static/data/brokers.json')
+  isProdShipping('src/assets/favicon.svg') && isProdShipping('src/lib/core/format.ts') && isProdShipping('static/data/brokers.json')
 );
 ok(
   'versions/backlog/backlog_archive json are NOT prod',
@@ -110,7 +117,7 @@ ok(
 ok(
   'mixed (shared + staging) → both',
   (() => {
-    const s = classifySurfaces(['src/app/staging.html', 'src/lib/core.ts']);
+    const s = classifySurfaces(['src/app/staging.html', 'src/lib/core/core.ts']);
     return s.prod && s.staging;
   })()
 );
@@ -131,7 +138,7 @@ ok(
 ok(
   'changelog + a real prod-shipping change → still both (CH31)',
   (() => {
-    const s = classifySurfaces(['static/data/changelog.json', 'src/lib/core.ts']);
+    const s = classifySurfaces(['static/data/changelog.json', 'src/lib/core/core.ts']);
     return s.prod && s.staging;
   })()
 );
@@ -143,7 +150,7 @@ console.log('\ncomputeBump application:');
   ok('feat shared → prod 0.13.0 + staging 0.23.0', a.next.prod === '0.13.0' && a.next.staging === '0.23.0');
   const b = computeBump({ message: 'fix: x', files: ['src/app/staging.html'], versions: v });
   ok('fix staging-only → prod unchanged, staging 0.22.1', b.next.prod === '0.12.0' && b.next.staging === '0.22.1');
-  const c = computeBump({ message: 'feat!: x', files: ['src/lib/core.ts'], versions: v });
+  const c = computeBump({ message: 'feat!: x', files: ['src/lib/core/core.ts'], versions: v });
   ok('major shared → prod 1.0.0 + staging 1.0.0', c.next.prod === '1.0.0' && c.next.staging === '1.0.0');
   const d = computeBump({ message: 'docs: x', files: ['README.md'], versions: v });
   ok('non-app → no change, flags false', d.next.prod === '0.12.0' && d.next.staging === '0.22.0' && !d.bumpedProd && !d.bumpedStaging);
