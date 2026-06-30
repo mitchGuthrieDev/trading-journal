@@ -337,14 +337,14 @@ test('staging (Svelte): module-header menu hides + re-adds a module (A71/R12)', 
   await page.locator('#sv-app .dash section.panel .pmenubtn').first().click();
   const pop = page.locator('#sv-app .dash .pmenupop').first();
   await expect(pop).toBeVisible();
-  await expect(pop.locator('button')).toHaveCount(4); // Collapse / Move up / Move down / Hide
+  await expect(pop.getByRole('menuitem')).toHaveCount(4); // Collapse / Move up / Move down / Hide (bits-ui)
   // Hide it → panel count drops and the "Add module" control appears.
-  await pop.locator('button', { hasText: 'Hide module' }).click();
+  await pop.getByRole('menuitem', { name: 'Hide module' }).click();
   await expect(panels).toHaveCount(start - 1);
   await expect(page.locator('#sv-app .addmodbtn')).toBeVisible();
   // Re-spawn it from the Add-module menu → back to the original count.
   await page.locator('#sv-app .addmodbtn').click();
-  await page.locator('#sv-app .addmenu button').first().click();
+  await page.locator('#sv-app .addmenu').getByRole('menuitem').first().click();
   await expect(panels).toHaveCount(start);
 });
 
@@ -458,8 +458,8 @@ test('staging (Svelte): grid modules reorder within the parallel grid (F26)', as
   // Open the Calendar module's menu → "Move left" is disabled (already first); "Move right" moves it.
   await page.locator('#sv-app .modgrid section.panel[data-key="cal"] .pmenubtn').click();
   const pop = page.locator('#sv-app .modgrid section.panel[data-key="cal"] .pmenupop');
-  await expect(pop.locator('button', { hasText: 'Move left' })).toBeDisabled();
-  await pop.locator('button', { hasText: 'Move right' }).click();
+  await expect(pop.getByRole('menuitem', { name: 'Move left' })).toBeDisabled();
+  await pop.getByRole('menuitem', { name: 'Move right' }).click();
   expect(await gridKeys()).toEqual(['cost', 'cal', 'adv']);
   // Persists across a reload (Store.local seam, staging-namespaced key).
   await page.reload({ waitUntil: 'networkidle' });
@@ -613,7 +613,7 @@ test('demo (Svelte): dashboard module headers have a menu (A71, promoted)', asyn
   await expect(page.locator('#sv-app .dash section.panel').first()).toBeVisible();
   await expect(page.locator('#sv-app .dash .pmenubtn').first()).toBeVisible();
   await page.locator('#sv-app .dash section.panel .pmenubtn').first().click();
-  await expect(page.locator('#sv-app .dash .pmenupop button')).toHaveCount(4);
+  await expect(page.locator('#sv-app .dash .pmenupop').getByRole('menuitem')).toHaveCount(4);
 });
 
 // A73 promoted to all surfaces (CH16): demo now also paginates the trades table.

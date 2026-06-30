@@ -41,6 +41,8 @@
   import ExportReport from './components/ExportReport.svelte';
   import WorkspaceBar from './components/WorkspaceBar.svelte';
   import Landing from './components/Landing.svelte';
+  import * as Popover from '$ui/popover';
+  import * as DropdownMenu from '$ui/dropdown-menu';
 
   let allTrades = $state<Trade[]>([]);
   let loaded = $state(false);
@@ -50,7 +52,6 @@
   let landingMsg = $state('');
   let importWarning = $state(''); // A113: dismissible banner when an import estimated PnL at $1/point
   let online = $state(typeof navigator === 'undefined' ? true : navigator.onLine); // A38 session pill
-  let pillOpen = $state(false); // A49 session-pill legend popup
   let cardModalKey = $state<string | null>(null); // A35 stat-card detail modal
   let exportOpen = $state(false); // A34 performance-report export
   // A89: admin-managed feature flags, fetched at boot (falls back to APP_FLAGS defaults offline).
@@ -115,7 +116,6 @@
   let collapsedPanels = $state<Record<string, number>>(sanitizeFlags(store.local.get(LS_COLLAPSE, {})));
   // R12 (staging): modules removed from the dashboard; re-spawned from the "Add module" menu.
   let hiddenPanels = $state<Record<string, number>>(sanitizeFlags(store.local.get(LS_HIDDEN, {})));
-  let addMenuOpen = $state(false);
   let draggingKey = $state<string | null>(null);
   const visiblePanels = $derived(panelOrder.filter(k => !hiddenPanels[k]));
   const hiddenList = $derived(panelOrder.filter(k => hiddenPanels[k]));
@@ -202,7 +202,6 @@
     delete next[key];
     hiddenPanels = next;
     persistHidden();
-    addMenuOpen = false;
   }
 
   function togglePanel(key: string) {
@@ -619,10 +618,10 @@
   });
 </script>
 
+<!-- The session pill (Popover) + Add-module menu (DropdownMenu) own their own open/close, outside-
+     click + Escape (bits-ui, A128). This window handler is now ONLY the calendar day-deselect (A121). -->
 <svelte:window
   onclick={e => {
-    pillOpen = false;
-    addMenuOpen = false;
     // A121 (staging): clicking off the calendar deselects the selected day. The calendar AND the
     // performance graph both drive day selection (cross-link), so a click inside either panel keeps
     // it; a click anywhere else clears it. (A same-day reclick already toggles off via onselect.)
@@ -632,11 +631,7 @@
     }
   }}
   onkeydown={e => {
-    if (e.key === 'Escape') {
-      pillOpen = false;
-      addMenuOpen = false;
-      if (isStaging) selectedDate = null; // A121: Escape clears the selected day too
-    }
+    if (e.key === 'Escape' && isStaging) selectedDate = null; // A121: Escape clears the selected day too
   }}
 />
 
@@ -663,28 +658,26 @@
     </div>
     <div class="topactions">
       <div class="sesswrap">
-        <button
-          type="button"
-          class="pill"
-          class:off={!online}
-          aria-haspopup="true"
-          aria-expanded={pillOpen}
-          title={online ? 'Online' : 'Offline'}
-          onclick={e => {
-            e.stopPropagation();
-            pillOpen = !pillOpen;
-          }}>{online ? 'online' : 'offline'}</button>
-        {#if pillOpen}
-          <div class="sesspop" role="dialog" aria-label="Session status legend">
+        <Popover.Root>
+          <!-- child snippet → the real <button> lives in App's template, so the scoped `.pill`
+               styling (and the class:off state) keep applying; bits-ui wires behavior via {props}. -->
+          <Popover.Trigger>
+            {#snippet child({ props })}
+              <button {...props} class="pill" class:off={!online} title={online ? 'Online' : 'Offline'}>{online ? 'online' : 'offline'}</button>
+            {/snippet}
+          </Popover.Trigger>
+          <Popover.Content class="sesspop w-[260px]" role="dialog" aria-label="Session status legend">
             <p class="pophd">Session status</p>
-            <ul>
+            <!-- Inner legend styling is utility-based (not `.sesspop X` scoped) so it applies across
+                 the bits-ui Popover.Content component boundary (A128). -->
+            <ul class="m-0 grid list-none gap-1.5 p-0 text-xs leading-[1.4] text-dim [&_b]:text-txt">
               <li><span class="sdot on"></span> <b>Online</b> — ref-data &amp; functions reachable.</li>
               <li><span class="sdot off"></span> <b>Offline</b> — no network; the app keeps working on your local data.</li>
               <li><span class="sdot deg"></span> <b>Degraded</b> — reserved for partial connectivity.</li>
             </ul>
             <p class="popnote">Compute always stays in your browser — status never gates your data.</p>
-          </div>
-        {/if}
+          </Popover.Content>
+        </Popover.Root>
       </div>
       <!-- F21 (promoted to all surfaces, CH16): the Changelog link was journal-app noise; removed from
            the dashboard top bar on every surface. (The marketing changelog still lives at /changelog.html.) -->
@@ -709,22 +702,18 @@
       {#if hiddenList.length}
         <!-- R12 (promoted, CH16): re-spawn a hidden module onto the dashboard. -->
         <div class="addmod">
-          <button
-            type="button"
-            class="addmodbtn"
-            aria-haspopup="true"
-            aria-expanded={addMenuOpen}
-            onclick={e => {
-              e.stopPropagation();
-              addMenuOpen = !addMenuOpen;
-            }}>+ Add module</button>
-          {#if addMenuOpen}
-            <div class="addmenu" role="menu" aria-label="Add a hidden module">
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger>
+              {#snippet child({ props })}
+                <button {...props} type="button" class="addmodbtn">+ Add module</button>
+              {/snippet}
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content class="addmenu min-w-[200px]" align="start" aria-label="Add a hidden module">
               {#each hiddenList as key (key)}
-                <button type="button" role="menuitem" onclick={() => showPanel(key)}>{MODULE_LABELS[key] || key}</button>
+                <DropdownMenu.Item onSelect={() => showPanel(key)}>{MODULE_LABELS[key] || key}</DropdownMenu.Item>
               {/each}
-            </div>
-          {/if}
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
         </div>
       {/if}
     </div>
@@ -963,29 +952,8 @@
   .pill.off::before {
     background: var(--faint);
   }
-  .sesspop {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    z-index: 40;
-    width: 260px;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    padding: 10px 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    text-align: left;
-  }
-  /* A127: on mobile the top bar wraps and the status pill sits at the LEFT, so a right:0-anchored
-     260px popup spilled off the left edge (clipped by body overflow-x:hidden). Anchor it to the pill's
-     left and clamp its width to the viewport so it stays fully on screen. */
-  @media (max-width: 560px) {
-    .sesspop {
-      right: auto;
-      left: 0;
-      max-width: calc(100vw - 24px);
-    }
-  }
+  /* A128: card chrome + positioning now come from the Popover primitive (bits-ui Floating UI keeps it
+     on-screen — replacing the old A127 mobile-anchoring hack). Only the legend's inner styles remain. */
   .pophd {
     margin: 0 0 6px;
     font-size: 11px;
@@ -993,21 +961,6 @@
     letter-spacing: 0.5px;
     color: var(--faint);
     font-weight: 700;
-  }
-  .sesspop ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 6px;
-  }
-  .sesspop li {
-    font-size: 12px;
-    color: var(--dim);
-    line-height: 1.4;
-  }
-  .sesspop b {
-    color: var(--txt);
   }
   .sdot {
     display: inline-block;
@@ -1112,34 +1065,6 @@
   }
   .addmodbtn:hover {
     border-color: var(--hover-line);
-  }
-  .addmenu {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    z-index: 40;
-    min-width: 200px;
-    display: flex;
-    flex-direction: column;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    padding: 6px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  }
-  .addmenu button {
-    text-align: left;
-    background: transparent;
-    color: var(--txt);
-    border: 0;
-    border-radius: 6px;
-    padding: 7px 10px;
-    font: inherit;
-    font-size: 13px;
-    cursor: pointer;
-  }
-  .addmenu button:hover {
-    background: var(--panel2);
   }
   .msg {
     color: var(--dim);
