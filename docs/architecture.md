@@ -30,30 +30,25 @@ CH16, F13, F14, S19, R1, …) are backlog item ids from
 
 ## Design pillars
 
-> **Re-ranked 2026-06-27 (ADR-001).** As Blotterbook moves from a personal tool to a
-> commercial futures-analytics product, the one *product* pillar (local compute) is affirmed
-> as HARD, while the two *implementation* pillars (no runtime deps, no build step) relax to
-> enable the complex-UI roadmap. A **Vite build + Svelte SPA** on the `/app/` surface is now
-> adopted — see [adr-001-vite-svelte-spa.md](adr-001-vite-svelte-spa.md), which supersedes the
-> Tier B deferral in [build-step-decision.md](build-step-decision.md).
+> **Updated 2026-06-30.** The original "pillars" — the local-compute-only / no-trade-data-egress
+> moat, the "minimal/pinned/audited dependencies" posture, and (after ADR-002) "`tokens.css` is the
+> single token source" — have been **retired** by the decision owner. Blotterbook is now a
+> conventional modern **Svelte 5 (runes) + Tailwind v4 + shadcn-svelte** app: pull in dependencies
+> that earn their weight and use the standard tooling. See
+> [adr-001-vite-svelte-spa.md](adr-001-vite-svelte-spa.md) (Vite + Svelte SPA) and
+> [adr-002-tailwind-shadcn.md](adr-002-tailwind-shadcn.md) (the Tailwind + shadcn-svelte re-platform).
 
-1. **Compute happens locally** *(HARD — the product moat)* — all parsing, metrics, and storage
-   are client-side; **no trade data ever leaves the browser.** No telemetry, no analytics, no
-   trade-data egress, regardless of what dependencies are added. This survives
-   commercialization intact (the paid sync tier stays zero-knowledge / E2E-encrypted) and it
-   gates every dependency (A28).
-2. **Minimal, pinned, audited dependencies** *(policy — relaxed from "no runtime
-   dependencies")* — dependencies are allowed where they earn their weight (the framework,
-   charting, layout/virtualization libs); small utilities stay hand-written. The supply chain
-   is treated as a security control: pinned versions + committed lockfile, `npm audit` in CI,
-   SRI / strict CSP on shipped bundles. See guardrail **A28**. (Dev-only tooling — ESLint,
-   Prettier, Playwright — was already adopted in R19 Tier A.)
-3. **Deployable to Cloudflare Pages** *(build step now adopted)* — ships to Pages, with
-   `/functions/*` as the thin edge layer for the few things that can't be client-side. A
-   shipped-output build (Vite: bundler/minify/hashed names/strict CSP) was adopted via a build
-   *output* dir, `dist/` (**A26**), reversing the old "committed files are the artifacts"
-   contract (**A18**) — done all-at-once while there are no users. The pure-logic core is
-   migrated **verbatim** (guardrail **A29**).
+What remains are practical invariants, not moats:
+
+1. **Client-side by construction** — parsing, metrics, and IndexedDB storage all run in the browser
+   today. This is how the app is *built*, not a hard egress ban; a future cloud-sync tier is on the
+   roadmap.
+2. **Standard, pinned dependency tree** — Vite + Svelte 5 + Tailwind v4 + shadcn-svelte/bits-ui plus
+   dev tooling (ESLint, Prettier, Playwright). Versions are pinned and the lockfile is committed.
+3. **Deployable to Cloudflare Pages** — ships to Pages, with `/functions/*` as the thin edge layer
+   for the few things that can't be client-side. The Vite build emits `dist/` (**A26**), reversing
+   the old "committed files are the artifacts" contract (**A18**). The pure-logic core is reused
+   as-is (guardrail **A29**).
 
 Because the app is split across files (it used to be one `index.html`), it must
 be **served over http(s)** — opening from disk blocks the `fetch()` of the
@@ -141,7 +136,7 @@ source-agnostic and the demo's no-persist invariant holds by construction.
 
 The **pure-logic core is reused verbatim** (A29, JS→TS per A61) — `core.ts` (compute + costModel + the
 event bus), `adapters.ts`, `store.ts` / `demostore.ts`, `curveseries.ts`, `report.ts`,
-`sampledata.ts`, and the shared `format.ts` (all `src/lib/*.ts`) are TS modules imported unchanged by the Svelte
+`sampledata.ts`, and the shared `format.ts` (all `src/lib/core/*.ts`) are TS modules imported unchanged by the Svelte
 components. Reactive state lives in Svelte runes (`$state`/`$derived`) inside the components,
 not in a shared globals object. Boot runs `loadRefData()` → `Store.init()` → `restoreSession()`
 (demo seeds in-memory; staging seeds its DB first), then `mount()`s the app.
@@ -161,9 +156,13 @@ The activity terminal, session pill, and workspace templates are now Svelte comp
 
 To kill copy-paste drift across the info site, two things are single-sourced:
 
-- **Design tokens** live only in [`tokens.css`](../src/styles/tokens.css). Every page links it directly (the app
-  surfaces, the bespoke homepage, and the info/admin pages), and the Svelte components read its CSS
-  custom properties. Change a color or font in one place.
+- **Design tokens** live in [`tailwind.css`](../src/styles/tailwind.css) (ADR-002; `tokens.css` is
+  deleted). It defines the canonical shadcn-svelte semantic set (`background`/`foreground`/`card`/
+  `popover`/`primary`/`secondary`/`muted`/`accent`/`destructive`/`border`/`input`/`ring` + the
+  trading-domain `chart-1..5` hues) in `:root` and maps them into Tailwind's theme namespace via
+  `@theme inline`, so components style with semantic utilities (`bg-card`, `text-muted-foreground`,
+  `bg-primary`, `border-border`, `text-chart-2` = positive P&L, `text-destructive` = negative).
+  The utility sheet ships on every surface. Change a color in one place.
 - **Shared chrome is Svelte components (A69).** The info-site nav + footer are
   [`Nav.svelte`](../src/site/lib/Nav.svelte) / [`Footer.svelte`](../src/site/lib/Footer.svelte), and
   [`SiteShell.svelte`](../src/site/lib/SiteShell.svelte) composes them around the page content and
@@ -218,7 +217,7 @@ Parsing is keyed to the trading **platform** the CSV came from (TradingView,
 Tradovate, …) — **not** the broker. The two are independent: you might clear
 through **AMP** but export from **TradingView**. The Broker dropdown only drives
 the cost model; the Platform dropdown (and the detector) drives parsing.
-`src/lib/adapters.ts` is a small registry (the exported `Adapters`, imported by the Svelte app) with:
+`src/lib/core/adapters.ts` is a small registry (the exported `Adapters`, imported by the Svelte app) with:
 
 - **`detect(text)`** — sniffs the header row against each adapter's signature
   columns and returns the best match (e.g. Tradovate has `B/S` + `Contract`;
@@ -315,7 +314,7 @@ short SHA-256 **content hash**. At boot the app fetches `manifest.json` with
 
 ## Local persistence
 
-Trade data and day-notes are stored in **IndexedDB** via `src/lib/store.ts`. Nothing
+Trade data and day-notes are stored in **IndexedDB** via `src/lib/core/store.ts`. Nothing
 is uploaded.
 
 - **Stores:** `trades` (keyed by the dedupe id), `journal` (per-day notes keyed by
@@ -416,8 +415,9 @@ commit:
    CHANGE:` footer → major, untyped → patch. (See the `commitConvention` field in
    `data/backlog.json`.)
 2. **Which track** from the changed paths (A30 paths; A69 site) — any **prod-shipping** file (the
-   pure-logic core `src/lib/*.ts`, the Svelte SPA `src/app/**` `.ts`/`.svelte`,
-   `src/app/app.html`/`demo.html`, `src/assets/*`, `src/styles/tokens.css`, `static/data/*`
+   pure-logic core `src/lib/core/*.ts`, the shared UI primitives `src/lib/components/**`,
+   `src/lib/utils.ts`, the Svelte SPA `src/app/**` `.ts`/`.svelte`, `src/app/app.html`/`demo.html`,
+   `src/assets/*`, `src/styles/tailwind.css`, `static/data/*`
    except versions/backlog/changelog json) bumps **both** prod and staging; **only**
    `src/app/staging.html` bumps staging alone; the marketing/info site (`src/index.html` +
    `src/{howto,roadmap,changelog,legal}.html` + their `src/site/**` Svelte components, shared chrome,
@@ -430,7 +430,7 @@ GitHub Actions bot to be allowed to push to `main`; if the branch is protected t
 job logs a warning instead of failing.
 
 **Display is runtime-fetched.** Each page's `.ver` badge is populated at load from
-`/data/versions.json` (the version-badge helper lives in `src/lib/format.ts`, used by the SSG
+`/data/versions.json` (the version-badge helper lives in `src/lib/core/format.ts`, used by the SSG
 info pages; the Svelte app fetches it on boot), so there's no baked literal to keep in sync
 anymore. The admin panel surfaces the
 same values **read-only**.

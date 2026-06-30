@@ -10,9 +10,8 @@
    live in chart-1..5: chart-1 brand-blue, chart-2 P&L-up green, chart-3 take-home purple, chart-4
    amber/warning, chart-5 P&L-down red.
 
-   Transitional: a few legacy `--color-*` names (panel/txt/line/green/take/warn…) are still mapped
-   from the old tokens.css below while the remaining bespoke scoped CSS is migrated; they're removed
-   once nothing references them. CSP (style-src 'self') is preserved — utilities are a linked sheet. */
+   This file is the SINGLE source of design-token values (the old tokens.css is gone). CSP
+   (style-src 'self') is preserved — utilities are emitted as a linked stylesheet, never inline. */
 @layer theme, base, components, utilities;
 
 @import 'tailwindcss/theme.css' layer(theme);

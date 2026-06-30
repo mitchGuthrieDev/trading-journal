@@ -67,7 +67,7 @@ export function isProdShipping(f) {
   // src/lib = the pure-logic core ($lib/core/*.ts) + the shadcn-svelte design system
   // ($lib/components/ui/*.svelte, $lib/utils.ts cn()); all ship in the app + site bundles.
   if (/^src\/lib\/.*\.(?:ts|svelte)$/.test(f) && !/\.d\.ts$/.test(f)) return true;
-  // The design-token / Tailwind entry CSS ships to every surface (tokens.css + tailwind.css).
+  // The Tailwind entry CSS (src/styles/tailwind.css — the single token source) ships everywhere.
   if (/^src\/styles\/.*\.css$/.test(f)) return true;
   if (/^src\/assets\//.test(f)) return true; // bundled chrome (favicon/banner/icons), shared
   if (/^static\/data\//.test(f) && !NON_SHIPPING_DATA.has(f)) return true;

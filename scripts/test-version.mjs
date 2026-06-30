@@ -33,7 +33,10 @@ ok(
   isProdShipping('src/app/App.svelte') && isProdShipping('src/app/components/EquityCurve.svelte')
 );
 ok('app/staging.html is NOT prod', !isProdShipping('src/app/staging.html'));
-ok('app+demo shells + tokens are prod', ['src/app/app.html', 'src/app/demo.html', 'src/styles/tokens.css'].every(isProdShipping));
+ok(
+  'app+demo shells + tailwind entry CSS are prod',
+  ['src/app/app.html', 'src/app/demo.html', 'src/styles/tailwind.css'].every(isProdShipping)
+);
 ok(
   'shadcn-svelte UI + cn + Tailwind entry CSS are prod',
   ['src/lib/components/ui/button/button.svelte', 'src/lib/utils.ts', 'src/styles/tailwind.css'].every(isProdShipping)

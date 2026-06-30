@@ -17,39 +17,42 @@ Cloudflare Pages (build → `dist/`) plus `/functions/*` edge functions.
 
 ## Hard constraints (do not break these)
 
-- **Compute happens locally — no trade data ever leaves the browser** *(hard — the
-  product moat)*. All parsing, metrics, and storage are client-side; no telemetry, no
-  analytics, no trade-data egress, ever — this gates every dependency. The paid sync tier
-  stays zero-knowledge / E2E-encrypted. **This is the one pillar that does not bend.**
-- **Dependencies: minimal, pinned, audited** *(policy — was "no runtime dependencies",
-  relaxed by [ADR-001](docs/adr-001-vite-svelte-spa.md))*. Blotterbook is adopting a **Vite
-  build + Svelte SPA** on the `/app/` surface to enable the complex-UI roadmap
-  (R11/R12/R13/F23); marketing pages stay static. Dependencies are allowed where they earn
-  their weight (framework, charting, layout libs); small utilities stay hand-written. Pin every
-  version + commit the lockfile; treat the supply chain as a security control (guardrail
-  **A28**). The pure-logic core (adapters/compute/costModel/tax/Store/util) is migrated
-  **verbatim** (guardrail **A29**). Migration is phased: **A26** (Vite infra + deploy-contract
-  reversal) → **A27** (Svelte on staging) → prod/demo. Dev-only tooling (ESLint/Prettier/
-  Playwright) came earlier in R19 Tier A. See
-  [`docs/adr-001-vite-svelte-spa.md`](docs/adr-001-vite-svelte-spa.md),
-  [`docs/build-step-decision.md`](docs/build-step-decision.md), and the design pillars in
-  [`docs/architecture.md`](docs/architecture.md#design-pillars).
+Blotterbook is a conventional modern **Svelte 5 (runes) + Tailwind v4 + shadcn-svelte** app
+built with Vite (ADR-001) and shipped to Cloudflare Pages. The old "pillars" (local-compute-only
+moat, dependency minimalism, `tokens.css` as the single token source) have been retired by the
+decision owner — pull in dependencies that earn their weight and use the standard tooling. A few
+genuine invariants remain:
+
 - **Must be served over http(s).** The app `fetch()`es `/data/*.json`, so opening
   files from disk breaks it. Use a static server.
+- **CSP `style-src 'self'` holds — no inline `style=""`.** Tailwind utilities ship as a linked
+  stylesheet of classes (`class="bg-card"`), never an inline `style=""` attribute; bits-ui /
+  Floating-UI position popups via `element.style` in JS (CSSOM — not gated by `style-src`). The
+  invariant is unchanged: **never add a literal `style=""` attribute to markup** — use utilities or
+  the `styleProps` action for dynamic styling.
+- **Demo never mutates or persists** — it mounts the in-memory `DemoStore` (nothing reaches
+  IndexedDB/localStorage by construction) and disables/guards every write path.
+- **The committed HTML and data manifest are generated artifacts** that must stay in sync with
+  their sources — CI's drift gate fails if they drift (see Commands).
+- **The pure-logic core (`src/lib/core/`) is framework-agnostic** and reused as-is by the app and
+  the info site; edit persisted data only through the `Store` interface, never `indexedDB` directly.
+
+The app uses the standard Svelte/Vite stack: see
+[`docs/adr-001-vite-svelte-spa.md`](docs/adr-001-vite-svelte-spa.md) (the Vite + Svelte SPA),
+[`docs/adr-002-tailwind-shadcn.md`](docs/adr-002-tailwind-shadcn.md) (the Tailwind + shadcn-svelte
+re-platform), and [`docs/architecture.md`](docs/architecture.md).
 - **The `/app/` surface is a Svelte 5 SPA** (ADR-001; A26 Vite, A27 staging, A33 cutover). All three
   surfaces — `app/app.html`, `app/demo.html`, `app/staging.html` — are hand-authored, marker-free
   mount points (`<div id="app">` + `<script type="module" src="./main.ts">`, body
   `data-mode="app|demo|staging"`). The Svelte app lives in `src/app/` (App.svelte +
-  components/ + lib/{modal,actions,files,flags}.ts; dir rename is A30) and reuses the **pure-logic core verbatim**
-  (A29, JS→TS per A61): `adapters` / `compute`+`costModel` in `core.ts` / `store` / `sampledata` / `demostore` /
-  `curveseries` / `report` (all `src/lib/*.ts`), with [`format.ts`](src/lib/format.ts) shared by the app *and* the info
-  pages. Component CSS is scoped (Vite extracts it to a linked stylesheet); cross-component state is
-  Svelte runes (`$state`/`$derived`), not a shared globals object. The mode-aware store seam (context
-  `'bb:store'`) picks the real IndexedDB `Store` (app/staging) or the in-memory `DemoStore` (demo, so
-  **demo persists nothing** — by construction). *(The former vanilla view layer — render/ui/widgets/
-  datamanager/export/main/state.js + `partials/app-*.html` — was deleted in A33.)*
-- **The committed HTML and data manifest are generated artifacts** that must stay
-  in sync with their sources — CI fails if they drift (see Commands).
+  components/ + lib/{modal,actions,files,flags,modules}.ts) and reuses the **pure-logic core** in
+  `src/lib/core/` (A29, native TS per A61): `adapters` / `compute`+`costModel` in `core` / `store` /
+  `sampledata` / `demostore` / `curveseries` / `report`, with `format` shared by the app *and* the
+  info pages. Cross-component state is Svelte runes (`$state`/`$derived`), not a shared globals
+  object. The mode-aware store seam (context `'bb:store'`) picks the real IndexedDB `Store`
+  (app/staging) or the in-memory `DemoStore` (demo, so **demo persists nothing** — by construction).
+  *(The former vanilla view layer — render/ui/widgets/datamanager/export/main/state.js +
+  `partials/app-*.html` — was deleted in A33.)*
 
 ## Commands
 
@@ -66,7 +69,7 @@ npm run preview                  # serve the built dist/ locally (production-lik
 npm test                         # = lint + typecheck + format:check + test:unit
 npm run test:unit                # the 6 node suites: adapters / auth / version / flags / tax / demostore
 npm run lint                     # ESLint (flat config; .ts skipped — typechecked instead, A79)
-npm run typecheck                # tsc (src/lib core, strict) + tsc(functions) + svelte-check (src/app) — A61
+npm run typecheck                # tsc (src/lib/**/*.ts except src/lib/components) + tsc(functions) + svelte-check (src/app + src/site + src/lib/components) — A61
 npm run test:e2e                 # Playwright render tests — BUILDS then serves dist/, boots every surface
 npm run format                   # Prettier
 # (the node suites still run standalone too, e.g. `node scripts/test-adapters.mjs`)
@@ -116,42 +119,38 @@ So:
   that, every data-writing control is `disabled` when `PAGE_MODE === 'demo'` and each write path is
   guarded (`if (isDemo) return;`). When adding a write, confirm both. (e2e asserts no Blotterbook
   IndexedDB is created on demo.)
-- **Design tokens live only in `tokens.css`** — every page links it (app surfaces, homepage, and the
-  info/admin pages); Svelte components read the token CSS vars. Don't duplicate colors/fonts. (A69
-  folded the old `home.css`/`site.css`/`admin.css` into scoped component `<style>` blocks.)
-- **Styling = Tailwind v4 utilities + the `$ui` primitives, on top of `tokens.css` (A128 / [ADR-002](docs/adr-002-tailwind-shadcn.md)).**
-  We adopted Tailwind v4 (`@tailwindcss/vite`) + shadcn-svelte + bits-ui + tailwind-variants — a
-  deliberate, approved reversal of A104/R22. The single Tailwind entry is
-  [`src/styles/tailwind.css`](src/styles/tailwind.css): its `@theme` block maps the **`tokens.css`
-  CSS vars** into Tailwind's theme namespace (`bg-accent`/`text-take`/`border-line`/`font-mono`…) —
-  `tokens.css` stays the SINGLE source of values; never duplicate token values into a JS config.
-  Prefer utilities for new styling; existing scoped `<style>` is migrating to utilities incrementally
-  (hybrid is fine — leave genuinely bespoke things like the EquityCurve SVG / CalendarMonth grid
-  scoped). Shared accessible primitives live in **`src/ui/`** (alias `$ui`): `Button` (tailwind-
-  variants `tv()`), `Dialog`, `DropdownMenu`, `Popover`, `Select` (shadcn-svelte composition over
-  bits-ui). Use these for dialogs/menus/popovers/selects instead of hand-rolling a11y. They render
-  **in place (no Portal)** so they stay under `<main id="sv-app">` (e2e + a few styles target
-  `#sv-app …`). `cn()` (`$ui/utils`) composes classes (clsx + tailwind-merge). New deps are pinned +
-  lockfiled + `npm audit`-clean, client-only (A28). Consult the Svelte MCP server + the shadcn-svelte/
-  bits-ui docs when touching these.
-- **Tailwind classes are NOT inline styles — CSP `style-src 'self'` still holds (S18/A55).** Tailwind
-  emits a linked stylesheet of classes (`class="bg-accent"`), never an inline `style=""` attribute,
-  and bits-ui/Floating-UI positions popups via `element.style` in JS (CSSOM — not gated by CSP, same
-  as the `styleProps` action). The invariant is unchanged: **never add a literal `style=""` attribute
-  to markup** — use utilities/`styleProps` for dynamic styling. After UI work, grep `src/` for a new
-  `style="` and keep the CSP/SSG e2e specs + `_headers` green. A class on a `$ui` primitive's ROOT
-  element doesn't get the parent's Svelte scope hash, so style such elements with utilities (or the
-  primitive), not scoped descendant CSS; for a trigger that must keep scoped styling, use bits-ui's
-  `child` snippet so the real element stays in your template.
+- **Styling = Tailwind v4 utilities + canonical shadcn-svelte primitives (ADR-002).** The single
+  Tailwind entry [`src/styles/tailwind.css`](src/styles/tailwind.css) is also the **single source of
+  design-token values** (`tokens.css` is deleted). It defines the canonical shadcn-svelte semantic
+  set in `:root` from Blotterbook's palette — `background`/`foreground`/`card`/`popover`/`primary`/
+  `secondary`/`muted`/`accent`/`destructive`/`border`/`input`/`ring` + `chart-1..5` — and maps it via
+  `@theme inline`. Components use the **semantic utilities**: `bg-background`/`bg-card`/`bg-secondary`,
+  `text-foreground`/`text-muted-foreground`, `bg-primary`/`text-primary-foreground`, `border-border`,
+  `hover:bg-accent`. Note the naming: the brand blue is shadcn's **`primary`** (+ `ring`); shadcn's
+  **`accent`** is the subtle item-hover surface. Trading-domain hues with no shadcn equivalent live in
+  **`chart-1..5`**: chart-1 brand-blue, chart-2 P&L-up (green), chart-3 take-home (purple), chart-4
+  warning (amber), chart-5 P&L-down (red) — so `text-chart-2` = positive P&L and `text-destructive` =
+  negative/red. `tw-animate-css` supplies component animations.
+- **UI primitives = canonical shadcn-svelte at `$lib/components/ui/` (ADR-002).** `button`, `dialog`,
+  `dropdown-menu`, `popover`, `select` — composed over **bits-ui v2** with `data-slot` attrs and `cn`
+  from `$lib/utils`. Use these for dialogs/menus/popovers/selects instead of hand-rolling a11y; you
+  **own the source**, so customize them in place. They render canonically (Dialog/menus/popover/select
+  **portal to body**). Add/maintain them with the **shadcn-svelte CLI** — `components.json` is wired,
+  so `npx shadcn-svelte add <name>` works. A class applied via prop onto a primitive's ROOT element
+  doesn't get the parent's Svelte scope hash, so style such elements with utilities (or the primitive),
+  not scoped descendant CSS; for a trigger that must keep scoped styling, use bits-ui's `child` snippet
+  so the real element stays in your template. Consult the Svelte MCP server + the shadcn-svelte/bits-ui
+  docs when touching these. After UI work, grep `src/` for a new `style="` (CSP) and keep the e2e
+  specs + `_headers` green.
 - **Marketing/info site = Svelte SSG (A69).** `index/howto/roadmap/changelog/legal/admin.html` are
-  hand-authored, marker-free **templates** (head meta + tokens link + `<div id="app"><!--ssg-outlet--></div>`
+  hand-authored, marker-free **templates** (head meta + `<div id="app"><!--ssg-outlet--></div>`
   + a client-entry `<script>`). At build time [`vite-ssg.mjs`](scripts/vite-ssg.mjs) server-renders each page
   component (`src/site/components/*.svelte`) into the outlet (static HTML for SEO + first paint), and
   the client entry hydrates it. Edit the **components** (`src/site/components/` + shared
   `src/site/lib/{Nav,Footer,SiteShell}.svelte`), not the HTML shells. NOT behind the app SPA shell
   (ADR-001); no SvelteKit (A62). Keep CSP `style-src 'self'` — no inline `style=""`; use a CSSOM
   action for dynamic styles (A55). admin stays Cloudflare Access–gated + noindex.
-- **Edit data through the `Store` interface only** (`src/lib/store.ts`) — never touch
+- **Edit data through the `Store` interface only** (`src/lib/core/store.ts`) — never touch
   `indexedDB` directly. A future `CloudStore` implements the same interface.
 - **The user-facing changelog is hand-curated** in `data/changelog.json` (not raw
   commits). Add an entry when `prod` bumps.
@@ -184,9 +183,10 @@ conforms to the rules below; keep it that way.
   shared reactive-state-with-runes modules → `.svelte.ts`; pure logic / utilities / API calls /
   types → `.ts`. No hand-written `.js` in `src/` (the pure-logic core is native TS — A61).
 - **TypeScript.** `src/` is `any`-free — keep it that way: prefer proper types or `unknown`, and put
-  shared interfaces in [`src/lib/types.ts`](src/lib/types.ts), not inline. Type fetched/persisted JSON
-  at the boundary rather than reaching for `any` (e.g. the `Stored*` persistence shapes in `types.ts`,
-  or page-local interfaces like the backlog/status shapes in `src/site/components/Admin.svelte`).
+  shared interfaces in [`src/lib/core/types.ts`](src/lib/core/types.ts), not inline. Type
+  fetched/persisted JSON at the boundary rather than reaching for `any` (e.g. the `Stored*`
+  persistence shapes in `types.ts`, or page-local interfaces like the backlog/status shapes in
+  `src/site/components/Admin.svelte`).
 - **JSDoc.** Don't restate types in JSDoc (`@param {type}`/`@returns {type}`) — tsc owns that.
   JSDoc is for prose on non-obvious behavior, `@deprecated`, and `@example`; skip it entirely when
   the name + types are self-evident.
@@ -225,31 +225,37 @@ conforms to the rules below; keep it that way.
   changelog.html        "Blotterlog" — versioned release notes (reads /data/changelog.json)
   legal.html            disclaimers, terms, privacy summary
   admin.html            internal admin controls (Cloudflare Access–gated)  → /admin.html
-  lib/                  PURE-LOGIC CORE (A29) — framework-agnostic, native TS (A61), node-tested
-    core.ts             metrics (compute), formatting, cost model, ref-data loading, event bus, shared
+  lib/                  $lib alias → src/lib
+    core/               PURE-LOGIC CORE (A29) — framework-agnostic, native TS (A61), node-tested
+      core.ts           metrics (compute), formatting, cost model, ref-data loading, event bus, shared
                         pure helpers (sessionOf/isoWeek/niceTicks/axMoney/fmtDur/ratio/num)
-    report.ts           pure performance-report builder (on-screen + markdown + email — A34)
-    sampledata.ts       demo CSV sample data  ·  curveseries.ts  pure daily gross/net/take series
-    demostore.ts        in-memory Store implementation for demo (never persists)
-    adapters.ts         platform CSV adapters + format auto-detection + fills matcher
-    store.ts            IndexedDB persistence (trades, journal, meta, trademeta) + Store.local seam
-    entitlements.ts     storage-tier resolver (scaffold; INTENTIONALLY not loaded)
-    format.ts           shared esc/platformLabel + version-badge IIFE (ex assets/util.js — A76)
-    types.ts            shared TS interfaces (Trade/Fill/CostModel/Metrics/StoreLike/… — A61)
+      report.ts         pure performance-report builder (on-screen + markdown + email — A34)
+      sampledata.ts     demo CSV sample data  ·  curveseries.ts  pure daily gross/net/take series
+      demostore.ts      in-memory Store implementation for demo (never persists)
+      adapters.ts       platform CSV adapters + format auto-detection + fills matcher
+      store.ts          IndexedDB persistence (trades, journal, meta, trademeta) + Store.local seam
+      entitlements.ts   storage-tier resolver (scaffold; INTENTIONALLY not loaded)
+      format.ts         shared esc/platformLabel + version-badge IIFE (ex assets/util.js — A76)
+      types.ts          shared TS interfaces (Trade/Fill/CostModel/Metrics/StoreLike/… — A61)
+    components/ui/      canonical shadcn-svelte primitives (ADR-002): button, dialog, dropdown-menu,
+                        popover, select — composed over bits-ui v2; added via `npx shadcn-svelte add`
+    utils.ts            cn() class composer (clsx + tailwind-merge) — `$lib/utils`
   app/                  the journal app — a Svelte 5 SPA (ADR-001; vanilla view layer removed in A33)
     app.html            Svelte mount, data-mode="app" (served at /app/ via _redirects rewrite)
     demo.html           Svelte mount, data-mode="demo" (in-memory DemoStore — never persists)
     staging.html        Svelte mount, data-mode="staging" (key-gated, isolated IndexedDB)
-    main.ts             entry: side-effect format.ts + mount(App)  ·  App.svelte root
-    components/         the 17 app components (<script lang="ts">)
+    main.ts             entry: imports tailwind.css + side-effect format + mount(App)  ·  App.svelte root
+    components/         the app components (<script lang="ts">)
     lib/                app-only glue (TS): modal.ts (a11y action), actions.ts (styleProps),
-                        files.ts (readImage/downloadBlob — ex util.js, A76), flags.ts (APP_FLAGS — ex data.ts)
+                        files.ts (readImage/downloadBlob — ex util.js, A76), flags.ts (APP_FLAGS),
+                        modules.ts (the A108 module registry)
   site/                 MARKETING + INFO — Svelte SSG (A69; prerendered at build by scripts/vite-ssg.mjs, hydrated in place)
     components/         Home / Howto / Roadmap / Changelog / Legal / Admin .svelte (the page components)
     lib/                shared chrome: Nav.svelte, Footer.svelte, SiteShell.svelte (base/typography styles + globals)
     entries/            per-page client entries (hydrate the prerendered component) — *.ts
   assets/               bundled chrome: favicon.svg, banner.svg, why-*.svg (Vite fingerprints these)
-  styles/               tokens.css (single source — colors + fonts; page CSS now lives in scoped component <style>, A69)
+  styles/               tailwind.css — the single Tailwind entry AND the single source of design-token
+                        values: shadcn-svelte semantic vars in :root + @theme inline mapping + chart-1..5 (ADR-002)
 /static/                Vite publicDir → copied verbatim to dist/ root (A30; retired copy-static.mjs)
   _headers              Cloudflare Pages security headers (CSP + hardening)  → /_headers
   _redirects  robots.txt  sitemap.xml
@@ -272,14 +278,15 @@ conforms to the rules below; keep it that way.
   build-manifest.mjs    regenerates static/data/manifest.json content hashes
   bump-version.mjs      two-track version bump from a merge commit (run by CI; classifies src/ + static/ paths)
   vite-ssg.mjs          A69 SSG plugin — server-renders the site components into their templates at build time (A95: moved here from the repo root)
-  check-bundle-size.mjs dev-only /app/-surface JS size budget — fails the build if the app bundle crosses its ceiling (A96)
+  check-bundle-size.mjs dev-only /app/-surface JS size budget (480 KiB ceiling) — fails the build if the app bundle crosses it (A96)
   test-*.mjs            the CI test suite (adapters / auth / version / flags / tax / demostore)
 /e2e/                   Playwright render/E2E specs (dev-only — R19 Tier A)
 /dist/                  Vite build output (GITIGNORED) — the artifact Cloudflare Pages serves (A26)
 vite.config.mjs         Vite multi-page build config (root:src, publicDir:static, 9 HTML entries → dist/)
 .node-version           pins Node 22 for the Cloudflare Pages build
-package.json            deps manifest — Vite + dev tooling (minimal/pinned/audited per A28)
-eslint.config.mjs       ESLint flat config  ·  .prettierrc.json  Prettier  ·  tsconfig.json + tsconfig.svelte.json + tsconfig.functions.json  tsc + svelte-check  ·  playwright.config.mjs  e2e
+package.json            deps manifest — Vite + Tailwind v4 + shadcn-svelte/bits-ui + dev tooling (pinned, lockfiled)
+components.json         shadcn-svelte CLI config (`npx shadcn-svelte add <name>`)  ·  ADR-002
+eslint.config.mjs       ESLint flat config  ·  .prettierrc.json  Prettier  ·  tsconfig.json (tsc: src/lib/**/*.ts except src/lib/components) + tsconfig.svelte.json (svelte-check: src/app + src/site + src/lib/components) + tsconfig.functions.json  ·  playwright.config.mjs  e2e
 svelte.config.js        vitePreprocess — enables <script lang="ts"> in components (A61)
 LICENSE                 proprietary — all rights reserved
 ```
@@ -311,7 +318,7 @@ over an `EventTarget` for any listener. The bus is a no-op with no subscriber.
 
 ## Adding things
 
-- **A platform adapter:** one object in `src/lib/adapters.ts` (`sniff` + `toTrades`)
+- **A platform adapter:** one object in `src/lib/core/adapters.ts` (`sniff` + `toTrades`)
   plus a fixture in `scripts/test-adapters.mjs`. Every adapter normalizes to the
   same trade shape `{ time, date, pnl, symbol, root, side[, qty, entryTime,
   exitTime, holdMs] }` so `compute()`/`costModel()` never change.
