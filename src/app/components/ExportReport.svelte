@@ -138,7 +138,7 @@
 </script>
 
 <Dialog.Root bind:open>
-  <Dialog.Content class="modal max-w-[880px] gap-0 p-0 max-h-[90vh] overflow-hidden flex flex-col" aria-label="Export performance report">
+  <Dialog.Content class="modal sm:max-w-[880px] gap-0 p-0 max-h-[90vh] overflow-hidden flex flex-col" aria-label="Export performance report">
     <div class="flex items-center justify-between gap-3 border-b border-border bg-card px-3.5 py-3 max-[560px]:flex-wrap">
       <strong class="text-[13px]">Performance report</strong>
       <div class="flex items-center gap-2 max-[560px]:w-full max-[560px]:flex-wrap max-[560px]:justify-start">

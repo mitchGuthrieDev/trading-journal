@@ -215,7 +215,7 @@
      bits-ui's onEscapeKeydown (preventDefault keeps the dialog open while we clear the editor). -->
 <Dialog.Root bind:open>
   <Dialog.Content
-    class="modal max-w-[960px] gap-0 p-0 max-h-[92vh] overflow-hidden flex flex-col"
+    class="modal sm:max-w-[960px] gap-0 p-0 max-h-[92vh] overflow-hidden flex flex-col"
     aria-label="Manage data"
     onEscapeKeydown={(e: KeyboardEvent) => {
       if (editing) {

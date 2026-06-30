@@ -91,7 +91,7 @@
 </script>
 
 <Dialog.Root bind:open>
-  <Dialog.Content class="modal max-w-[460px] gap-0 p-0 max-h-[88vh] overflow-auto" aria-label={title}>
+  <Dialog.Content class="modal sm:max-w-[460px] gap-0 p-0 max-h-[88vh] overflow-auto" aria-label={title}>
     <div class="flex items-center justify-between border-b border-border px-4 py-3.5">
       <h2 class="m-0 text-[15px]">{title}</h2>
     </div>
@@ -158,7 +158,7 @@
           <span><b class="block font-mono text-[15px] text-foreground">{ratio(m.recovery)}</b> Recovery factor</span>
           <span><b class="block font-mono text-[15px] {tone(m.net)}">{usd(m.net)}</b> Net PnL</span>
         </div>
-        <p class="mb-3.5 mt-0 border-l-2 border-warn pl-2.5 text-[12px] leading-[1.55] text-muted-foreground">Max Drawdown is REALIZED only — computed on the closed-trade equity curve, peak-to-trough. The % is peak-relative and the duration counts trades from that peak to the trough. It does NOT capture open-position heat between entry and exit, and the % is undefined until the curve first goes positive.</p>
+        <p class="mb-3.5 mt-0 border-l-2 border-chart-4 pl-2.5 text-[12px] leading-[1.55] text-muted-foreground">Max Drawdown is REALIZED only — computed on the closed-trade equity curve, peak-to-trough. The % is peak-relative and the duration counts trades from that peak to the trough. It does NOT capture open-position heat between entry and exit, and the % is undefined until the curve first goes positive.</p>
         {#if ddCurve}
           <h3 class="mb-2 mt-3.5 text-[11px] uppercase tracking-[0.5px] text-muted-foreground">Equity curve · peak → trough</h3>
           <svg class="curve h-[90px] w-full" viewBox="0 0 {ddCurve.W} {ddCurve.H}" preserveAspectRatio="none">
