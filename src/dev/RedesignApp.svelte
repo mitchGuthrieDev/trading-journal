@@ -14,7 +14,7 @@
   import Blotter from '../app/screens/Blotter.svelte';
   import CsvLibrary from './screens/CsvLibrary.svelte';
   import TradeEditor from '../app/screens/TradeEditor.svelte';
-  import Reports from './screens/Reports.svelte';
+  import Reports from '../app/screens/Reports.svelte';
   import Placeholder from './screens/Placeholder.svelte';
 
   // Screens are registered here as they're built; unregistered keys fall back to the Placeholder.

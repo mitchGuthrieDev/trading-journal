@@ -1,10 +1,14 @@
+<script lang="ts" module>
+  export type { ReportVM, ReportKpi, ReportRange } from '../lib/reports.ts';
+  export type ExportKind = 'pdf' | 'md' | 'csv' | 'email' | 'copy';
+</script>
+
 <script lang="ts">
-  // Reports surface mockup (UI redesign, Phase 2 — 7th/last screen; Data Management). A two-pane
-  // report generator: a left config panel (template, title/account, date-range + scope, period
-  // comparison, section toggles) drives a live document preview on the right; export actions
-  // (PDF / Markdown / CSV / Email / Copy) in the toolbar. On cutover the preview + Markdown/email
-  // export reuse the existing pure report.ts builder (A34). Representative static data; color only
-  // in the P&L.
+  // Reports surface (UI redesign; Data Management). A two-pane report generator: a left config panel
+  // (template, title/account, date-range + scope, period comparison, section toggles) drives a live
+  // document preview on the right; export actions (PDF / Markdown / CSV / Email / Copy) in the toolbar.
+  // The preview + exports are built from real metrics on the staging app via the `build` callback (which
+  // reuses the pure report.ts builder, A34); the /dev preview falls back to a static mock. Color in P&L.
   import { FileDown, Code, Table2, Mail, Copy, Receipt, Percent, ChartLine, FileText } from '@lucide/svelte';
   import { cn } from '$lib/utils';
   import { Button } from '$lib/components/ui/button';
@@ -13,18 +17,72 @@
   import { Switch } from '$lib/components/ui/switch';
   import { Separator } from '$lib/components/ui/separator';
   import * as Card from '$lib/components/ui/card';
+  import type { ReportVM, ReportRange } from '../lib/reports.ts';
 
   type Tmpl = 'performance' | 'cost' | 'tax' | 'full';
   type Sections = { kpis: boolean; curve: boolean; calendar: boolean; cost: boolean; tax: boolean; advanced: boolean };
+  type ExportKind = 'pdf' | 'md' | 'csv' | 'email' | 'copy';
 
-  let template = $state<Tmpl>('performance');
-  let title = $state('Q2 2026 Performance');
-  let account = $state('Main · Tradovate');
-  let scope = $state<'all' | 'month' | 'custom'>('custom');
+  // A static view-model for the /dev preview (no engine).
+  const MOCK_VM: ReportVM = {
+    kpis: [
+      { label: 'Net P&L', value: '+$79,467', prior: '+$71,240', tone: 'pos' },
+      { label: 'Win rate', value: '58.0%', prior: '56.4%' },
+      { label: 'Profit factor', value: '3.01', prior: '2.78' },
+      { label: 'Expectancy', value: '+$51.64', prior: '+$48.10', tone: 'pos' },
+      { label: 'Trades', value: '1,539', prior: '1,402' },
+      { label: 'Max drawdown', value: '-$502.75', prior: '-$610.20', tone: 'neg' },
+    ],
+    curve: [0, 1200, 2100, 2600, 3800, 4700, 6000, 7400, 8600, 9400],
+    calPnl: { 2: 454, 3: 383, 4: 216, 5: 90, 8: 355, 9: 426, 10: -106, 11: -91, 12: -28, 15: 338, 16: 48, 17: 96, 18: 438, 22: 93, 23: 319, 24: 380, 25: 448, 26: -270, 30: 430 },
+    calFirstDow: 1,
+    calDaysInMonth: 30,
+    calMonthLabel: 'June 2026',
+    costRows: [
+      ['Gross P&L', '+$86,107', false], ['Commissions (all-in)', '-$4,210', false],
+      ['Subscriptions ($180/mo × 3)', '-$540', false], ['Total costs', '-$6,640', true],
+    ],
+    taxRows: [
+      ['Net §1256 gain (pre-tax)', '+$79,467', false], ['Blended 1256 rate', '18.6%', false],
+      ['Est. 1256 tax (profit only)', '-$14,781', false], ['Est. take-home', '+$62,046', true],
+    ],
+    advRows: [
+      ['Payoff ratio', '2.18'], ['Sortino', '1.24'], ['Recovery factor', '12.4'],
+      ['Profit concentration', '18%'], ['Max consec. wins', '9'], ['Max consec. losses', '4'],
+    ],
+    rangeLabel: 'June 2026',
+    md: '',
+    text: '',
+    mailto: '',
+  };
+
+  interface Props {
+    defaultTitle?: string;
+    defaultAccount?: string;
+    calYear?: number;
+    calMonth?: number;
+    build?: (range: ReportRange, compare: boolean) => ReportVM;
+    onexport?: (kind: ExportKind, vm: ReportVM, meta: { title: string; account: string }) => void;
+  }
+  let {
+    defaultTitle = 'Q2 2026 Performance',
+    defaultAccount = 'Main · Tradovate',
+    calYear = 2026,
+    calMonth = 5,
+    build,
+    onexport,
+  }: Props = $props();
+
+  let template = $state<Tmpl>('full');
+  // svelte-ignore state_referenced_locally — seed the editable fields from the prop defaults once.
+  let title = $state(defaultTitle);
+  // svelte-ignore state_referenced_locally
+  let account = $state(defaultAccount);
+  let scope = $state<'all' | 'month' | 'custom'>('all');
   let from = $state('2026-04-01');
   let to = $state('2026-06-30');
   let compare = $state(true);
-  let sections = $state<Sections>({ kpis: true, curve: true, calendar: true, cost: false, tax: false, advanced: true });
+  let sections = $state<Sections>({ kpis: true, curve: true, calendar: true, cost: true, tax: true, advanced: true });
 
   const PRESETS: Record<Tmpl, Sections> = {
     performance: { kpis: true, curve: true, calendar: true, cost: false, tax: false, advanced: true },
@@ -36,7 +94,9 @@
     template = t;
     sections = { ...PRESETS[t] };
   }
-  const rangeLabel = $derived(scope === 'all' ? 'All time' : scope === 'month' ? 'June 2026' : `${from} → ${to}`);
+
+  const range = $derived<ReportRange>({ scope, from, to, calYear, calMonth });
+  const vm = $derived(build ? build(range, compare) : MOCK_VM);
 
   const TEMPLATES: { key: Tmpl; label: string; icon: typeof FileText }[] = [
     { key: 'performance', label: 'Performance', icon: ChartLine },
@@ -53,29 +113,24 @@
     { key: 'advanced', label: 'Advanced stats' },
   ];
 
-  const kpis: { label: string; value: string; prior: string; tone?: 'pos' | 'neg' }[] = [
-    { label: 'Net P&L', value: '+$79,467', prior: '+$71,240', tone: 'pos' },
-    { label: 'Win rate', value: '58.0%', prior: '56.4%' },
-    { label: 'Profit factor', value: '3.01', prior: '2.78' },
-    { label: 'Expectancy', value: '+$51.64', prior: '+$48.10', tone: 'pos' },
-    { label: 'Trades', value: '1,539', prior: '1,402' },
-    { label: 'Max drawdown', value: '-$502.75', prior: '-$610.20', tone: 'neg' },
-  ];
-  const costRows: [string, string, boolean][] = [
-    ['Commissions', '-$4,210', false], ['Exchange & NFA fees', '-$1,890', false],
-    ['Data & platform', '-$540', false], ['Total costs', '-$6,640', true],
-  ];
-  const taxRows: [string, string, boolean][] = [
-    ['Net §1256 gain', '$79,467', false], ['60% long-term @ 15%', '-$7,152', false],
-    ['40% short-term @ 24%', '-$7,629', false], ['State (CA est.)', '-$2,640', false], ['Est. take-home', '$62,046', true],
-  ];
-  const advRows: [string, string][] = [
-    ['Payoff ratio', '2.18'], ['Sortino', '1.24'], ['Recovery factor', '12.4'],
-    ['Profit concentration', '18%'], ['Max consec. wins', '9'], ['Max consec. losses', '4'],
-  ];
-  // Compact calendar heatmap (June).
-  const calPnl: Record<number, number> = { 2: 454, 3: 383, 4: 216, 5: 90, 8: 355, 9: 426, 10: -106, 11: -91, 12: -28, 15: 338, 16: 48, 17: 96, 18: 438, 22: 93, 23: 319, 24: 380, 25: 448, 26: -270, 30: 430 };
-  const calCells: (number | null)[] = [...Array.from({ length: 1 }, () => null), ...Array.from({ length: 30 }, (_, i) => i + 1)];
+  // Equity-curve points → SVG line + area (loop-safe normalize; no Math.max spread).
+  function curvePaths(pts: number[], w = 1000, h = 240, pad = 10) {
+    if (pts.length < 2) return { line: '', area: '' };
+    let min = pts[0],
+      max = pts[0];
+    for (const v of pts) {
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+    const span = max - min || 1;
+    const X = (i: number) => (i / (pts.length - 1)) * w;
+    const Y = (v: number) => h - pad - ((v - min) / span) * (h - 2 * pad);
+    const line = pts.map((v, i) => `${i === 0 ? 'M' : 'L'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
+    return { line, area: `${line} L${w} ${h} L0 ${h} Z` };
+  }
+  const cp = $derived(curvePaths(vm.curve));
+  const calCells = $derived<(number | null)[]>([...Array.from({ length: vm.calFirstDow }, () => null), ...Array.from({ length: vm.calDaysInMonth }, (_, i) => i + 1)]);
+  const fire = (kind: ExportKind) => onexport?.(kind, vm, { title, account });
 </script>
 
 {#snippet sectionTitle(t: string)}
@@ -87,11 +142,11 @@
   <div class="flex flex-wrap items-center gap-2">
     <span class="text-xs text-muted-foreground">Preview updates live as you configure.</span>
     <div class="ml-auto flex flex-wrap gap-2">
-      <Button size="sm"><FileDown class="size-4" /> PDF</Button>
-      <Button variant="outline" size="sm"><Code class="size-4" /> Markdown</Button>
-      <Button variant="outline" size="sm"><Table2 class="size-4" /> CSV</Button>
-      <Button variant="outline" size="sm"><Mail class="size-4" /> Email</Button>
-      <Button variant="outline" size="sm"><Copy class="size-4" /> Copy</Button>
+      <Button size="sm" onclick={() => fire('pdf')}><FileDown class="size-4" /> PDF</Button>
+      <Button variant="outline" size="sm" onclick={() => fire('md')}><Code class="size-4" /> Markdown</Button>
+      <Button variant="outline" size="sm" onclick={() => fire('csv')}><Table2 class="size-4" /> CSV</Button>
+      <Button variant="outline" size="sm" onclick={() => fire('email')}><Mail class="size-4" /> Email</Button>
+      <Button variant="outline" size="sm" onclick={() => fire('copy')}><Copy class="size-4" /> Copy</Button>
     </div>
   </div>
 
@@ -164,7 +219,7 @@
           <div class="flex items-start justify-between gap-4 border-b border-border pb-4">
             <div>
               <h1 class="text-2xl font-bold tracking-tight">{title || 'Untitled report'}</h1>
-              <p class="mt-1 text-sm text-muted-foreground">{account} · {rangeLabel}</p>
+              <p class="mt-1 text-sm text-muted-foreground">{account} · {vm.rangeLabel}</p>
             </div>
             <div class="flex items-center gap-2 text-right">
               <span class="grid size-9 place-items-center rounded-full border border-border"><span class="size-3.5 rounded-full bg-foreground"></span></span>
@@ -175,11 +230,11 @@
           {#if sections.kpis}
             {@render sectionTitle('Summary')}
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {#each kpis as k (k.label)}
+              {#each vm.kpis as k (k.label)}
                 <div class="rounded-md border border-border bg-background p-3">
                   <div class="text-[11px] text-muted-foreground">{k.label}</div>
                   <div class={cn('mt-0.5 text-lg font-semibold tabular-nums', k.tone === 'pos' ? 'text-chart-2' : k.tone === 'neg' ? 'text-destructive' : 'text-foreground')}>{k.value}</div>
-                  {#if compare}<div class="text-[10px] text-muted-foreground">vs {k.prior}</div>{/if}
+                  {#if compare && k.prior}<div class="text-[10px] text-muted-foreground">vs {k.prior}</div>{/if}
                 </div>
               {/each}
             </div>
@@ -190,23 +245,23 @@
             <svg viewBox="0 0 1000 240" class="h-44 w-full" preserveAspectRatio="none" role="img" aria-label="Cumulative P&L">
               <defs><linearGradient id="repFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" class="[stop-color:var(--chart-2)] [stop-opacity:0.25]" /><stop offset="100%" class="[stop-color:var(--chart-2)] [stop-opacity:0]" /></linearGradient></defs>
               {#each [48, 96, 144, 192] as y (y)}<line x1="0" y1={y} x2="1000" y2={y} class="stroke-border" stroke-width="1" />{/each}
-              <path d="M0 230 L140 210 L280 180 L420 165 L560 120 L700 90 L840 55 L1000 25 L1000 240 L0 240 Z" fill="url(#repFill)" />
-              <path d="M0 230 L140 210 L280 180 L420 165 L560 120 L700 90 L840 55 L1000 25" fill="none" class="stroke-chart-2" stroke-width="2" />
+              <path d={cp.area} fill="url(#repFill)" />
+              <path d={cp.line} fill="none" class="stroke-chart-2" stroke-width="2" />
             </svg>
           {/if}
 
           {#if sections.calendar}
-            {@render sectionTitle('Trading calendar — June 2026')}
+            {@render sectionTitle(`Trading calendar — ${vm.calMonthLabel}`)}
             <div class="grid grid-cols-7 gap-1">
               {#each ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as d, i (i)}<div class="pb-0.5 text-center text-[9px] text-muted-foreground">{d}</div>{/each}
               {#each calCells as day, i (i)}
                 {#if day === null}
                   <div></div>
                 {:else}
-                  {@const p = calPnl[day]}
+                  {@const p = vm.calPnl[day]}
                   <div class={cn('flex h-9 flex-col rounded-sm border p-1 text-[9px]', p === undefined ? 'border-border text-muted-foreground' : p >= 0 ? 'border-chart-2/30 bg-chart-2/10 text-chart-2' : 'border-destructive/30 bg-destructive/10 text-destructive')}>
                     <span class="text-muted-foreground">{day}</span>
-                    {#if p !== undefined}<span class="mt-auto text-right font-medium tabular-nums">{p >= 0 ? '+' : '-'}{Math.abs(p)}</span>{/if}
+                    {#if p !== undefined}<span class="mt-auto text-right font-medium tabular-nums">{p >= 0 ? '+' : '-'}{Math.abs(Math.round(p))}</span>{/if}
                   </div>
                 {/if}
               {/each}
@@ -216,10 +271,10 @@
           {#if sections.cost}
             {@render sectionTitle('Cost breakdown')}
             <div class="overflow-hidden rounded-md border border-border">
-              {#each costRows as [label, amt, total], i (label)}
+              {#each vm.costRows as [label, amt, total], i (label)}
                 <div class={cn('flex items-center justify-between px-3 py-2 text-sm', i > 0 && 'border-t border-border', total && 'bg-secondary font-semibold')}>
                   <span class={total ? 'text-foreground' : 'text-muted-foreground'}>{label}</span>
-                  <span class="tabular-nums text-destructive">{amt}</span>
+                  <span class={cn('tabular-nums', amt.startsWith('-') ? 'text-destructive' : 'text-foreground')}>{amt}</span>
                 </div>
               {/each}
             </div>
@@ -228,7 +283,7 @@
           {#if sections.tax}
             {@render sectionTitle('Tax — Section 1256 (60/40)')}
             <div class="overflow-hidden rounded-md border border-border">
-              {#each taxRows as [label, amt, total], i (label)}
+              {#each vm.taxRows as [label, amt, total], i (label)}
                 <div class={cn('flex items-center justify-between px-3 py-2 text-sm', i > 0 && 'border-t border-border', total && 'bg-secondary font-semibold')}>
                   <span class={total ? 'text-foreground' : 'text-muted-foreground'}>{label}</span>
                   <span class={cn('tabular-nums', total ? 'text-chart-2' : amt.startsWith('-') ? 'text-destructive' : 'text-foreground')}>{amt}</span>
@@ -241,7 +296,7 @@
           {#if sections.advanced}
             {@render sectionTitle('Advanced statistics')}
             <div class="grid grid-cols-2 gap-x-6 gap-y-0 sm:grid-cols-3">
-              {#each advRows as [label, value] (label)}
+              {#each vm.advRows as [label, value] (label)}
                 <div class="flex items-baseline justify-between gap-3 border-b border-border py-1.5 text-sm">
                   <span class="text-xs text-muted-foreground">{label}</span>
                   <span class="font-semibold tabular-nums">{value}</span>

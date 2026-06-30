@@ -17,6 +17,9 @@
   import { buildAnalytics } from './lib/analytics.ts';
   import Blotter, { type BlotterRow } from './screens/Blotter.svelte';
   import TradeEditor, { type EditorRow } from './screens/TradeEditor.svelte';
+  import Reports, { type ReportVM, type ReportRange, type ExportKind } from './screens/Reports.svelte';
+  import { buildReportVM } from './lib/reports.ts';
+  import { downloadBlob } from './lib/files.ts';
 
   const store = Store;
   setContext('bb:store', store);
@@ -156,6 +159,32 @@
     for (const r of changed) await dash.saveTradeMeta(r.id, r.tags, r.note);
   }
 
+  // ── Reports ──────────────────────────────────────────────────────────────────────────────────
+  // The preview + exports are built from the real engine: slice trades to the chosen range, run
+  // compute()+costModel(), and assemble via the shared report.ts builder. Reads dash live so the
+  // preview tracks data/setup changes through the component's derived.
+  const reportLabels = $derived({
+    broker: dash.brokerName(dash.setup.broker),
+    feed: dash.setup.feed || '—',
+    state: dash.setup.stateAbbr || '—',
+    stateRate: Number(dash.costInputs.stateRate) || 0,
+    platform: dash.setup.platform,
+  });
+  function buildReport(range: ReportRange, compare: boolean): ReportVM {
+    return buildReportVM(dash.allTrades, range, compare, dash.costInputs, reportLabels);
+  }
+  function onReportExport(kind: ExportKind, vm: ReportVM) {
+    if (kind === 'md') downloadBlob('blotterbook-report.md', new Blob([vm.md], { type: 'text/markdown' }));
+    else if (kind === 'copy') void navigator.clipboard?.writeText(vm.text);
+    else if (kind === 'email') location.href = vm.mailto;
+    else if (kind === 'pdf') window.print();
+    else if (kind === 'csv') {
+      const esc = (c: string) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
+      const rows = [['date', 'time', 'symbol', 'side', 'qty', 'pnl'], ...dash.allTrades.map(t => [t.date, t.time, t.root, t.side, String(t.qty ?? 1), String(t.pnl)])];
+      downloadBlob('blotterbook-trades.csv', new Blob([rows.map(r => r.map(esc).join(',')).join('\n')], { type: 'text/csv' }));
+    }
+  }
+
   onMount(() => {
     dash.boot().catch((e: unknown) => {
       console.error('staging app boot failed', e);
@@ -219,6 +248,15 @@
     <Blotter rows={blotterRows} />
   {:else if active === 'trades'}
     <TradeEditor rows={editorRows} coreEditable={false} onsave={persistEditorRows} ondelete={ids => dash.deleteTrades(ids)} />
+  {:else if active === 'reports'}
+    <Reports
+      defaultTitle="Performance report"
+      defaultAccount={dash.brokerName(dash.setup.broker)}
+      calYear={dash.calYear}
+      calMonth={dash.calMonth}
+      build={buildReport}
+      onexport={onReportExport}
+    />
   {:else}
     <div class="grid min-h-[60vh] place-items-center">
       <div class="flex max-w-md flex-col items-center gap-2 text-center">
