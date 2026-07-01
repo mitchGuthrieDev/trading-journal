@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  // A single blotter row. The wired staging app builds these from real trades; entry/exit prices,
+  // A single blotter row. The app builds these from real trades (all surfaces); entry/exit prices,
   // hold time and fees aren't on every platform's export, so they're optional (rendered as "—").
   export type BlotterRow = {
     id: string;
@@ -23,10 +23,11 @@
   // Blotter — a full-width, feature-rich trade table on the shadcn-svelte primitives (Table/Badge/
   // Checkbox/Input/Card + Select/Popover/Button). Row click → a slide-over detail drawer; click-to-sort
   // headers, search + side filter, column-group toggle, group-by (day/symbol) with subtotals,
-  // bulk-select, footer totals. Rows come from the `rows` prop (real trades on staging); the default
-  // is the /dev mock for the preview harness. Color only in the P&L.
+  // bulk-select, footer totals. Rows come from the `rows` prop (real trades, wired by App.svelte on all
+  // surfaces). Color only in the P&L.
   import { Search, ArrowUpDown, ChevronUp, Columns3, X, Tag, Trash2, Paperclip, ImagePlus } from '@lucide/svelte';
   import { cn } from '$lib/utils';
+  import { usd } from '../../lib/core/core.ts';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Checkbox } from '$lib/components/ui/checkbox';
@@ -37,25 +38,10 @@
   import * as Popover from '$lib/components/ui/popover';
   import { fade, fly } from 'svelte/transition';
 
-  const MOCK: BlotterRow[] = [
-    { id: 't1', date: '2026-06-24', time: '09:34', sym: 'ES', side: 'Long', qty: 2, entry: 5482.25, exit: 5486.0, holdMin: 12, pnl: 375, fees: 4.7, tags: ['breakout'], note: true, session: 'RTH' },
-    { id: 't2', date: '2026-06-24', time: '10:18', sym: 'NQ', side: 'Short', qty: 1, entry: 19840.5, exit: 19852.0, holdMin: 7, pnl: -230, fees: 2.4, tags: ['fade'], note: false, session: 'RTH' },
-    { id: 't3', date: '2026-06-24', time: '11:46', sym: 'ES', side: 'Long', qty: 3, entry: 5489.0, exit: 5492.75, holdMin: 21, pnl: 562, fees: 7.05, tags: ['trend', 'A+'], note: true, session: 'RTH' },
-    { id: 't4', date: '2026-06-24', time: '13:02', sym: 'CL', side: 'Short', qty: 1, entry: 81.42, exit: 81.18, holdMin: 33, pnl: 240, fees: 2.6, tags: [], note: false, session: 'RTH' },
-    { id: 't5', date: '2026-06-25', time: '09:31', sym: 'ES', side: 'Long', qty: 2, entry: 5494.5, exit: 5491.0, holdMin: 9, pnl: -350, fees: 4.7, tags: ['breakout'], note: false, session: 'RTH' },
-    { id: 't6', date: '2026-06-25', time: '10:05', sym: 'NQ', side: 'Long', qty: 1, entry: 19860.0, exit: 19878.5, holdMin: 14, pnl: 370, fees: 2.4, tags: ['trend'], note: true, session: 'RTH' },
-    { id: 't7', date: '2026-06-25', time: '12:20', sym: 'GC', side: 'Long', qty: 1, entry: 2412.3, exit: 2415.1, holdMin: 41, pnl: 280, fees: 2.9, tags: ['swing'], note: false, session: 'RTH' },
-    { id: 't8', date: '2026-06-25', time: '14:48', sym: 'ES', side: 'Short', qty: 2, entry: 5498.25, exit: 5495.5, holdMin: 18, pnl: 275, fees: 4.7, tags: [], note: false, session: 'ETH' },
-    { id: 't9', date: '2026-06-26', time: '09:38', sym: 'NQ', side: 'Short', qty: 1, entry: 19905.0, exit: 19921.0, holdMin: 6, pnl: -320, fees: 2.4, tags: ['fade', 'rev'], note: true, session: 'RTH' },
-    { id: 't10', date: '2026-06-26', time: '10:52', sym: 'ES', side: 'Long', qty: 3, entry: 5501.0, exit: 5503.25, holdMin: 16, pnl: 337, fees: 7.05, tags: ['trend'], note: false, session: 'RTH' },
-    { id: 't11', date: '2026-06-26', time: '11:30', sym: 'CL', side: 'Long', qty: 2, entry: 80.95, exit: 80.74, holdMin: 25, pnl: -420, fees: 5.2, tags: [], note: false, session: 'RTH' },
-    { id: 't12', date: '2026-06-26', time: '13:15', sym: 'MES', side: 'Long', qty: 5, entry: 5502.5, exit: 5504.0, holdMin: 11, pnl: 188, fees: 3.5, tags: ['scalp'], note: false, session: 'RTH' },
-    { id: 't13', date: '2026-06-30', time: '09:33', sym: 'ES', side: 'Long', qty: 2, entry: 5510.0, exit: 5514.5, holdMin: 19, pnl: 450, fees: 4.7, tags: ['breakout', 'A+'], note: true, session: 'RTH' },
-    { id: 't14', date: '2026-06-30', time: '10:41', sym: 'NQ', side: 'Long', qty: 1, entry: 19950.0, exit: 19944.0, holdMin: 8, pnl: -120, fees: 2.4, tags: [], note: false, session: 'RTH' },
-  ];
-  let { rows = MOCK }: { rows?: BlotterRow[] } = $props();
+  let { rows }: { rows: BlotterRow[] } = $props();
   const net = (t: BlotterRow) => t.pnl - (t.fees ?? 0);
-  const money = (n: number) => `${n >= 0 ? '+' : '-'}$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  // Cents-precision signed currency (the blotter shows per-trade P&L + fees to the cent).
+  const money = usd;
 
   // ── Controls ─────────────────────────────────────────────────────────────────────────────────
   let search = $state('');
@@ -345,7 +331,7 @@
       </div>
       <div>
         <div class="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Journal note</div>
-        <textarea class="h-24 w-full resize-none rounded-md border border-border bg-background p-2 text-xs leading-relaxed outline-none focus-visible:border-ring" placeholder="Notes for this trade…">{openTrade.note ? 'Clean A+ setup — waited for the retest, sized up, trailed to target.' : ''}</textarea>
+        <textarea class="h-24 w-full resize-none rounded-md border border-border bg-background p-2 text-xs leading-relaxed outline-none focus-visible:border-ring" placeholder="Notes for this trade…"></textarea>
       </div>
       <div>
         <div class="mb-1.5 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"><Paperclip class="size-3" /> Screenshot</div>

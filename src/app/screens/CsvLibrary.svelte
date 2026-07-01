@@ -31,16 +31,17 @@
 <script lang="ts">
   // CSV Library surface (UI redesign; Data Management). Manage imported CSVs: a drag-drop/click upload
   // zone that opens a parse-preview Sheet, a Table of files, a detail Sheet, rename + delete dialogs.
-  // On the /dev mock everything is static. On staging there's no per-file provenance in the Store (only
-  // the merged trade set), so file storage is DEFERRED: the upload zone is a REAL importer (Adapters
-  // parse → preview → addTrades, via the `parse`/`onimport` props), the table shows one derived "active
-  // dataset" row built from the trades, and per-file-only actions (rename/re-import/download/include)
-  // are hidden (perFileActions=false). Delete clears the dataset. shadcn-svelte primitives; color in P&L.
+  // The app (all surfaces) has no per-file provenance in the Store (only the merged trade set), so file
+  // storage is DEFERRED: the upload zone is a REAL importer (Adapters parse → preview → addTrades, via
+  // the `parse`/`onimport` props), the table shows one derived "active dataset" row built from the
+  // trades, and per-file-only actions (rename/re-import/download/include) are hidden (perFileActions=
+  // false). Delete clears the dataset. shadcn-svelte primitives; color in P&L.
   import {
     Upload, FileText, MoreHorizontal, Download, Pencil, Trash2, RefreshCw, ExternalLink,
     TriangleAlert, CircleCheck, CircleX, CloudUpload,
   } from '@lucide/svelte';
   import { cn } from '$lib/utils';
+  import { usd } from '../../lib/core/core.ts';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Switch } from '$lib/components/ui/switch';
@@ -53,32 +54,16 @@
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as Breadcrumb from '$lib/components/ui/breadcrumb';
 
-  const MOCK_FILES: Csv[] = [
-    { id: 'c1', name: 'tradovate-2026-q2.csv', platform: 'Tradovate', rows: 1240, trades: 1180, imported: '2026-06-28', from: '2026-04-01', to: '2026-06-27', status: 'ok', sizeKb: 312, overlap: 0, included: true },
-    { id: 'c2', name: 'tradingview-jun.csv', label: 'TradingView · June', platform: 'TradingView', rows: 420, trades: 412, imported: '2026-06-25', from: '2026-06-01', to: '2026-06-24', status: 'warnings', sizeKb: 96, overlap: 12, included: true },
-    { id: 'c3', name: 'ninjatrader-export.csv', platform: 'NinjaTrader', rows: 880, trades: 865, imported: '2026-05-30', from: '2026-03-15', to: '2026-05-29', status: 'ok', sizeKb: 201, overlap: 0, included: true },
-    { id: 'c4', name: 'apex-eval.csv', platform: 'Apex', rows: 60, trades: 0, imported: '2026-05-12', from: '—', to: '—', status: 'errors', sizeKb: 14, overlap: 0, included: false },
-    { id: 'c5', name: 'old-account.csv', platform: 'TradingView', rows: 2100, trades: 2050, imported: '2026-02-02', from: '2025-09-01', to: '2026-01-31', status: 'ok', sizeKb: 540, overlap: 0, included: false },
-  ];
-  const MOCK_PREVIEW: ImportPreview = {
-    name: 'tradovate-2026-q3.csv', platform: 'Tradovate', rows: 318, tradeCount: 305, from: '2026-07-01', to: '2026-09-28', estimatedRoots: ['XYZ', 'ABC'],
-    sample: [
-      { time: '09:34', sym: 'ES', side: 'Long', qty: 2, pnl: 375, up: true },
-      { time: '10:18', sym: 'NQ', side: 'Short', qty: 1, pnl: -230, up: false },
-      { time: '11:46', sym: 'ES', side: 'Long', qty: 3, pnl: 562, up: true },
-    ],
-  };
-
   interface Props {
-    files?: Csv[];
-    /** Per-file rename/re-import/download/include only make sense with file provenance (/dev mock). */
+    files: Csv[];
+    /** Per-file rename/re-import/download/include only make sense with file provenance. */
     perFileActions?: boolean;
     blotterHref?: string;
-    /** Parse a picked file's text into a preview (staging wraps Adapters; default returns the mock). */
+    /** Parse a picked file's text into a preview (wraps Adapters). */
     parse?: (text: string, name: string) => ImportPreview;
-    /** Persist the previewed import (staging: addTrades + reload). */
+    /** Persist the previewed import (addTrades + reload). */
     onimport?: (preview: ImportPreview) => void | Promise<void>;
-    /** Remove a dataset/file (staging: clears the dataset). */
+    /** Remove a dataset/file (clears the dataset). */
     ondelete?: (id: string) => void | Promise<void>;
     /** Download a full backup of the local data (parent owns file naming). */
     onbackup?: () => void;
@@ -92,9 +77,9 @@
     restoreMsg?: string;
   }
   let {
-    files = MOCK_FILES,
+    files,
     perFileActions = true,
-    blotterHref = '/dev/app.html#blotter',
+    blotterHref = '#blotter',
     parse,
     onimport,
     ondelete,
@@ -149,14 +134,9 @@
   const totalTrades = $derived(list.filter(f => f.included).reduce((s, f) => s + f.trades, 0));
   const fmt = (n: number) => n.toLocaleString();
   const size = (kb: number) => (kb <= 0 ? '—' : kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`);
-  const money = (n: number) => `${n >= 0 ? '+' : '-'}$${Math.abs(n).toLocaleString()}`;
 
   function pickFile() {
     if (parse) fileInput?.click();
-    else {
-      preview = MOCK_PREVIEW; // /dev: show the static preview
-      uploadOpen = true;
-    }
   }
   async function onFilePicked(e: Event) {
     const input = e.currentTarget as HTMLInputElement;
@@ -168,7 +148,7 @@
     uploadOpen = true;
   }
   async function confirmImport() {
-    if (!preview || preview.error) return;
+    if (!preview || preview.error || dataDisabled) return;
     importing = true;
     try {
       await onimport?.(preview);
@@ -444,7 +424,7 @@
                       <Table.Cell class="font-medium">{r.sym}</Table.Cell>
                       <Table.Cell><Badge variant="outline" class={r.up ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}>{r.side}</Badge></Table.Cell>
                       <Table.Cell class="text-right tabular-nums">{r.qty}</Table.Cell>
-                      <Table.Cell class={cn('text-right tabular-nums pr-3', r.up ? 'text-chart-2' : 'text-destructive')}>{money(r.pnl)}</Table.Cell>
+                      <Table.Cell class={cn('text-right tabular-nums pr-3', r.up ? 'text-chart-2' : 'text-destructive')}>{usd(r.pnl)}</Table.Cell>
                     </Table.Row>
                   {/each}
                 </Table.Body>
@@ -462,7 +442,7 @@
     </div>
     <Sheet.Footer class="flex-row justify-end">
       <Button variant="ghost" size="sm" onclick={() => (uploadOpen = false)}>Cancel</Button>
-      <Button size="sm" disabled={!preview || !!preview.error || importing} onclick={confirmImport}>
+      <Button size="sm" disabled={!preview || !!preview.error || importing || dataDisabled} onclick={confirmImport}>
         {importing ? 'Importing…' : preview && !preview.error ? `Import ${fmt(preview.tradeCount)} trades` : 'Import'}
       </Button>
     </Sheet.Footer>

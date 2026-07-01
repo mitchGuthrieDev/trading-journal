@@ -29,8 +29,10 @@ ok('untyped → patch', bumpLevel('just some title') === 'patch');
 console.log('\nProd-shipping classification:');
 ok('shared app JS is prod', isProdShipping('src/lib/core/adapters.ts') && isProdShipping('src/lib/core/core.ts'));
 ok(
-  'Svelte SPA modules ARE prod (A59 — shared by all surfaces post-A33)',
-  isProdShipping('src/app/App.svelte') && isProdShipping('src/app/components/EquityCurve.svelte')
+  'Svelte SPA modules ARE prod (A59 — shared by all surfaces post-A33/CH16)',
+  isProdShipping('src/app/App.svelte') &&
+    isProdShipping('src/app/screens/Dashboard.svelte') &&
+    isProdShipping('src/app/parts/CostSetup.svelte')
 );
 ok('app/staging.html is NOT prod', !isProdShipping('src/app/staging.html'));
 ok(

@@ -47,7 +47,7 @@ re-platform), and [`docs/architecture.md`](docs/architecture.md).
   `data-mode="app|demo|staging"`). The Svelte app lives in `src/app/`: the redesigned sidebar-shell
   `App.svelte` (an `AppShell` + hash router) + `screens/` (Dashboard/Calendar/Analytics/Blotter/
   CsvLibrary/TradeEditor/Reports) + `parts/` (CostSetup/Onboarding/ActivityTerminal/Definitions/
-  StatusBanner) + `lib/{dashboard.svelte.ts,modal,actions,files,flags,nav}`. It reuses the
+  StatusBanner) + `lib/{dashboard.svelte.ts,actions,files,flags,nav,analytics,reports}`. It reuses the
   **pure-logic core** in `src/lib/core/` (A29, native TS per A61): `adapters` / `compute`+`costModel`
   in `core` / `store` / `sampledata` / `demostore` / `curveseries` / `report`, with `format` shared by
   the app *and* the info pages. Cross-component state is Svelte runes (`$state`/`$derived`), not a
@@ -216,11 +216,12 @@ vs. preview-only (shell/screens), and the cutover + staging plan — is in
    [`src/dev/Styleguide.svelte`](src/dev/Styleguide.svelte)) — every token + installed shadcn-svelte
    primitive with all variants/sizes. **Keep it updated:** when you `npx shadcn-svelte@latest add
    <name>`, add a section for it here. Dev-only — built + deployed but `noindex` + robots-blocked.
-4. **Screen-by-screen.** Redesign screens are mocked in the preview harness **`/dev/app.html`**
-   (source [`src/dev/RedesignApp.svelte`](src/dev/RedesignApp.svelte) + `src/dev/screens/`) — the
-   sidebar shell + a hash router; register each new screen in `RedesignApp`'s `SCREENS` map. The live
-   `/app/` surface is untouched until the redesign is approved and cut over. Per screen: (a) rough the
-   layout with Tailwind utilities; (b) reach for installed shadcn-svelte components first — check
+4. **Screen-by-screen.** The redesign is the live app now (CH16 cutover — the old `/dev/app.html`
+   RedesignApp preview harness was retired), so build/iterate screens directly in
+   [`src/app/screens/`](src/app/screens/) (+ cross-screen pieces in [`src/app/parts/`](src/app/parts/)),
+   wired by [`src/app/App.svelte`](src/app/App.svelte). To see a screen in isolation with sample data,
+   use `/app/demo.html` (the in-memory `DemoStore`, seeded). Per screen: (a) rough the layout with
+   Tailwind utilities; (b) reach for installed shadcn-svelte components first — check
    `$lib/components/ui/`, suggest `npx shadcn-svelte@latest add <component>` for anything missing; (c)
    drop to raw bits-ui / custom only when shadcn-svelte doesn't cover the pattern, and match the
    existing visual language; (d) iterate via variant/size props + Tailwind `class` overrides, not by
@@ -314,18 +315,18 @@ conforms to the rules below; keep it that way.
     App.svelte          the redesigned sidebar-shell root (AppShell + hash router) — mode-aware via PAGE_MODE (CH16)
     screens/            the app screens (<script lang="ts">): Dashboard/Calendar/Analytics/Blotter/CsvLibrary/TradeEditor/Reports
     parts/              cross-screen pieces: CostSetup/Onboarding/ActivityTerminal/Definitions/StatusBanner
-    lib/                app-only glue (TS): dashboard.svelte.ts (dashboard state factory), modal.ts (a11y action),
-                        actions.ts (styleProps), files.ts (readImage/downloadBlob — ex util.js, A76), flags.ts (APP_FLAGS), nav.ts
+    lib/                app-only glue (TS): dashboard.svelte.ts (dashboard state factory), actions.ts (styleProps),
+                        files.ts (readImage/downloadBlob — ex util.js, A76), flags.ts (APP_FLAGS), nav.ts,
+                        analytics.ts + reports.ts (Analytics / Reports view-model builders)
   site/                 MARKETING + INFO — Svelte SSG (A69; prerendered at build by scripts/vite-ssg.mjs, hydrated in place)
     components/         Home / Howto / Roadmap / Changelog / Legal / Admin .svelte (the page components)
     lib/                shared chrome: Nav.svelte, Footer.svelte, SiteShell.svelte (base/typography styles + globals)
     entries/            per-page client entries (hydrate the prerendered component) — *.ts
-  dev/                  DEV-ONLY surfaces (UI mockup workflow) — built + deployed but noindex + robots-blocked
-    components.html  +  main.ts  +  Styleguide.svelte   the live component reference → /dev/components.html
-    app.html  +  app-main.ts  +  RedesignApp.svelte     redesign preview harness (Phase 2) → /dev/app.html
-    nav.ts              shared sidebar nav config (lucide icons) — used by the styleguide + harness
-    screens/            redesign screen mockups — Dashboard/Calendar/Analytics/Blotter/CsvLibrary/
-                        TradeEditor/Reports.svelte (Phase 2 complete) + Placeholder.svelte
+  dev/                  DEV-ONLY surface (UI mockup workflow) — built + deployed but noindex + robots-blocked
+    components.html  +  main.ts  +  Styleguide.svelte   the live component + token reference → /dev/components.html
+    nav.ts              shared sidebar nav config (lucide icons) — re-exports src/app/lib/nav for the styleguide
+                        (the /dev/app.html redesign preview harness + dev/screens/ were retired post-CH16 —
+                        the real app IS the redesign; design new screens directly in src/app/screens/)
   assets/               bundled chrome: favicon.svg, banner.svg, why-*.svg (Vite fingerprints these)
     fonts/              self-hosted Geist Mono variable woff2 (mono-forward UI; @font-face in tailwind.css)
   styles/               tailwind.css — the single Tailwind entry AND the single source of design-token
