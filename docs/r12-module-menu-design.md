@@ -1,7 +1,8 @@
 # R12 — Dashboard module menu (design)
 
-Status: **accepted** · drives **A71** (clickable module-header menu) · staging-only first (re-gated per
-the surface decision; promotes to prod/demo via CH16 later).
+Status: **accepted · shipped** · drives **A71** (clickable module-header menu). _Superseded by the CH16
+cutover: the module menu now ships on all surfaces and the `STAGING_PAGE` gating referenced below is
+retired — this doc is a point-in-time design record._
 
 ## Problem
 

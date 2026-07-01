@@ -41,7 +41,7 @@ export const PAGE_MODE = (typeof document !== 'undefined' && document.body && do
        store     IndexedDB persistence (+ Store.local)  demostore  in-memory Store for demo
        curveseries  daily gross/net/take series         sampledata  demo CSV
        format    esc/platformLabel + version badge      types  shared interfaces
-     src/app/  the journal SPA — App.svelte (sidebar shell) + screens/ + parts/ + lib/ (modal/actions/files/flags)
+     src/app/  the journal SPA — App.svelte (sidebar shell) + screens/ + parts/ + lib/ (dashboard.svelte.ts/actions/files/flags/nav/analytics/reports)
      src/site/ marketing/info — Svelte SSG (components prerendered by vite-ssg.mjs)
 
    Cross-component state is Svelte runes ($state/$derived) inside the components, NOT a shared
