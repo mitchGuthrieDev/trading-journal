@@ -442,3 +442,40 @@ test('staging redesign: the Dashboard Tag filter narrows to tagged trades (A159)
   await expect(page.getByText('filter-me')).toBeVisible();
   await expect(page.getByText('untagged', { exact: true })).toBeVisible();
 });
+
+test('staging redesign: dashboard tabs hold independent layouts and persist (A135)', async ({ page }) => {
+  test.setTimeout(60_000);
+  page.on('dialog', d => d.accept(d.type() === 'prompt' ? 'Scalping' : undefined));
+  await bootDashboard(page);
+  await expect(page.getByRole('button', { name: 'Main', exact: true })).toBeVisible();
+
+  // Create a second tab (prompt supplies the name) — it becomes active with the default layout.
+  await page.getByRole('button', { name: 'New tab' }).click();
+  const scalpTab = page.getByRole('button', { name: 'Scalping', exact: true });
+  await expect(scalpTab).toBeVisible();
+  await expect(scalpTab).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('#dashmod-perf')).toBeVisible();
+
+  // Hide Performance on the new tab only.
+  await page.locator('#dashmod-perf button[aria-label="Module menu"]').click();
+  await page.getByRole('menuitem', { name: 'Hide' }).click();
+  await expect(page.locator('#dashmod-perf')).toHaveCount(0);
+
+  // Main keeps its own (full) layout; switching back restores the tab's trimmed layout.
+  await page.getByRole('button', { name: 'Main', exact: true }).click();
+  await expect(page.locator('#dashmod-perf')).toBeVisible();
+  await scalpTab.click();
+  await expect(page.locator('#dashmod-perf')).toHaveCount(0);
+
+  // Both the active tab and its per-tab layout survive a reload.
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(page.getByText('Net P&L', { exact: true })).toBeVisible({ timeout: 6000 });
+  await expect(page.getByRole('button', { name: 'Scalping', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('#dashmod-perf')).toHaveCount(0);
+
+  // Delete the tab (confirm accepted) — Main takes over with its full layout.
+  await page.getByRole('button', { name: 'Tab menu: Scalping' }).click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await expect(page.getByRole('button', { name: 'Scalping', exact: true })).toHaveCount(0);
+  await expect(page.locator('#dashmod-perf')).toBeVisible();
+});

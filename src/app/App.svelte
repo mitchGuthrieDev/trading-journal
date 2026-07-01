@@ -38,6 +38,7 @@
   import type { Csv, ImportPreview } from './screens/CsvLibrary.svelte';
   import Onboarding from './parts/Onboarding.svelte';
   import StatusBanner from './parts/StatusBanner.svelte';
+  import DashTabs from './parts/DashTabs.svelte';
   import { loadFlags, APP_FLAGS, type AppFlags } from './lib/flags.ts';
   import { Adapters } from '../lib/core/adapters.ts';
   import type { Trade } from '../lib/core/types.ts';
@@ -109,15 +110,70 @@
   // Dashboard module layout, persisted to the Store.local seam (staging-namespaced) so hide/reorder/
   // re-add survives a reload — parity with the app/demo workspace layout.
   const MOD_KEY = isStaging ? 'bb:staging:dashModules' : 'bb:dashModules';
-  let dashModules = $state<string[] | undefined>((store.local.get(MOD_KEY) as string[] | null) ?? undefined);
+
+  // ── Dashboard tabs (A135 — STAGING ONLY) ─────────────────────────────────────────────────────
+  // Multiple named dashboards, each with its own module layout. The 'main' tab maps to the legacy
+  // MOD_KEY so an existing staging layout carries over; other tabs persist under suffixed keys.
+  // Prod/demo keep the single implicit 'main' tab (the bar never renders, keys are unchanged).
+  type DashTab = { id: string; name: string };
+  const TABS_KEY = 'bb:staging:dashTabs';
+  const persistedTabs = isStaging ? (store.local.get(TABS_KEY, null) as { tabs: DashTab[]; active: string } | null) : null;
+  let dashTabs = $state<DashTab[]>(persistedTabs?.tabs?.length ? persistedTabs.tabs : [{ id: 'main', name: 'Main' }]);
+  let activeDashTab = $state<string>(
+    persistedTabs?.active && (persistedTabs.tabs ?? []).some(t => t.id === persistedTabs.active) ? persistedTabs.active : 'main'
+  );
+  const modKeyFor = (tabId: string) => (tabId === 'main' ? MOD_KEY : `${MOD_KEY}:${tabId}`);
+  function persistTabs() {
+    if (isStaging) store.local.set(TABS_KEY, { tabs: $state.snapshot(dashTabs), active: activeDashTab });
+  }
+  function selectDashTab(id: string) {
+    if (id === activeDashTab) return;
+    activeDashTab = id;
+    dashModules = (store.local.get(modKeyFor(id)) as string[] | null) ?? undefined;
+    persistTabs();
+  }
+  function createDashTab() {
+    const name = typeof prompt === 'function' ? prompt('New dashboard tab name…') : null;
+    if (!name || !name.trim()) return;
+    const id = Date.now().toString(36) + dashTabs.length;
+    dashTabs = [...dashTabs, { id, name: name.trim() }];
+    selectDashTab(id); // persists tabs + active
+  }
+  function renameDashTab(id: string) {
+    const cur = dashTabs.find(t => t.id === id);
+    const name = typeof prompt === 'function' ? prompt('Rename tab', cur?.name ?? '') : null;
+    if (!name || !name.trim()) return;
+    dashTabs = dashTabs.map(t => (t.id === id ? { ...t, name: name.trim() } : t));
+    persistTabs();
+  }
+  function moveDashTab(id: string, dir: -1 | 1) {
+    const i = dashTabs.findIndex(t => t.id === id),
+      j = i + dir;
+    if (i < 0 || j < 0 || j >= dashTabs.length) return;
+    const next = [...dashTabs];
+    [next[i], next[j]] = [next[j], next[i]];
+    dashTabs = next;
+    persistTabs();
+  }
+  function deleteDashTab(id: string) {
+    if (dashTabs.length === 1) return;
+    if (typeof confirm === 'function' && !confirm('Delete this dashboard tab? Its module layout is removed.')) return;
+    store.local.remove(modKeyFor(id));
+    dashTabs = dashTabs.filter(t => t.id !== id);
+    if (activeDashTab === id) selectDashTab(dashTabs[0].id);
+    else persistTabs();
+  }
+
+  // svelte-ignore state_referenced_locally — initial read only; selectDashTab reassigns on switch.
+  let dashModules = $state<string[] | undefined>((store.local.get(modKeyFor(activeDashTab)) as string[] | null) ?? undefined);
   function saveModules(order: string[]) {
     dashModules = order;
-    store.local.set(MOD_KEY, order);
+    store.local.set(modKeyFor(activeDashTab), order);
   }
   // Reset the layout to the default (all modules shown, default order).
   function revertModules() {
     dashModules = undefined;
-    store.local.remove(MOD_KEY);
+    store.local.remove(modKeyFor(activeDashTab));
   }
 
   // Named workspace layout templates (R12 parity): save/apply/delete the module layout by name; revert
@@ -629,6 +685,20 @@
       {:else if needsOnboarding}
         <Onboarding setup={dash.setup} onsetupsave={s => dash.saveSetup(s)} onimport={onboardImport} />
       {:else if active === 'dashboard'}
+        {#if isStaging}
+          <!-- A135 (staging): named dashboard tabs, each with its own module layout. -->
+          <div class="mb-4">
+            <DashTabs
+              tabs={dashTabs}
+              active={activeDashTab}
+              onselect={selectDashTab}
+              oncreate={createDashTab}
+              onrename={renameDashTab}
+              onmove={moveDashTab}
+              ondelete={deleteDashTab}
+            />
+          </div>
+        {/if}
         <Dashboard
           stats={dStats}
           series={dashSeries}
