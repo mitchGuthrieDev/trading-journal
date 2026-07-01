@@ -48,6 +48,8 @@
   import { styleProps } from '../lib/actions.ts';
   import { usd, usdWhole, axMoney, niceTicks, linePath } from '../../lib/core/core.ts';
   import type { DailyPoint } from '../../lib/core/curveseries.ts';
+  import type { AppSetup } from '../../lib/core/types.ts';
+  import CostSetup from '../parts/CostSetup.svelte';
   import { type DayTrade } from './Calendar.svelte';
 
   const MOCK_STATS: DashStat[] = [
@@ -149,6 +151,11 @@
     /** Break-even & Cost module rows (from costModel) and Advanced Statistics rows (from metrics). */
     costRows?: { label: string; value: string; tone?: 'pos' | 'neg'; total?: boolean }[];
     advStats?: { k: string; v: string; tone?: 'pos' | 'neg' }[];
+    /** Cost setup (broker/feed/state/platform) that drives costModel; edited in the Break-even module. */
+    setup?: AppSetup;
+    onsetupsave?: (s: AppSetup) => void;
+    /** Disable the cost-setup inputs on demo (never mutates). */
+    costDisabled?: boolean;
     /** Visible dashboard modules in order (persisted on staging); defaults to all shown. */
     modules?: string[];
     onmoduleschange?: (order: string[]) => void;
@@ -161,6 +168,7 @@
     filterModel = MOCK_FILTERS,
     onpickdate,
     costRows = MOCK_COST_ROWS, advStats = MOCK_ADV_STATS,
+    setup = { broker: 'amp', feed: '', stateAbbr: '', platform: 35 }, onsetupsave, costDisabled = false,
     modules, onmoduleschange,
   }: Props = $props();
 
@@ -662,6 +670,9 @@
   {/snippet}
 
   {#snippet costBody()}
+    <div class="mb-4">
+      <CostSetup {setup} onsave={s => onsetupsave?.(s)} disabled={costDisabled} />
+    </div>
     <div class="overflow-hidden rounded-md border border-border">
       {#each costRows as r, i (r.label)}
         <div class={['flex items-center justify-between px-3 py-2 text-sm', i > 0 && 'border-t border-border', r.total && 'bg-secondary font-semibold']}>

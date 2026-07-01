@@ -453,6 +453,9 @@
       onpickdate={(y, m) => dash.setCal(y, m)}
       costRows={dashCostRows}
       advStats={dashAdvStats}
+      setup={dash.setup}
+      onsetupsave={s => dash.saveSetup(s)}
+      costDisabled={dash.isDemo}
       modules={dashModules}
       onmoduleschange={saveModules}
     />
