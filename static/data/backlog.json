@@ -477,42 +477,6 @@
       "doneNote": null
     },
     {
-      "id": "A129",
-      "title": "Centralize duplicated helpers (pad2/fmtDate/tone/month-names) into core",
-      "category": "ARCHITECTURE / DUPLICATION",
-      "priority": "P2",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "From R1 (2026-07-01 pass). Several small helpers are duplicated across the app glue instead of single-sourced from the pure-logic core (src/lib/core/core.ts), which is a drift risk (same class as the money()/usd() drift fixed in a prior pass). Concretely: (1) `pad2` is redefined locally at src/app/App.svelte:281 even though core.ts:7 already exports it and App.svelte:11 simply doesn't import it; (2) `iso` at src/app/lib/reports.ts:31 re-implements core.ts:8's `fmtDate` (YYYY-MM-DD from a Date); (3) `tone = (n) => n>=0?'pos':'neg'` is copy-pasted in src/app/App.svelte:156, src/app/lib/analytics.ts:27, and src/app/lib/reports.ts:30; (4) the full month-names array `MON` is duplicated in src/app/App.svelte:44 and src/app/lib/reports.ts:29. Fix: export `tone` and `MONTH_NAMES` from core.ts (co-located with pad2/fmtDate), then import `pad2`/`fmtDate`/`tone`/`MONTH_NAMES` at every site and delete the local copies. Keep behavior identical (reports.ts's `iso` uses padStart — same output as pad2). Verify with `npm run typecheck` + `npm run test:unit`; no visual change. Done when: no helper is defined in more than one place and all four are sourced from core.",
-      "doneNote": null
-    },
-    {
-      "id": "A130",
-      "title": "Canonicalize live-entered journal tags (lowercase/strip) to match the restore path",
-      "category": "FIXES",
-      "priority": "P3",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "From R1 (2026-07-01 pass). Journal tags entered live are not canonicalized the way restored tags are, so they can silently fail to match the tag filter/chips. src/app/screens/Calendar.svelte:61 `addTag()` only `.trim()`s and dedupes case-sensitively, and the live save path src/lib/core/store.ts saveJournal (~line 166) only `.filter(Boolean)`s the tags — whereas backup restore runs `cleanTag` (lowercase + strip `[<>&\"']` + dedupe) at store.ts:277. Net effect: an uppercase live tag like `Scalp` won't match the lowercased tag filter or restored `scalp` tags. Low security risk (Svelte auto-escapes tags on render), but a real canonical-form inconsistency. Also: the comment at store.ts:275 attributes the lowercase+dedupe to a function called `annCapture` that no longer exists anywhere in the repo (stale/doc-rot). Fix: apply the same canonicalization (lowercase + strip markup + dedupe) on the live tag entry/save path (Calendar.addTag and/or store.saveJournal — pick the single seam, ideally reuse the cleanTag logic from store.ts so there's one definition), and correct or remove the stale `annCapture` comment. Add/adjust a node fixture if store-level. Done when: a live-entered uppercase/markup tag is stored in the same canonical form as a restored one, and the annCapture comment is fixed.",
-      "doneNote": null
-    },
-    {
-      "id": "A131",
-      "title": "Remove the unused minMax export from core.ts",
-      "category": "CHORE / REFACTOR",
-      "priority": "P3",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "From R1 (2026-07-01 pass). `export function minMax(arr)` at src/lib/core/core.ts:12 is exported but imported nowhere in src/ or the test suites (dead code) — verified by a repo-wide grep. (Note: `dowBuckets`, which a scan flagged alongside it, is NOT dead — it's used inside compute() at core.ts:222; leave it.) Fix: delete `minMax`, or if it's meant as an intentional public-API/future seam, annotate it as such with a comment so the next audit doesn't re-flag it. Verify `npm run typecheck` + `npm run test:unit` stay green. Done when: core.ts has no unexplained unused export.",
-      "doneNote": null
-    },
-    {
       "id": "A132",
       "title": "(staging) Local/remote toggle + scaffolding for synced workspaces",
       "category": "FEATURES",
@@ -534,18 +498,6 @@
       "completedDate": null,
       "partial": false,
       "prompt": "On the staging surface the Activity Terminal (src/app/parts/ActivityTerminal.svelte) does not populate with activity entries. It subscribes to the core event bus (onEvent) for app:ready/data:loaded/data:imported/note:saved/trade:deleted/backup:created/data:erased. Investigate why events aren't arriving/rendering on staging (e.g. events not emitted on the staging seed path, subscription set up after the events fire, or a mode gate). Fix so the terminal shows the timestamped activity log as it does on the other surfaces. (Cross-ref the prior A124 staging terminal fix.) Done when: staging actions produce live terminal entries; add/adjust an e2e or unit assertion if practical.",
-      "doneNote": null
-    },
-    {
-      "id": "A134",
-      "title": "CSV Library in Demo must not allow uploading files",
-      "category": "FIXES",
-      "priority": "P2",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "On the demo surface (PAGE_MODE==='demo'), the CSV Library screen (src/app/screens/CsvLibrary.svelte) still exposes a file-upload/import affordance. Demo must never mutate/persist — disable (and guard) the upload/import controls on demo the same way the other write paths are (disabled attribute when isDemo + the dashboard import guard already returns early). This is the UI-affordance half matching the existing isDemo write guards. Done when: demo shows no working upload control (disabled/hidden), the guard still returns early, and the e2e 'no IndexedDB on demo' assertion still holds.",
       "doneNote": null
     },
     {
@@ -609,18 +561,6 @@
       "doneNote": null
     },
     {
-      "id": "A140",
-      "title": "(staging) Calendar: hard-to-read text on max green/red days",
-      "category": "FIXES",
-      "priority": "P2",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "On the staging Calendar dashboard, the day text (day number + P&L) is hard to read on the most-saturated cells — the max-green (biggest win) and max-red (biggest loss) days — a contrast problem against the intense cell tint. (Related to the prior A_ CalendarMonth contrast fix that moved the base to a color-mix tint; verify that tint math still holds at the extremes.) Fix so day number + P&L stay legible (AA-ish) across the full P&L intensity range — e.g. cap the tint alpha, or switch foreground based on tint intensity — using tokens (chart-2/chart-5) not hardcoded colors. Done when: text on the max-green and max-red days is clearly readable; add an e2e contrast check if feasible.",
-      "doneNote": null
-    },
-    {
       "id": "A141",
       "title": "(Discussion) Changelog email signup + notify on changelog update",
       "category": "FEATURES",
@@ -642,42 +582,6 @@
       "completedDate": null,
       "partial": false,
       "prompt": "DISCUSSION/BRAINSTORM. Propose additional dashboards or dashboard modules that would add value for futures traders, grounded in the metrics the pure-logic core already computes (compute()/costModel()/curveseries — e.g. drawdown, expectancy, streaks, session/day-of-week splits, cost/tax breakdown, per-symbol stats) plus any that need new (cheap, local) computation. For each idea: what it shows, which existing metrics it uses, rough effort, and whether it's a new dashboard vs a module in the existing grid. Prioritize a shortlist. Done when: a written, prioritized list of candidate dashboards/modules is delivered; adopted ones spun off as their own items.",
-      "doneNote": null
-    },
-    {
-      "id": "A143",
-      "title": "(staging) Sharpen corners on the six top dashboard modules",
-      "category": "FIXES",
-      "priority": "P3",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "On the staging main dashboard, the six modules/cards across the top have softer/rounder corners than the rest of the dashboard modules — make them consistent with the angular corner treatment used elsewhere. The design system is angular (--radius 4px + sm/md/lg/xl in src/styles/tailwind.css); find where these six use a larger rounded-* utility (or a card default) and align them to the same radius token as the other modules. Tokens/utilities only, no hardcoded values. Done when: the six top modules match the corner radius of the rest of the dashboard.",
-      "doneNote": null
-    },
-    {
-      "id": "A144",
-      "title": "Initial state: keep the sidebar hidden until a CSV is imported",
-      "category": "FEATURES",
-      "priority": "P2",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "On the app's first-run/empty state (real app surface, no CSV imported yet — the onboarding condition !isDemo && !isStaging && loaded && !allTrades.length), keep the AppShell sidebar (SidebarNav) hidden until the user imports a CSV, so onboarding is focused. Once trades exist, show the sidebar as normal. Implement via the shell's collapse/hidden state driven by the same empty/onboarding signal App.svelte already computes; ensure it doesn't fight the user's manual collapse toggle afterward, and doesn't hide the sidebar on demo/staging (which seed data). Done when: a fresh app with zero trades shows no sidebar until the first successful import, then reveals it.",
-      "doneNote": null
-    },
-    {
-      "id": "A145",
-      "title": "Match homepage nav header size/scale to the app's header",
-      "category": "LAYOUT (web vs mobile)",
-      "priority": "P3",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "The marketing homepage nav/header (src/site/lib/Nav.svelte / Home.svelte) is a different size/scale than the app's header (the AppShell topbar). Align the homepage nav header's height/type-scale/spacing to match the app header for a consistent cross-surface feel. Use the shared tokens (src/styles/tailwind.css) and keep CSP-clean (no inline styles); mind that Home.svelte is bespoke (not SiteShell). Verify against both to confirm they visually match. Done when: the homepage header and app header read as the same size/scale.",
       "doneNote": null
     },
     {
