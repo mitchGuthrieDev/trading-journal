@@ -11,6 +11,7 @@ CH16, F13, F14, S19, R1, …) are backlog item ids from
 
 ## Contents
 
+- [Architecture diagrams](#architecture-diagrams)
 - [Design pillars](#design-pillars)
 - [Repository layout & the deploy contract](#repository-layout--the-deploy-contract)
 - [Architecture & data flow](#architecture--data-flow)
@@ -27,6 +28,23 @@ CH16, F13, F14, S19, R1, …) are backlog item ids from
 - [Admin page & the Live indicator](#admin-page--the-live-indicator)
 - [Marketing & info site](#marketing--info-site)
 - [Known limitations](#known-limitations)
+
+## Architecture diagrams
+
+Visual companions to this document live in
+[`docs/architecture-diagrams/`](architecture-diagrams/) — Mermaid-in-Markdown diagrams (GitHub renders
+them inline) covering the [boot sequence](architecture-diagrams/boot-and-lifecycle.md),
+[app shell & routing](architecture-diagrams/app-shell-and-routing.md),
+[storage & mode separation](architecture-diagrams/storage-and-mode-separation.md),
+the [CSV → adapters](architecture-diagrams/csv-import-adapters.md) and
+[compute → cost model → render](architecture-diagrams/compute-costmodel-render.md) pipelines,
+the [core reuse map](architecture-diagrams/core-reuse-map.md),
+the [edge functions](architecture-diagrams/cloudflare-functions.md),
+the [build/deploy](architecture-diagrams/build-and-deploy.md) +
+[repo-layout URL contract](architecture-diagrams/repo-layout-url-contract.md),
+[CI](architecture-diagrams/ci-pipeline.md), [versioning](architecture-diagrams/versioning-two-track.md),
+and the [security trust boundaries](architecture-diagrams/security-trust-boundaries.md). They're kept
+in sync with the code — start there for a big-picture view, then read the prose below for the detail.
 
 ## Design pillars
 
