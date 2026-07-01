@@ -175,3 +175,17 @@
     text-decoration: none;
   }
 }
+
+/* A146: reduced-motion users get instant UI. This flattens the CSS-animation side (tw-animate-css
+   on the shadcn primitives — dialog/menu/popover/sheet enter/exit); the Svelte-transition side is
+   handled by src/app/lib/motion.ts collapsing durations to 0. Near-zero (not 0) so animation
+   events still fire for anything that awaits them. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

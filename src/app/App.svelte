@@ -8,13 +8,28 @@
   import { onMount, setContext } from 'svelte';
   import { Store } from '../lib/core/store.ts';
   import { createDemoStore } from '../lib/core/demostore.ts';
-  import { usd, money, num, ratio, rateFor, roundTurn, emit, PAGE_MODE, pad2, tone, MONTH_NAMES } from '../lib/core/core.ts';
+  import {
+    usd,
+    money,
+    num,
+    ratio,
+    rateFor,
+    roundTurn,
+    estimatedCommRoots,
+    emit,
+    PAGE_MODE,
+    pad2,
+    tone,
+    MONTH_NAMES,
+  } from '../lib/core/core.ts';
   import { isBetaPhase } from '../lib/core/format.ts';
   import { Badge } from '$lib/components/ui/badge';
   import AppShell from '$lib/components/shell/AppShell.svelte';
   import { createDashboard } from './lib/dashboard.svelte.ts';
   import { dailySeries } from '../lib/core/curveseries.ts';
   import { navSections, navLabel, navItems } from './lib/nav';
+  import { fade } from 'svelte/transition';
+  import { dur } from './lib/motion.ts';
   import Dashboard, {
     DEFAULT_MODULE_KEYS,
     type DashStat,
@@ -23,17 +38,21 @@
     type FilterModel,
     type FilterPatch,
   } from './screens/Dashboard.svelte';
-  import Calendar, { type CalDay, type DayTrade } from './screens/Calendar.svelte';
-  import Analytics from './screens/Analytics.svelte';
+  // The non-default screens are CODE-SPLIT: type-only static imports (erased at build) + lazy
+  // `import()` loaders in the router below, so their chunks stay out of the /app first paint
+  // (A96 budget). Dashboard stays static — it's the boot screen (and exports DEFAULT_MODULE_KEYS).
+  import type { CalDay, DayTrade } from './screens/Calendar.svelte';
   import { buildAnalytics } from './lib/analytics.ts';
-  import Blotter, { type BlotterRow } from './screens/Blotter.svelte';
-  import TradeEditor, { type EditorRow } from './screens/TradeEditor.svelte';
-  import Reports, { type ReportVM, type ReportRange, type ReportMeta, type ExportKind } from './screens/Reports.svelte';
+  import type { BlotterRow } from './screens/Blotter.svelte';
+  import type { EditorRow } from './screens/TradeEditor.svelte';
+  import type { ReportVM, ReportRange, ReportMeta, ExportKind } from './screens/Reports.svelte';
   import { buildReportVM } from './lib/reports.ts';
   import { downloadBlob } from './lib/files.ts';
-  import CsvLibrary, { type Csv, type ImportPreview } from './screens/CsvLibrary.svelte';
+  import type { Csv, ImportPreview } from './screens/CsvLibrary.svelte';
   import Onboarding from './parts/Onboarding.svelte';
   import StatusBanner from './parts/StatusBanner.svelte';
+  import DashTabs from './parts/DashTabs.svelte';
+  import FeedbackDialog from './parts/FeedbackDialog.svelte';
   import { loadFlags, APP_FLAGS, type AppFlags } from './lib/flags.ts';
   import { Adapters } from '../lib/core/adapters.ts';
   import type { Trade } from '../lib/core/types.ts';
@@ -48,6 +67,18 @@
   const SEEDED = isStaging || isDemo;
   setContext('bb:store', store);
   const dash = createDashboard(store, { seed: SEEDED, isDemo });
+
+  // Lazy screen loaders (one Vite chunk each). `import()` caches per specifier, and the shell
+  // prefetches them once idle (see onMount), so the first navigation to a screen is instant in
+  // practice while the boot payload carries only the shell + Dashboard.
+  const SCREEN_LOADERS = {
+    calendar: () => import('./screens/Calendar.svelte'),
+    analytics: () => import('./screens/Analytics.svelte'),
+    blotter: () => import('./screens/Blotter.svelte'),
+    trades: () => import('./screens/TradeEditor.svelte'),
+    reports: () => import('./screens/Reports.svelte'),
+    csv: () => import('./screens/CsvLibrary.svelte'),
+  };
 
   const fromHash = (): string => {
     const h = typeof location !== 'undefined' ? location.hash.replace(/^#/, '') : '';
@@ -76,9 +107,11 @@
         key: 'dd',
         label: 'Max drawdown',
         value: m.maxDD > 0 ? `-${money(m.maxDD)}` : '$0',
-        badge: `${m.maxDDpct.toFixed(1)}%`,
+        // A170: maxDDpct is null for an inception drawdown (no positive prior peak) — omit the badge
+        // rather than render a wrong-looking 0.0%.
+        badge: m.maxDDpct != null ? `${m.maxDDpct.toFixed(1)}%` : undefined,
         up: false,
-        note: 'of peak',
+        note: m.maxDDpct != null ? 'of peak' : 'from inception',
       },
       { key: 'sharpe', label: 'Sharpe (daily)', value: num(m.sharpe), note: `${m.active} trading days` },
     ];
@@ -93,15 +126,70 @@
   // Dashboard module layout, persisted to the Store.local seam (staging-namespaced) so hide/reorder/
   // re-add survives a reload — parity with the app/demo workspace layout.
   const MOD_KEY = isStaging ? 'bb:staging:dashModules' : 'bb:dashModules';
-  let dashModules = $state<string[] | undefined>((store.local.get(MOD_KEY) as string[] | null) ?? undefined);
+
+  // ── Dashboard tabs (A135 — STAGING ONLY) ─────────────────────────────────────────────────────
+  // Multiple named dashboards, each with its own module layout. The 'main' tab maps to the legacy
+  // MOD_KEY so an existing staging layout carries over; other tabs persist under suffixed keys.
+  // Prod/demo keep the single implicit 'main' tab (the bar never renders, keys are unchanged).
+  type DashTab = { id: string; name: string };
+  const TABS_KEY = 'bb:staging:dashTabs';
+  const persistedTabs = isStaging ? (store.local.get(TABS_KEY, null) as { tabs: DashTab[]; active: string } | null) : null;
+  let dashTabs = $state<DashTab[]>(persistedTabs?.tabs?.length ? persistedTabs.tabs : [{ id: 'main', name: 'Main' }]);
+  let activeDashTab = $state<string>(
+    persistedTabs?.active && (persistedTabs.tabs ?? []).some(t => t.id === persistedTabs.active) ? persistedTabs.active : 'main'
+  );
+  const modKeyFor = (tabId: string) => (tabId === 'main' ? MOD_KEY : `${MOD_KEY}:${tabId}`);
+  function persistTabs() {
+    if (isStaging) store.local.set(TABS_KEY, { tabs: $state.snapshot(dashTabs), active: activeDashTab });
+  }
+  function selectDashTab(id: string) {
+    if (id === activeDashTab) return;
+    activeDashTab = id;
+    dashModules = (store.local.get(modKeyFor(id)) as string[] | null) ?? undefined;
+    persistTabs();
+  }
+  function createDashTab() {
+    const name = typeof prompt === 'function' ? prompt('New dashboard tab name…') : null;
+    if (!name || !name.trim()) return;
+    const id = Date.now().toString(36) + dashTabs.length;
+    dashTabs = [...dashTabs, { id, name: name.trim() }];
+    selectDashTab(id); // persists tabs + active
+  }
+  function renameDashTab(id: string) {
+    const cur = dashTabs.find(t => t.id === id);
+    const name = typeof prompt === 'function' ? prompt('Rename tab', cur?.name ?? '') : null;
+    if (!name || !name.trim()) return;
+    dashTabs = dashTabs.map(t => (t.id === id ? { ...t, name: name.trim() } : t));
+    persistTabs();
+  }
+  function moveDashTab(id: string, dir: -1 | 1) {
+    const i = dashTabs.findIndex(t => t.id === id),
+      j = i + dir;
+    if (i < 0 || j < 0 || j >= dashTabs.length) return;
+    const next = [...dashTabs];
+    [next[i], next[j]] = [next[j], next[i]];
+    dashTabs = next;
+    persistTabs();
+  }
+  function deleteDashTab(id: string) {
+    if (dashTabs.length === 1) return;
+    if (typeof confirm === 'function' && !confirm('Delete this dashboard tab? Its module layout is removed.')) return;
+    store.local.remove(modKeyFor(id));
+    dashTabs = dashTabs.filter(t => t.id !== id);
+    if (activeDashTab === id) selectDashTab(dashTabs[0].id);
+    else persistTabs();
+  }
+
+  // svelte-ignore state_referenced_locally — initial read only; selectDashTab reassigns on switch.
+  let dashModules = $state<string[] | undefined>((store.local.get(modKeyFor(activeDashTab)) as string[] | null) ?? undefined);
   function saveModules(order: string[]) {
     dashModules = order;
-    store.local.set(MOD_KEY, order);
+    store.local.set(modKeyFor(activeDashTab), order);
   }
   // Reset the layout to the default (all modules shown, default order).
   function revertModules() {
     dashModules = undefined;
-    store.local.remove(MOD_KEY);
+    store.local.remove(modKeyFor(activeDashTab));
   }
 
   // Named workspace layout templates (R12 parity): save/apply/delete the module layout by name; revert
@@ -181,7 +269,9 @@
           title: 'Net P&L',
           value: usd(m.net),
           tone: tone(m.net),
-          desc: 'Realized P&L after commissions, subscriptions and estimated Section 1256 tax.',
+          // A172: this figure is the imported realized P&L BEFORE modeled costs — the waterfall
+          // below applies commissions, subscriptions and the estimated §1256 tax to it.
+          desc: 'Realized P&L as imported — before modeled costs. The waterfall below applies commissions, subscriptions and estimated Section 1256 tax.',
           bars: [bar('Gross', c.gross, mx, 'pos'), bar('Net (pre-tax)', c.netPreTax, mx, 'pos'), bar('Take-home', c.afterTax, mx, 'muted')],
           rows: [
             { label: 'Gross P&L', value: usd(c.gross), tone: tone(c.gross) },
@@ -246,7 +336,16 @@
           desc: 'Largest peak-to-trough drop in realized equity.',
           rows: [
             { label: 'Max drawdown', value: m.maxDD > 0 ? usd(-m.maxDD) : '$0', tone: 'neg' },
-            { label: '% of peak', value: `${m.maxDDpct.toFixed(1)}%` },
+            { label: '% of peak', value: m.maxDDpct != null ? `${m.maxDDpct.toFixed(1)}%` : '—' },
+            // A170: ddPeakIdx/ddTroughIdx are curve indices (curve[k] = equity after trade k;
+            // index 0 is the pre-trade origin) — surface the span the duration is counted over.
+            {
+              label: 'Peak → trough',
+              value:
+                m.ddPeakIdx != null && m.ddTroughIdx != null
+                  ? `${m.ddPeakIdx === 0 ? 'inception' : `trade ${m.ddPeakIdx}`} → trade ${m.ddTroughIdx}`
+                  : '—',
+            },
             { label: 'Duration', value: `${m.maxDDdur} trades` },
             { label: 'Recovery factor', value: ratio(m.recovery) },
           ],
@@ -299,7 +398,14 @@
     for (const d of dash.metricsAll.days) {
       const dt = new Date(d.date + 'T00:00:00');
       if (dt.getFullYear() === dash.calYear && dt.getMonth() === dash.calMonth) {
-        out[dt.getDate()] = { pnl: d.pnl, trades: d.trades, wins: d.wins, note: dash.journalDates.has(d.date) };
+        // A166: carry the day's journal (context) tags so the month grid can surface them (cell title).
+        out[dt.getDate()] = {
+          pnl: d.pnl,
+          trades: d.trades,
+          wins: d.wins,
+          note: dash.journalDates.has(d.date),
+          tags: dash.journalFor(d.date).tags,
+        };
       }
     }
     return out;
@@ -319,15 +425,21 @@
     }));
 
   // ── Analytics ────────────────────────────────────────────────────────────────────────────────
-  const analytics = $derived(buildAnalytics(dash.metricsActive, dash.metricsActive.trades));
+  // Per-trade tags live in trademeta (keyed by trade id), so the By-tag breakdown (R17/A165) gets
+  // the lookup as an accessor — buildAnalytics stays pure.
+  const tagsForTrade = (t: Trade) => dash.tradeMeta.get(dash.tradeId(t))?.tags ?? [];
+  const analytics = $derived(buildAnalytics(dash.metricsActive, dash.metricsActive.trades, tagsForTrade));
 
   // Dashboard modules (Break-even & Cost + Advanced Statistics) — reuse the cost waterfall + the
   // Analytics advanced-stats grid so the dashboard cards match their full-screen counterparts.
+  // A171: roots priced off the fallback per-side rate get an asterisk + footnote so estimated
+  // commissions are distinguishable from fee-table rates.
+  const dashEstRoots = $derived(estimatedCommRoots(dash.cost));
   const dashCostRows = $derived.by(() => {
     const c = dash.cost;
     return [
       { label: 'Gross P&L', value: usd(c.gross), tone: tone(c.gross) },
-      { label: 'Commissions (all-in)', value: usd(-c.totalComm), tone: 'neg' as const },
+      { label: `Commissions (all-in)${dashEstRoots.length ? ' *' : ''}`, value: usd(-c.totalComm), tone: 'neg' as const },
       { label: `Subscriptions (${money(c.fixedMo)}/mo × ${c.months})`, value: usd(-c.fixedPeriod), tone: 'neg' as const },
       { label: 'Est. 1256 tax', value: usd(-c.tax), tone: 'neg' as const },
       { label: 'Take-home', value: usd(c.afterTax), tone: tone(c.afterTax), total: true },
@@ -476,6 +588,8 @@
         from: '',
         to: '',
         estimatedRoots: [],
+        skippedFills: 0,
+        openLots: 0,
         sample: [],
         error: r.ok ? 'No completed trades found.' : r.error,
       };
@@ -499,6 +613,8 @@
       from: trades[0]?.date ?? '',
       to: trades[trades.length - 1]?.date ?? '',
       estimatedRoots: r.estimatedRoots ?? [],
+      skippedFills: r.skippedFills ?? 0,
+      openLots: r.openLots ?? 0,
       sample,
     };
   }
@@ -575,6 +691,9 @@
     loadFlags()
       .then(f => (flags = f))
       .catch(() => {});
+    // Warm the lazy screen chunks once the shell has settled — off the critical boot path.
+    const idle: (fn: () => void) => void = typeof requestIdleCallback === 'function' ? requestIdleCallback : fn => setTimeout(fn, 1500);
+    idle(() => Object.values(SCREEN_LOADERS).forEach(load => void load().catch(() => {})));
   });
 </script>
 
@@ -585,118 +704,161 @@
       {#if envLabel}<Badge variant="secondary">{envLabel}</Badge>{/if}
       {#if appVersion}<span class="font-mono text-[11px] text-muted-foreground">v{appVersion}</span>{/if}
       <span class="hidden font-mono text-xs text-muted-foreground md:inline">{dash.dateRange}</span>
+      <FeedbackDialog version={appVersion} surface={PAGE_MODE || 'app'} />
     </div>
   {/snippet}
 
   <StatusBanner maintenance={flags.maintenanceBanner} {importWarning} />
 
-  {#if dash.error}
-    <p class="text-sm text-destructive" role="alert">Could not start the app: {dash.error}</p>
-  {:else if !dash.loaded}
-    <p class="text-sm text-muted-foreground">Loading…</p>
-  {:else if needsOnboarding}
-    <Onboarding setup={dash.setup} onsetupsave={s => dash.saveSetup(s)} onimport={onboardImport} />
-  {:else if active === 'dashboard'}
-    <Dashboard
-      stats={dStats}
-      series={dashSeries}
-      dateRange={dash.dateRange}
-      monthLabel={calData.label}
-      monthNet={calData.net}
-      dayPnl={calData.dayPnl}
-      firstDow={calData.firstDow}
-      daysInMonth={calData.daysInMonth}
-      onscope={dash.setScope}
-      dayTrades={calTradesForDay}
-      getNote={day => dash.noteFor(dateOf(day))}
-      onsavenote={(day, text) => dash.saveNote(dateOf(day), text)}
-      {statDetail}
-      {filterModel}
-      onpickdate={(y, m) => dash.setCal(y, m)}
-      costRows={dashCostRows}
-      advStats={dashAdvStats}
-      setup={dash.setup}
-      onsetupsave={s => dash.saveSetup(s)}
-      costDisabled={dash.isDemo}
-      modules={dashModules}
-      onmoduleschange={saveModules}
-      layouts={dashLayouts}
-    />
-  {:else if active === 'calendar'}
-    <Calendar
-      monthDays={calMonthDays}
-      year={dash.calYear}
-      month={dash.calMonth}
-      monthLabel={calData.label}
-      yearPnl={calYearPnl}
-      onprev={() => dash.navMonth(-1)}
-      onnext={() => dash.navMonth(1)}
-      onlatest={() => dash.jumpToLatest()}
-      tradesForDay={calTradesForDay}
-      getJournal={day => dash.journalFor(dateOf(day))}
-      onsavenote={(day, text, tags, shots) => dash.saveNote(dateOf(day), text, tags, shots)}
-    />
-  {:else if active === 'analytics'}
-    <Analytics
-      kpis={analytics.kpis}
-      dist={analytics.dist}
-      wins={analytics.wins}
-      losses={analytics.losses}
-      curve={dash.metricsActive.curve}
-      maxDD={dash.metricsActive.maxDD}
-      maxDDpct={dash.metricsActive.maxDDpct}
-      long={analytics.long}
-      short={analytics.short}
-      hours={analytics.hours}
-      wdays={analytics.wdays}
-      symbols={analytics.symbols}
-      statRows={analytics.statRows}
-    />
-  {:else if active === 'blotter'}
-    <Blotter
-      rows={blotterRows}
-      onsavemeta={(id, tags, note) => dash.saveTradeMeta(id, tags, note)}
-      ondelete={ids => dash.deleteTrades(ids)}
-      dataDisabled={dash.isDemo}
-    />
-  {:else if active === 'trades'}
-    <TradeEditor
-      rows={editorRows}
-      coreEditable={false}
-      editableFields={EDITABLE_FIELDS}
-      onsave={persistEditorRows}
-      ondelete={ids => dash.deleteTrades(ids)}
-      dataDisabled={dash.isDemo}
-    />
-  {:else if active === 'reports'}
-    <Reports
-      defaultTitle="Performance report"
-      defaultAccount={dash.brokerName(dash.setup.broker)}
-      calYear={dash.calYear}
-      calMonth={dash.calMonth}
-      build={buildReport}
-      onexport={onReportExport}
-    />
-  {:else if active === 'csv'}
-    <CsvLibrary
-      files={csvFiles}
-      perFileActions={false}
-      blotterHref="#blotter"
-      parse={parseCsv}
-      onimport={importPreview}
-      ondelete={() => dash.purgeAll()}
-      onbackup={doBackup}
-      onrestore={doRestore}
-      onerase={doErase}
-      dataDisabled={dash.isDemo}
-      {restoreMsg}
-    />
-  {:else}
-    <div class="grid min-h-[60vh] place-items-center">
-      <div class="flex max-w-md flex-col items-center gap-2 text-center">
-        <h2 class="text-lg font-semibold text-foreground">Screen not found</h2>
-        <p class="text-sm text-muted-foreground">There's no <code>{active}</code> screen. Pick a section from the sidebar to continue.</p>
-      </div>
+  <!-- A146: screen changes fade in (keyed on the route; instant under reduced motion). -->
+  {#key active}
+    <div in:fade={{ duration: dur(120) }}>
+      {#if dash.error}
+        <p class="text-sm text-destructive" role="alert">Could not start the app: {dash.error}</p>
+      {:else if !dash.loaded}
+        <p class="text-sm text-muted-foreground">Loading…</p>
+      {:else if needsOnboarding}
+        <Onboarding setup={dash.setup} onsetupsave={s => dash.saveSetup(s)} onimport={onboardImport} />
+      {:else if active === 'dashboard'}
+        {#if isStaging}
+          <!-- A135 (staging): named dashboard tabs, each with its own module layout. -->
+          <div class="mb-4">
+            <DashTabs
+              tabs={dashTabs}
+              active={activeDashTab}
+              onselect={selectDashTab}
+              oncreate={createDashTab}
+              onrename={renameDashTab}
+              onmove={moveDashTab}
+              ondelete={deleteDashTab}
+            />
+          </div>
+        {/if}
+        <Dashboard
+          stats={dStats}
+          series={dashSeries}
+          dateRange={dash.dateRange}
+          monthLabel={calData.label}
+          monthNet={calData.net}
+          dayPnl={calData.dayPnl}
+          firstDow={calData.firstDow}
+          daysInMonth={calData.daysInMonth}
+          onscope={dash.setScope}
+          dayTrades={calTradesForDay}
+          getNote={day => dash.noteFor(dateOf(day))}
+          getDayTags={day => dash.journalFor(dateOf(day)).tags}
+          onsavenote={(day, text) => dash.saveNote(dateOf(day), text)}
+          {statDetail}
+          {filterModel}
+          onpickdate={(y, m) => dash.setCal(y, m)}
+          costRows={dashCostRows}
+          estRoots={dashEstRoots}
+          advStats={dashAdvStats}
+          setup={dash.setup}
+          onsetupsave={s => dash.saveSetup(s)}
+          costDisabled={dash.isDemo}
+          modules={dashModules}
+          onmoduleschange={saveModules}
+          layouts={dashLayouts}
+        />
+      {:else if active === 'calendar'}
+        {#await SCREEN_LOADERS.calendar() then Calendar}
+          <Calendar.default
+            monthDays={calMonthDays}
+            year={dash.calYear}
+            month={dash.calMonth}
+            monthLabel={calData.label}
+            yearPnl={calYearPnl}
+            tagVocab={dash.journalTags}
+            onprev={() => dash.navMonth(-1)}
+            onnext={() => dash.navMonth(1)}
+            onlatest={() => dash.jumpToLatest()}
+            tradesForDay={calTradesForDay}
+            getJournal={day => dash.journalFor(dateOf(day))}
+            onsavenote={(day, text, tags, shots) => dash.saveNote(dateOf(day), text, tags, shots)}
+          />
+        {/await}
+      {:else if active === 'analytics'}
+        {#await SCREEN_LOADERS.analytics() then Analytics}
+          <Analytics.default
+            kpis={analytics.kpis}
+            dist={analytics.dist}
+            wins={analytics.wins}
+            losses={analytics.losses}
+            scratch={analytics.scratch}
+            curve={dash.metricsActive.curve}
+            maxDD={dash.metricsActive.maxDD}
+            maxDDpct={dash.metricsActive.maxDDpct}
+            long={analytics.long}
+            short={analytics.short}
+            unknownSide={analytics.unknownSide}
+            hours={analytics.hours}
+            wdays={analytics.wdays}
+            symbols={analytics.symbols}
+            byTag={analytics.byTag}
+            untagged={analytics.untagged}
+            statRows={analytics.statRows}
+          />
+        {/await}
+      {:else if active === 'blotter'}
+        {#await SCREEN_LOADERS.blotter() then Blotter}
+          <Blotter.default
+            rows={blotterRows}
+            tagVocab={dash.tags}
+            onsavemeta={(id, tags, note) => dash.saveTradeMeta(id, tags, note)}
+            ondelete={ids => dash.deleteTrades(ids)}
+            dataDisabled={dash.isDemo}
+          />
+        {/await}
+      {:else if active === 'trades'}
+        {#await SCREEN_LOADERS.trades() then TradeEditor}
+          <TradeEditor.default
+            rows={editorRows}
+            coreEditable={false}
+            editableFields={EDITABLE_FIELDS}
+            tagVocab={dash.tags}
+            onsave={persistEditorRows}
+            ondelete={ids => dash.deleteTrades(ids)}
+            dataDisabled={dash.isDemo}
+          />
+        {/await}
+      {:else if active === 'reports'}
+        {#await SCREEN_LOADERS.reports() then Reports}
+          <Reports.default
+            defaultTitle="Performance report"
+            defaultAccount={dash.brokerName(dash.setup.broker)}
+            calYear={dash.calYear}
+            calMonth={dash.calMonth}
+            build={buildReport}
+            onexport={onReportExport}
+          />
+        {/await}
+      {:else if active === 'csv'}
+        {#await SCREEN_LOADERS.csv() then CsvLibrary}
+          <CsvLibrary.default
+            files={csvFiles}
+            perFileActions={false}
+            blotterHref="#blotter"
+            parse={parseCsv}
+            onimport={importPreview}
+            ondelete={() => dash.purgeAll()}
+            onbackup={doBackup}
+            onrestore={doRestore}
+            onerase={doErase}
+            dataDisabled={dash.isDemo}
+            {restoreMsg}
+          />
+        {/await}
+      {:else}
+        <div class="grid min-h-[60vh] place-items-center">
+          <div class="flex max-w-md flex-col items-center gap-2 text-center">
+            <h2 class="text-lg font-semibold text-foreground">Screen not found</h2>
+            <p class="text-sm text-muted-foreground">
+              There's no <code>{active}</code> screen. Pick a section from the sidebar to continue.
+            </p>
+          </div>
+        </div>
+      {/if}
     </div>
-  {/if}
+  {/key}
 </AppShell>

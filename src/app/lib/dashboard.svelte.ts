@@ -62,6 +62,9 @@ export function createDashboard(store: StoreLike, opts: { seed: boolean; isDemo?
   const metricsActive = $derived(filters.scope === 'month' ? compute(filtered.filter(t => inMonth(t, calYear, calMonth))) : metricsAll);
   const roots = $derived([...new Set(allTrades.map(t => t.root).filter(Boolean))].sort());
   const tags = $derived([...new Set([...tradeMeta.values()].flatMap(m => m.tags || []))].sort());
+  // The day-journal (context) tag vocabulary — feeds the Calendar tag-input autocomplete (A167);
+  // kept separate from the per-trade `tags` above per the R17 two-scope model.
+  const journalTags = $derived([...new Set([...journal.values()].flatMap(j => j.tags || []))].sort());
   const costInputs = $derived({
     broker: setup.broker,
     platform: setup.platform,
@@ -185,7 +188,9 @@ export function createDashboard(store: StoreLike, opts: { seed: boolean; isDemo?
       root: Adapters.rootSym(r.symbol),
       symbol: r.symbol,
       side: r.side === 'Short' ? 'short' : 'long',
-      qty: r.qty,
+      // A173: qty is a contract count — clamp to a positive integer at the persistence seam too
+      // (a negative qty turns commissions into a credit in costModel).
+      qty: Math.max(1, Math.round(Math.abs(Number(r.qty) || 1))),
       pnl: r.pnl,
       dup: 0,
     };
@@ -321,6 +326,9 @@ export function createDashboard(store: StoreLike, opts: { seed: boolean; isDemo?
     },
     get tags() {
       return tags;
+    },
+    get journalTags() {
+      return journalTags;
     },
     get tradeMeta() {
       return tradeMeta;

@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  export type { Kpi, DistBar, SignedBar, SymbolRow, StatRow } from '../lib/analytics.ts';
+  export type { Kpi, DistBar, SignedBar, SymbolRow, TagRow, StatRow } from '../lib/analytics.ts';
 </script>
 
 <script lang="ts">
@@ -12,28 +12,55 @@
   import { cn } from '$lib/utils';
   import { usdWhole } from '../../lib/core/core.ts';
   import * as Card from '$lib/components/ui/card';
-  import type { Kpi, DistBar, SignedBar, SymbolRow, StatRow } from '../lib/analytics.ts';
+  import type { Kpi, DistBar, SignedBar, SymbolRow, TagRow, StatRow } from '../lib/analytics.ts';
 
   interface Props {
     kpis: Kpi[];
     dist: DistBar[];
     wins: number;
     losses: number;
+    /** Scratch ($0) trades — excluded from the histogram + W/L bar; footnoted (A174). */
+    scratch: number;
     curve: number[];
     maxDD: number;
-    maxDDpct: number;
+    /** Null when the drawdown has no positive prior peak (inception drawdown — A170). */
+    maxDDpct: number | null;
     long: { pnl: number; n: number };
     short: { pnl: number; n: number };
+    /** Trades excluded from the long/short split for lack of side info (A170). */
+    unknownSide: number;
     hours: SignedBar[];
     wdays: SignedBar[];
     symbols: SymbolRow[];
+    /** Per-tag breakdown + the disjoint untagged bucket (R17/A165). */
+    byTag: TagRow[];
+    untagged: TagRow | null;
     statRows: StatRow[];
   }
-  let { kpis, dist, wins, losses, curve, maxDD, maxDDpct, long, short, hours, wdays, symbols, statRows }: Props = $props();
+  let {
+    kpis,
+    dist,
+    wins,
+    losses,
+    scratch,
+    curve,
+    maxDD,
+    maxDDpct,
+    long,
+    short,
+    unknownSide,
+    hours,
+    wdays,
+    symbols,
+    byTag,
+    untagged,
+    statRows,
+  }: Props = $props();
 
   const winShare = $derived(wins + losses ? Math.round((wins / (wins + losses)) * 100) : 0);
   const longShare = $derived(long.n + short.n ? Math.round((long.n / (long.n + short.n)) * 100) : 0);
   const maxSym = $derived(Math.max(1, ...symbols.map(s => Math.abs(s.pnl))));
+  const maxTag = $derived(Math.max(1, ...byTag.map(r => Math.abs(r.pnl)), Math.abs(untagged?.pnl ?? 0)));
 
   // Underwater (drawdown) series from the equity curve: depth = running peak − equity, normalized.
   // Uses a loop (not Math.max(...curve)) so a large fills export can't overflow the call stack.
@@ -133,6 +160,12 @@
           <span class="tabular-nums text-chart-2">{wins}W</span>
           <span class="tabular-nums text-destructive">{losses}L</span>
         </div>
+        {#if scratch > 0}
+          <p class="mt-2 text-[11px] text-muted-foreground">
+            {scratch} scratch trade{scratch === 1 ? '' : 's'} ($0) excluded from the chart and the win/loss bar; the Win rate stat counts them
+            in its denominator.
+          </p>
+        {/if}
       </Card.Content>
     </Card.Root>
 
@@ -147,7 +180,7 @@
         </svg>
         <div class="mt-2 flex justify-between text-[11px] text-muted-foreground">
           <span>Max drawdown <span class="text-destructive">{maxDD > 0 ? `-${usdWhole(maxDD).slice(1)}` : '$0'}</span></span>
-          <span>{maxDDpct.toFixed(1)}% of peak</span>
+          <span>{maxDDpct != null ? `${maxDDpct.toFixed(1)}% of peak` : 'from inception (no prior peak)'}</span>
         </div>
       </Card.Content>
     </Card.Root>
@@ -177,6 +210,11 @@
         <div class="mt-1 flex justify-between text-[11px] text-muted-foreground">
           <span>{longShare}% long</span><span>{100 - longShare}% short</span>
         </div>
+        {#if unknownSide > 0}
+          <p class="mt-2 text-[11px] text-muted-foreground">
+            {unknownSide} trade{unknownSide === 1 ? '' : 's'} without side info excluded from this split.
+          </p>
+        {/if}
       </Card.Content>
     </Card.Root>
 
@@ -215,6 +253,54 @@
             >
           </div>
         {/each}
+      </Card.Content>
+    </Card.Root>
+
+    <!-- Per-tag (R17/A165) — the untagged bucket doubles as tag coverage -->
+    <Card.Root class="lg:col-span-2">
+      {@render head('Performance by tag')}
+      <Card.Content class="space-y-2">
+        {#if byTag.length}
+          {#each byTag as r (r.tag)}
+            <div class="flex items-center gap-3 text-xs">
+              <span class="w-24 truncate font-medium" title={r.tag}>{r.tag}</span>
+              <span class="w-28 text-muted-foreground">{r.trades} tr · {r.win}%</span>
+              <svg viewBox="0 0 100 8" class="h-2 flex-1" preserveAspectRatio="none" aria-hidden="true">
+                <rect x="0" y="0" width="100" height="8" class="fill-secondary" />
+                <rect
+                  x="0"
+                  y="0"
+                  width={Math.round((Math.abs(r.pnl) / maxTag) * 100)}
+                  height="8"
+                  class={r.pnl >= 0 ? 'fill-chart-2' : 'fill-destructive'}
+                />
+              </svg>
+              <span class={cn('w-20 text-right font-semibold tabular-nums', r.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}
+                >{usdWhole(r.pnl)}</span
+              >
+            </div>
+          {/each}
+          {#if untagged}
+            <div class="flex items-center gap-3 border-t border-border pt-2 text-xs">
+              <span class="w-24 truncate text-muted-foreground">untagged</span>
+              <span class="w-28 text-muted-foreground">{untagged.trades} tr · {untagged.win}%</span>
+              <svg viewBox="0 0 100 8" class="h-2 flex-1" preserveAspectRatio="none" aria-hidden="true">
+                <rect x="0" y="0" width="100" height="8" class="fill-secondary" />
+                <rect x="0" y="0" width={Math.round((Math.abs(untagged.pnl) / maxTag) * 100)} height="8" class="fill-chart-1" />
+              </svg>
+              <span class="w-20 text-right font-semibold tabular-nums text-muted-foreground">{usdWhole(untagged.pnl)}</span>
+            </div>
+          {/if}
+          <p class="text-[11px] text-muted-foreground">
+            A trade with several tags counts once per tag; “untagged” is the disjoint remainder — your tag coverage.
+          </p>
+        {:else}
+          <p class="text-xs text-muted-foreground">
+            No tags yet — tag trades in the Blotter or Trade Editor to see per-tag performance{untagged
+              ? ` (${untagged.trades} trades untagged)`
+              : ''}.
+          </p>
+        {/if}
       </Card.Content>
     </Card.Root>
 

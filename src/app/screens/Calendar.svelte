@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  export type CalDay = { pnl: number; trades: number; wins: number; note?: boolean };
+  export type CalDay = { pnl: number; trades: number; wins: number; note?: boolean; tags?: string[] };
   export type DayTrade = { time: string; sym: string; side: 'Long' | 'Short'; qty: number; pnl: number };
 </script>
 
@@ -13,7 +13,6 @@
   import { ChevronLeft, ChevronRight, X, Minus, Plus, Paperclip, ImagePlus, Check } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
-  import { Input } from '$lib/components/ui/input';
   import * as Card from '$lib/components/ui/card';
   import { cn } from '$lib/utils';
   import { usdWhole, tone, fmtDate, isoWeek, monthCells, MONTH_ABBR, DOW_LABEL } from '../../lib/core/core.ts';
@@ -21,6 +20,9 @@
   import { readImage } from '../lib/files.ts';
   import ScreenshotLightbox from '../parts/ScreenshotLightbox.svelte';
   import SegmentedControl from '../parts/SegmentedControl.svelte';
+  import TagInput from '../parts/TagInput.svelte';
+  import { fly } from 'svelte/transition';
+  import { dur } from '../lib/motion.ts';
 
   interface Props {
     monthDays: Record<number, CalDay>;
@@ -33,9 +35,24 @@
     onlatest?: () => void;
     tradesForDay: (day: number) => DayTrade[];
     getJournal: (day: number) => { text: string; tags: string[]; shots: string[] };
+    /** The existing day-tag vocabulary, for the tag-input autocomplete (A167). */
+    tagVocab?: string[];
     onsavenote?: (day: number, text: string, tags: string[], shots: string[]) => void;
   }
-  let { monthDays, year, month, monthLabel, yearPnl, onprev, onnext, onlatest, tradesForDay, getJournal, onsavenote }: Props = $props();
+  let {
+    monthDays,
+    year,
+    month,
+    monthLabel,
+    yearPnl,
+    onprev,
+    onnext,
+    onlatest,
+    tradesForDay,
+    getJournal,
+    tagVocab = [],
+    onsavenote,
+  }: Props = $props();
 
   let view = $state<'month' | 'year'>('month');
   let selectedDay = $state<number | null>(null);
@@ -144,12 +161,15 @@
     }
     return s;
   });
-  const DOW_LBL = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  // A174: all seven weekdays — Globex Sunday (and holiday-Saturday) sessions count in the month
+  // total, so a Mon–Fri-only list silently dropped them from the bars. Weekend rows render only
+  // when they actually carry P&L. DOW_LABEL is Sun-first, matching getDay().
   const dowPnl = $derived(
-    DOW_LBL.map((lbl, i) => ({
+    DOW_LABEL.map((lbl, i) => ({
       lbl,
-      pnl: traded.filter(t => new Date(year, month, t.day).getDay() === i + 1).reduce((s, t) => s + t.pnl, 0),
-    }))
+      i,
+      pnl: traded.filter(t => new Date(year, month, t.day).getDay() === i).reduce((s, t) => s + t.pnl, 0),
+    })).filter(d => (d.i >= 1 && d.i <= 5) || d.pnl !== 0)
   );
 
   // ── Selected day detail (real trades for the day). ───────────────────────────────────────────
@@ -279,6 +299,7 @@
                   <button
                     type="button"
                     onclick={() => (selectedDay = selectedDay === c.day ? null : c.day)}
+                    title={c.rec?.tags?.length ? `Day tags: ${c.rec.tags.join(' · ')}` : undefined}
                     class={cn(
                       'relative flex min-h-20 flex-col rounded border p-1.5 text-left transition-colors',
                       c.rec ? shade(c.rec.pnl) : '',
@@ -356,121 +377,114 @@
     <!-- Right rail: day detail + summary -->
     <div class="flex shrink-0 flex-col gap-4 xl:w-80">
       {#if view === 'month' && selectedDay && sel}
-        <Card.Root>
-          <div class="flex items-center justify-between border-b border-border px-4 py-2.5">
-            <span class="text-sm font-semibold">{monthLabel.split(' ')[0]} {selectedDay}, {year}</span>
-            <button
-              type="button"
-              class="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-              aria-label="Close day detail"
-              onclick={() => (selectedDay = null)}
-            >
-              <X class="size-4" />
-            </button>
-          </div>
-          <div class="space-y-3 p-4">
-            <!-- Day stats -->
-            <div class="grid grid-cols-2 gap-2">
-              {@render stat('Day P&L', usdWhole(sel.pnl), tone(sel.pnl))}
-              {@render stat('Win rate', `${pct(sel.wins, sel.trades)}%`)}
-              {@render stat('Best trade', bestTrade ? usdWhole(bestTrade.pnl) : '—', 'pos')}
-              {@render stat('Worst trade', worstTrade ? usdWhole(worstTrade.pnl) : '—', 'neg')}
+        <!-- A146: the day detail slides in beside the grid (instant under reduced motion). -->
+        <div in:fly={{ x: 16, duration: dur(150) }}>
+          <Card.Root>
+            <div class="flex items-center justify-between border-b border-border px-4 py-2.5">
+              <span class="text-sm font-semibold">{monthLabel.split(' ')[0]} {selectedDay}, {year}</span>
+              <button
+                type="button"
+                class="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                aria-label="Close day detail"
+                onclick={() => (selectedDay = null)}
+              >
+                <X class="size-4" />
+              </button>
             </div>
+            <div class="space-y-3 p-4">
+              <!-- Day stats -->
+              <div class="grid grid-cols-2 gap-2">
+                {@render stat('Day P&L', usdWhole(sel.pnl), tone(sel.pnl))}
+                {@render stat('Win rate', `${pct(sel.wins, sel.trades)}%`)}
+                {@render stat('Best trade', bestTrade ? usdWhole(bestTrade.pnl) : '—', 'pos')}
+                {@render stat('Worst trade', worstTrade ? usdWhole(worstTrade.pnl) : '—', 'neg')}
+              </div>
 
-            <!-- Trades list -->
-            <div>
-              <div class="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Trades · {sel.trades}</div>
-              <div class="overflow-hidden rounded-md border border-border">
-                {#each dayTrades as t, i (i)}
-                  <div class={cn('flex items-center gap-2 px-2.5 py-1.5 text-xs', i > 0 && 'border-t border-border')}>
-                    <span class="tabular-nums text-muted-foreground">{t.time || '—'}</span>
-                    <span class="font-medium">{t.sym}</span>
-                    <Badge
-                      variant="outline"
-                      class={t.side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}
-                      >{t.side}</Badge
-                    >
-                    <span class="text-muted-foreground">×{t.qty}</span>
-                    <span class={cn('ml-auto font-semibold tabular-nums', t.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}
-                      >{usdWhole(t.pnl)}</span
-                    >
-                  </div>
-                {/each}
+              <!-- Trades list -->
+              <div>
+                <div class="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Trades · {sel.trades}</div>
+                <div class="overflow-hidden rounded-md border border-border">
+                  {#each dayTrades as t, i (i)}
+                    <div class={cn('flex items-center gap-2 px-2.5 py-1.5 text-xs', i > 0 && 'border-t border-border')}>
+                      <span class="tabular-nums text-muted-foreground">{t.time || '—'}</span>
+                      <span class="font-medium">{t.sym}</span>
+                      <Badge
+                        variant="outline"
+                        class={t.side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}
+                        >{t.side}</Badge
+                      >
+                      <span class="text-muted-foreground">×{t.qty}</span>
+                      <span class={cn('ml-auto font-semibold tabular-nums', t.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}
+                        >{usdWhole(t.pnl)}</span
+                      >
+                    </div>
+                  {/each}
+                </div>
+              </div>
+
+              <!-- Journal note -->
+              <div>
+                <div class="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Journal note</div>
+                <textarea
+                  class="h-24 w-full resize-none rounded-md border border-border bg-background p-2 text-xs leading-relaxed text-foreground outline-none focus-visible:border-ring"
+                  bind:value={note}
+                ></textarea>
+              </div>
+
+              <!-- Tags -->
+              <div>
+                <div class="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Tags</div>
+                <div class="mb-1.5 flex flex-wrap gap-1">
+                  {#each tags as t (t)}
+                    <Badge variant="secondary" class="gap-1">
+                      {t}<button
+                        type="button"
+                        class="text-muted-foreground hover:text-foreground"
+                        aria-label="Remove tag {t}"
+                        onclick={() => removeTag(t)}><X class="size-3" /></button
+                      >
+                    </Badge>
+                  {/each}
+                  {#if !tags.length}<span class="text-xs text-muted-foreground">No tags</span>{/if}
+                </div>
+                <TagInput bind:value={tagDraft} suggestions={tagVocab} onadd={addTag} />
+              </div>
+
+              <!-- Screenshots -->
+              <div>
+                <div class="mb-1 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <Paperclip class="size-3" /> Screenshots
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  {#each shots as shot, i (i)}
+                    <span class="relative inline-block">
+                      <button type="button" class="block" onclick={() => (zoomShot = shot)} aria-label="Enlarge screenshot {i + 1}">
+                        <img src={shot} alt="screenshot {i + 1}" class="block h-12 rounded-md border border-border" />
+                      </button>
+                      <button
+                        type="button"
+                        class="absolute -right-1.5 -top-1.5 grid size-[18px] place-items-center rounded-full bg-destructive text-white"
+                        aria-label="Remove screenshot"
+                        onclick={() => removeShot(i)}><X class="size-3" /></button
+                      >
+                    </span>
+                  {/each}
+                  <label
+                    class="grid aspect-video w-16 cursor-pointer place-items-center rounded border border-dashed border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                    aria-label="Add screenshot"
+                  >
+                    <ImagePlus class="size-4" />
+                    <input type="file" accept="image/*" class="hidden" onchange={addShot} />
+                  </label>
+                </div>
+              </div>
+
+              <div class="flex justify-end">
+                <Button size="sm" onclick={() => selectedDay && onsavenote?.(selectedDay, note, tags, shots)}>Save note</Button>
               </div>
             </div>
-
-            <!-- Journal note -->
-            <div>
-              <div class="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Journal note</div>
-              <textarea
-                class="h-24 w-full resize-none rounded-md border border-border bg-background p-2 text-xs leading-relaxed text-foreground outline-none focus-visible:border-ring"
-                bind:value={note}
-              ></textarea>
-            </div>
-
-            <!-- Tags -->
-            <div>
-              <div class="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Tags</div>
-              <div class="mb-1.5 flex flex-wrap gap-1">
-                {#each tags as t (t)}
-                  <Badge variant="secondary" class="gap-1">
-                    {t}<button
-                      type="button"
-                      class="text-muted-foreground hover:text-foreground"
-                      aria-label="Remove tag {t}"
-                      onclick={() => removeTag(t)}><X class="size-3" /></button
-                    >
-                  </Badge>
-                {/each}
-                {#if !tags.length}<span class="text-xs text-muted-foreground">No tags</span>{/if}
-              </div>
-              <Input
-                bind:value={tagDraft}
-                placeholder="Add tag, Enter…"
-                class="h-8"
-                onkeydown={e => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addTag();
-                  }
-                }}
-              />
-            </div>
-
-            <!-- Screenshots -->
-            <div>
-              <div class="mb-1 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                <Paperclip class="size-3" /> Screenshots
-              </div>
-              <div class="flex flex-wrap items-center gap-2">
-                {#each shots as shot, i (i)}
-                  <span class="relative inline-block">
-                    <button type="button" class="block" onclick={() => (zoomShot = shot)} aria-label="Enlarge screenshot {i + 1}">
-                      <img src={shot} alt="screenshot {i + 1}" class="block h-12 rounded-md border border-border" />
-                    </button>
-                    <button
-                      type="button"
-                      class="absolute -right-1.5 -top-1.5 grid size-[18px] place-items-center rounded-full bg-destructive text-white"
-                      aria-label="Remove screenshot"
-                      onclick={() => removeShot(i)}><X class="size-3" /></button
-                    >
-                  </span>
-                {/each}
-                <label
-                  class="grid aspect-video w-16 cursor-pointer place-items-center rounded border border-dashed border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-                  aria-label="Add screenshot"
-                >
-                  <ImagePlus class="size-4" />
-                  <input type="file" accept="image/*" class="hidden" onchange={addShot} />
-                </label>
-              </div>
-            </div>
-
-            <div class="flex justify-end">
-              <Button size="sm" onclick={() => selectedDay && onsavenote?.(selectedDay, note, tags, shots)}>Save note</Button>
-            </div>
-          </div>
-        </Card.Root>
+          </Card.Root>
+        </div>
       {/if}
 
       <!-- Month / year summary -->
