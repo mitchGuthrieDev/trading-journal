@@ -152,6 +152,7 @@ export function createDashboard(store: StoreLike, opts: { seed: boolean; isDemo?
     pnl: number;
     tags: string[];
     note: string;
+    shots?: string[];
   }) {
     if (isDemo) return;
     const orig = allTrades.find(t => store.tradeId(t) === r.id);
@@ -168,7 +169,7 @@ export function createDashboard(store: StoreLike, opts: { seed: boolean; isDemo?
       pnl: r.pnl,
       dup: 0,
     };
-    await store.updateTrade(r.id, next, { tags: r.tags, note: r.note });
+    await store.updateTrade(r.id, next, { tags: r.tags, note: r.note, shots: r.shots ?? [] });
     await reloadAll();
   }
   async function importTrades(trades: Trade[]) {

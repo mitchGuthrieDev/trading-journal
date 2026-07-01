@@ -200,7 +200,7 @@ export const Store: StoreLike = {
     await this.deleteTradeMeta(oldId);
     await this.addTrades([next]);
     const id = tradeId(next);
-    await this.saveTradeMeta(id, { tags: meta?.tags ?? old.tags, note: meta?.note ?? old.note, shots: old.shots });
+    await this.saveTradeMeta(id, { tags: meta?.tags ?? old.tags, note: meta?.note ?? old.note, shots: meta?.shots ?? old.shots });
     return { id };
   },
 

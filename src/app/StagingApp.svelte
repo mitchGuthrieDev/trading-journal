@@ -25,6 +25,8 @@
   import { downloadBlob } from './lib/files.ts';
   import CsvLibrary, { type Csv, type ImportPreview } from './screens/CsvLibrary.svelte';
   import Onboarding from './parts/Onboarding.svelte';
+  import StatusBanner from './parts/StatusBanner.svelte';
+  import { loadFlags, APP_FLAGS, type AppFlags } from './lib/flags.ts';
   import { Adapters } from '../lib/core/adapters.ts';
   import type { Trade } from '../lib/core/types.ts';
 
@@ -83,6 +85,40 @@
     dashModules = order;
     store.local.set(MOD_KEY, order);
   }
+  // Reset the layout to the default (all modules shown, default order).
+  function revertModules() {
+    dashModules = undefined;
+    store.local.remove(MOD_KEY);
+  }
+
+  // Named workspace layout templates (R12 parity): save/apply/delete the module layout by name; revert
+  // clears the layout back to the default (all modules). Persisted to Store.local (per-surface key).
+  const WS_KEY = isStaging ? 'bb:staging:dashLayouts' : 'bb:dashLayouts';
+  let wsTemplates = $state<Record<string, string[]>>((store.local.get(WS_KEY, {}) as Record<string, string[]>) || {});
+  function persistWs() {
+    store.local.set(WS_KEY, $state.snapshot(wsTemplates));
+  }
+  const dashLayouts = $derived({
+    names: Object.keys(wsTemplates),
+    canSave: !dash.isDemo,
+    save: (name: string) => {
+      if (dash.isDemo) return;
+      wsTemplates = { ...wsTemplates, [name]: [...(dashModules ?? [])] };
+      persistWs();
+    },
+    apply: (name: string) => {
+      const order = wsTemplates[name];
+      if (order) saveModules([...order]);
+    },
+    remove: (name: string) => {
+      if (dash.isDemo) return;
+      const next = { ...wsTemplates };
+      delete next[name];
+      wsTemplates = next;
+      persistWs();
+    },
+    revert: () => revertModules(),
+  });
 
   const filterModel = $derived<FilterModel>({
     root: dash.filters.root,
@@ -95,6 +131,15 @@
     count: dash.filtered.length,
     set: (patch: FilterPatch) => Object.assign(dash.filters, patch),
     clear: () => dash.clearFilters(),
+    views: dash.savedFilters.map(v => ({ id: v.id, name: v.name })),
+    canSaveView: !dash.isDemo,
+    saveView: (name: string) => dash.saveView(name),
+    applyView: (id: string) => {
+      const sf = dash.savedFilters.find(s => s.id === id);
+      if (sf) dash.applyView(sf);
+    },
+    deleteView: (id: string) => dash.deleteView(id),
+    renameView: (id: string, name: string) => dash.renameView(id, name),
   });
 
   // KPI card drill-in content (parity with the app/demo stat-card modal), from metrics + cost.
@@ -315,6 +360,7 @@
         fees: r ? +(r.rate * 2 * qty).toFixed(2) : NaN,
         tags: meta?.tags ?? [],
         note: meta?.note ?? '',
+        shots: meta?.shots ?? [],
       };
     })
   );
@@ -328,7 +374,7 @@
       const o = origById.get(r.id);
       const coreChanged = !!o && (o.date !== r.date || o.time !== r.time || o.symbol !== r.symbol || o.side !== r.side || o.qty !== r.qty || o.pnl !== r.pnl);
       if (coreChanged) await dash.editTradeCore(r);
-      else await dash.saveTradeMeta(r.id, r.tags, r.note);
+      else await dash.saveTradeMeta(r.id, r.tags, r.note, r.shots);
     }
   }
   const EDITABLE_FIELDS = ['date', 'time', 'symbol', 'side', 'qty', 'pnl'];
@@ -412,6 +458,29 @@
     return '';
   }
 
+  // Data management (backup / restore / erase) — parity with the legacy ManageData. Neutral file name
+  // on prod/demo, staging-branded on staging. Restore/erase are demo-guarded in dash; erase confirms.
+  const BACKUP_NAME = isStaging ? 'blotterbook-staging-backup.json' : 'blotterbook-backup.json';
+  let restoreMsg = $state('');
+  async function doBackup() {
+    const data = await dash.exportBackup();
+    downloadBlob(BACKUP_NAME, new Blob([JSON.stringify(data)], { type: 'application/json' }));
+  }
+  async function doRestore(file: File) {
+    try {
+      const data = JSON.parse(await file.text()) as Record<string, unknown>;
+      const res = await dash.importBackup(data);
+      restoreMsg = `Restored ${res.added} trade${res.added === 1 ? '' : 's'} (${res.dup} duplicate).`;
+    } catch {
+      restoreMsg = 'That backup file could not be read.';
+    }
+  }
+  function doErase() {
+    const where = isStaging ? ' (staging)' : '';
+    if (typeof confirm === 'function' && !confirm(`Erase ALL trades, day-notes and per-trade tags/notes${where}? This cannot be undone.`)) return;
+    void dash.purgeAll();
+  }
+
   // Header meta: the running version (staging track), the platform phase (Beta while prod is pre-1.0,
   // mirroring platformLabel), and the environment. Fetched from the CH12 versions.json single source.
   let versions = $state<{ prod?: string; staging?: string } | null>(null);
@@ -420,15 +489,27 @@
   // Environment pill: only the non-prod surfaces are badged (Staging | Demo); prod /app shows none.
   const envLabel = isStaging ? 'Staging' : isDemo ? 'Demo' : '';
 
+  // Admin-managed flags (A89): the maintenance banner (betaRibbon is superseded by the version-based
+  // Beta pill in the header). Applied once resolved; dashboard renders on defaults first.
+  let flags = $state<AppFlags>({ ...APP_FLAGS });
+  // Import-quality notice (A113): close-event exports without per-contract quantity are billed as a
+  // single contract, so commissions can be understated — flag it when every trade lacks a real qty.
+  const importWarning = $derived(
+    dash.loaded && dash.allTrades.length && dash.allTrades.every(t => (t.qty ?? 1) === 1)
+      ? 'Some imports report P&L without per-contract quantity, so modeled commissions are billed as a single contract and may be understated.'
+      : ''
+  );
+
   onMount(() => {
     dash.boot().catch((e: unknown) => {
-      console.error('staging app boot failed', e);
+      console.error('app boot failed', e);
       dash.error = e instanceof Error ? e.message : String(e);
     });
     fetch('/data/versions.json', { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : null))
       .then(v => (versions = v))
       .catch(() => {});
+    loadFlags().then(f => (flags = f)).catch(() => {});
   });
 </script>
 
@@ -441,6 +522,8 @@
       <span class="hidden font-mono text-xs text-muted-foreground md:inline">{dash.dateRange}</span>
     </div>
   {/snippet}
+
+  <StatusBanner maintenance={flags.maintenanceBanner} {importWarning} />
 
   {#if dash.error}
     <p class="text-sm text-destructive" role="alert">Could not start the app: {dash.error}</p>
@@ -472,6 +555,7 @@
       costDisabled={dash.isDemo}
       modules={dashModules}
       onmoduleschange={saveModules}
+      layouts={dashLayouts}
     />
   {:else if active === 'calendar'}
     <Calendar
@@ -484,8 +568,8 @@
       onnext={() => dash.navMonth(1)}
       onlatest={() => dash.jumpToLatest()}
       tradesForDay={calTradesForDay}
-      getNote={day => dash.noteFor(dateOf(day))}
-      onsavenote={(day, text) => dash.saveNote(dateOf(day), text)}
+      getJournal={day => dash.journalFor(dateOf(day))}
+      onsavenote={(day, text, tags, shots) => dash.saveNote(dateOf(day), text, tags, shots)}
     />
   {:else if active === 'analytics'}
     <Analytics
@@ -517,7 +601,19 @@
       onexport={onReportExport}
     />
   {:else if active === 'csv'}
-    <CsvLibrary files={csvFiles} perFileActions={false} blotterHref="#blotter" parse={parseCsv} onimport={importPreview} ondelete={() => dash.purgeAll()} />
+    <CsvLibrary
+      files={csvFiles}
+      perFileActions={false}
+      blotterHref="#blotter"
+      parse={parseCsv}
+      onimport={importPreview}
+      ondelete={() => dash.purgeAll()}
+      onbackup={doBackup}
+      onrestore={doRestore}
+      onerase={doErase}
+      dataDisabled={dash.isDemo}
+      {restoreMsg}
+    />
   {:else}
     <div class="grid min-h-[60vh] place-items-center">
       <div class="flex max-w-md flex-col items-center gap-2 text-center">
