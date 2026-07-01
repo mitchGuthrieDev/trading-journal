@@ -473,19 +473,7 @@
       "status": "open",
       "completedDate": null,
       "partial": false,
-      "prompt": "BLOCKED — gated on the vault/storage-model discussion A138 landing first (it decides what \"remote\" means). On the staging surface (gated behind isStaging/PAGE_MODE==='staging', demo stays non-mutating), add a Local/Remote workspace toggle in the UI plus the scaffolding for future synced workspaces: a settings/toggle control, a persisted preference (via the Store seam, not direct storage), and a stubbed 'remote' path that no-ops or shows 'coming soon' until the cloud tier exists. Do NOT implement real sync or any trade-data egress — the moat holds (compute stays local). Reuse the existing StoreLike seam (context('bb:store')) so a future CloudStore drops in unchanged. Done when: the toggle renders + persists on staging, the remote path is safely stubbed, and demo/prod are unaffected.",
-      "doneNote": null
-    },
-    {
-      "id": "A135",
-      "title": "(staging) Support tabbed dashboards",
-      "category": "FEATURES",
-      "priority": "P3",
-      "effort": "large",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "On the staging surface (gated behind isStaging, demo non-mutating), let users have multiple named dashboard tabs — each its own module/layout set — instead of a single dashboard. Build on the existing dashboard module/workspace-layout state (App.svelte MOD_KEY/WS_KEY + createDashboard): add a tab bar (create/rename/reorder/delete tabs), persist per-tab module+layout config via the Store seam (staging keys namespaced bb:staging:*), and switch the active tab without reload. Keep demo/prod unaffected until promoted. Done when: staging supports adding/switching/persisting multiple dashboard tabs; layout persists per tab across reloads.",
+      "prompt": "UNBLOCKED 2026-07-01 — A138 landed (docs/vault-storage-assessment.md): the workspace selector should read Local (this browser) / Vault (folder — future, Chromium-only per the assessment) / Remote (stub), with the vault Phase-1 export/import as the first implementable slice. On the staging surface (gated behind isStaging/PAGE_MODE==='staging', demo stays non-mutating), add a Local/Remote workspace toggle in the UI plus the scaffolding for future synced workspaces: a settings/toggle control, a persisted preference (via the Store seam, not direct storage), and a stubbed 'remote' path that no-ops or shows 'coming soon' until the cloud tier exists. Do NOT implement real sync or any trade-data egress — the moat holds (compute stays local). Reuse the existing StoreLike seam (context('bb:store')) so a future CloudStore drops in unchanged. Done when: the toggle renders + persists on staging, the remote path is safely stubbed, and demo/prod are unaffected.",
       "doneNote": null
     },
     {
@@ -513,30 +501,6 @@
       "doneNote": null
     },
     {
-      "id": "A138",
-      "title": "(Discussion) Obsidian-style vault storage vs IndexedDB",
-      "category": "ARCHITECTURE / DUPLICATION",
-      "priority": "P2",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "DISCUSSION/EVALUATION (this is the prerequisite for A132). Today all persistence goes through the Store seam backed by IndexedDB (src/lib/core/store.ts). Evaluate offering an Obsidian-style local 'vault' — user-owned plain files (e.g. JSON/Markdown/CSV in a chosen folder) as the source of truth — for portability, backup, and user control. Cover the hard browser limitations: we run as a web app (no raw filesystem), so the realistic options are the File System Access API (Chromium-only, permission-gated directory handles, not on Safari/mobile) vs. the current OPFS/IndexedDB, and what changes if we ever ship a desktop/mobile shell (Tauri/Capacitor/PWA). Assess: which trade/journal data maps to which files, sync/merge + conflict handling, the moat (still local — no egress), and how it fits the StoreLike seam (a VaultStore implementing the same interface). Recommend feasibility + a phased path (e.g. export/import to a vault folder first, live vault sync later). Done when: a written feasibility assessment + recommendation is delivered, unblocking A132.",
-      "doneNote": null
-    },
-    {
-      "id": "A139",
-      "title": "(staging) 'Add module +' button on the main dashboard (module picker)",
-      "category": "FEATURES",
-      "priority": "P2",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "On the staging surface (gated behind isStaging, demo non-mutating), add an 'Add module +' button to the main dashboard that opens a popup/menu of available modules and lets the user add a selected module to the dashboard. Build on the existing dashboard module system (App.svelte MOD_KEY 'bb:dashModules'/'bb:staging:dashModules' + createDashboard module state); use a shadcn-svelte dropdown-menu or popover/dialog (portal to body, CSP-safe) listing modules not already shown, and persist the addition via the Store seam. Pair with the existing hide/remove path. Done when: staging users can add hidden modules back to the dashboard via the picker and the choice persists.",
-      "doneNote": null
-    },
-    {
       "id": "A141",
       "title": "(Discussion) Changelog email signup + notify on changelog update",
       "category": "FEATURES",
@@ -558,42 +522,6 @@
       "completedDate": null,
       "partial": false,
       "prompt": "DISCUSSION/BRAINSTORM. Propose additional dashboards or dashboard modules that would add value for futures traders, grounded in the metrics the pure-logic core already computes (compute()/costModel()/curveseries — e.g. drawdown, expectancy, streaks, session/day-of-week splits, cost/tax breakdown, per-symbol stats) plus any that need new (cheap, local) computation. For each idea: what it shows, which existing metrics it uses, rough effort, and whether it's a new dashboard vs a module in the existing grid. Prioritize a shortlist. Done when: a written, prioritized list of candidate dashboards/modules is delivered; adopted ones spun off as their own items.",
-      "doneNote": null
-    },
-    {
-      "id": "A146",
-      "title": "Add animations / motion polish",
-      "category": "FEATURES",
-      "priority": "P3",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "Add tasteful animations/motion polish across the app now that layouts have settled. Start with Svelte built-in transitions (fade/fly/slide from svelte/transition) and tw-animate-css (already a dep) for enter/exit on dialogs/menus/panels, route/screen changes, module add/remove, and list updates; respect prefers-reduced-motion. Keep it CSP-safe (no inline styles — use utilities/classes or the styleProps CSSOM action) and avoid heavier motion libraries unless a specific need justifies it (flag first). Scope a first pass rather than animating everything. Done when: a coherent first pass of motion is applied to the key interactions, reduced-motion is honored, and no CSP/style regressions.",
-      "doneNote": null
-    },
-    {
-      "id": "A166",
-      "title": "Surface day (journal) tags beyond the Calendar day rail",
-      "category": "FEATURES",
-      "priority": "P3",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "From the R17 tagging review (decision 3). Per-day journal tags are write-mostly today: entered and re-read only in the Calendar day-detail rail. Surface them where days are scanned so the context-labeling scope earns its keep: (a) the Calendar month grid — include the day's tags in the day cell's tooltip/title (cheap; no layout change) alongside the note dot; (b) the Dashboard calendar-module day drill-in — show the day's tag chips next to the note editor. Keep them visually distinct from per-trade tags (they are context labels, not analysis labels — see the review doc). No new persistence; reads come from the existing journal map. Done when: a tagged day's tags are visible from the month grid affordance and the Dashboard day drill-in, demo included (read-only).",
-      "doneNote": null
-    },
-    {
-      "id": "A167",
-      "title": "Tag-input autocomplete from the existing vocabulary",
-      "category": "FEATURES",
-      "priority": "P3",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "From the R17 tagging review (decision 4). Every tag input (Trade Editor + tag popover, its bulk-tag input, the Blotter drawer input + bulk-tag popover, the Calendar day rail) should suggest existing tags as the user types, so the personal vocabulary converges instead of fragmenting into near-duplicates. Trade-tag inputs suggest from dash.tags (the canonical trademeta vocabulary); the Calendar day-rail input suggests from the union of journal tags. Prefix-match on the canonical form (cleanTag of the draft), keyboard-navigable, and picking a suggestion behaves exactly like typing it + Enter (same cleanTag path). Prefer a lightweight shared part (or the datalist element if it styles acceptably against the CSP/no-inline-style constraint) over a new dependency. Done when: typing in any tag input offers matching existing tags on all surfaces and selection round-trips through the canonical form.",
       "doneNote": null
     }
   ],

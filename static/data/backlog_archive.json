@@ -3263,6 +3263,72 @@
       "completedDate": "2026-07-01",
       "partial": false,
       "doneNote": "DONE (2026-07-01) — Analytics gained a 'Performance by tag' module (full-width card between By-symbol and Advanced statistics): one row per trade tag with count, win rate, |P&L|-scaled bar and net P&L, top 10 by |P&L|, plus the DISJOINT 'untagged' bucket rendered as a separated muted row (neutral chart-1 bar) — the coverage stat in actionable form, per the R17 decision. A footnote documents multi-tag counting. Empty state is a hint pointing at the Blotter/Trade Editor. The bucketing math is core tagBuckets(trades, tagsFor) (pure, node-tested in test-curveandreport.mjs: multi-tag counting, disjoint untagged, win tallies); buildAnalytics takes the trademeta lookup as an accessor from App.svelte so it stays pure, and respects the active filter set (built from metricsActive.trades). Also completed the A157 straggler in analytics.ts (core dowBuckets + DOW_LABEL adopted; local WD/loop deleted). e2e: the A159 staging spec now walks tag → filter → Analytics row + untagged bucket."
+    },
+    {
+      "id": "A135",
+      "title": "(staging) Support tabbed dashboards",
+      "category": "FEATURES",
+      "priority": "P3",
+      "effort": "large",
+      "status": "done",
+      "completedDate": "2026-07-01",
+      "partial": false,
+      "doneNote": "DONE (2026-07-01) — Staging-only tabbed dashboards: a tab bar above the Dashboard (new part src/app/parts/DashTabs.svelte) with create ('+ New tab', prompt-named), rename, move left/right, and delete (confirm; blocked for the last tab) via a per-tab dropdown menu. Each tab holds its own module layout: 'main' maps to the legacy bb:staging:dashModules key (existing layouts carry over) and other tabs persist under bb:staging:dashModules:<id>; the tab set + active tab persist under bb:staging:dashTabs — all via the Store.local seam, switching without reload (the Dashboard's prop-reseed effect swaps the module set). Prod/demo are untouched (bar never renders, keys unchanged; demo's in-memory local shim keeps demo non-persistent). e2e: create → independent hide → switch → reload persistence → delete falls back to Main."
+    },
+    {
+      "id": "A138",
+      "title": "(Discussion) Obsidian-style vault storage vs IndexedDB",
+      "category": "ARCHITECTURE / DUPLICATION",
+      "priority": "P2",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-07-01",
+      "partial": false,
+      "doneNote": "DONE (2026-07-01) — Written feasibility assessment delivered: docs/vault-storage-assessment.md. Verdict: a live user-folder vault is Chromium-desktop-only (File System Access API; Safari/Firefox/mobile can't), OPFS is origin-private (not a vault), and a Tauri/Capacitor shell would remove all limits later. Recommendation: keep IndexedDB as the working store everywhere and ship the vault progressively — Phase 1 legible multi-file vault export/import on all browsers (trades.csv, journal/*.md, trademeta.json, shots/*.png, meta.json; merges by content-hash id + updated-timestamp LWW through the importAll trust boundary), Phase 2 a linked Chromium-only vault (persisted directory handle, debounced write-behind from IndexedDB) surfaced via A132's toggle as Local / Vault / Remote(stub), Phase 3 shell-native if a shell ever ships. Moat unchanged (still zero egress); VaultStore fits the StoreLike seam 1:1 (Store.local stays sync/localStorage). A132 UNBLOCKED with its 'remote' slot redefined as Local/Vault/Remote."
+    },
+    {
+      "id": "A139",
+      "title": "(staging) 'Add module +' button on the main dashboard (module picker)",
+      "category": "FEATURES",
+      "priority": "P2",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-07-01",
+      "partial": false,
+      "doneNote": "DONE (2026-07-01) — Verified already shipped (the dashboard module system landed with an 'Add module' dashed button that opens a dropdown-menu of the hidden modules and persists the add via commitModules → Store.local; it renders whenever any module is hidden, on every surface — broader than the staging-only ask). Gap closed this pass: the staging e2e now locks the full round-trip (hide via the module menu → 'Add module' → pick → module returns → reload → persisted), so the picker can't silently regress."
+    },
+    {
+      "id": "A146",
+      "title": "Add animations / motion polish",
+      "category": "FEATURES",
+      "priority": "P3",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-07-01",
+      "partial": false,
+      "doneNote": "DONE (2026-07-01) — Motion first pass: route/screen changes fade in (keyed {#key active} wrapper), dashboard modules FLIP into place on reorder and fade on add/remove, the Calendar day rail flies in, and the Dashboard day drill-in slides open; the shadcn dialog/menu/popover/sheet enter/exit animations (tw-animate-css) were already in place. prefers-reduced-motion is honored on both sides: src/app/lib/motion.ts collapses Svelte transition durations to 0, and a global tailwind.css @media rule flattens the CSS animations. Svelte built-ins only (no new motion dependency); CSP-clean (no inline style=). Deliberately NOT animated while this beds in: list re-sorts in the tables, chart drawing."
+    },
+    {
+      "id": "A166",
+      "title": "Surface day (journal) tags beyond the Calendar day rail",
+      "category": "FEATURES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-07-01",
+      "partial": false,
+      "doneNote": "DONE (2026-07-01) — Day (context) tags are visible where days are scanned: the Calendar month grid carries them in each day cell's title tooltip ('Day tags: …', alongside the note dot), and the Dashboard calendar-module day drill-in shows them as read-only outline/muted chips beside the note editor (visually distinct from per-trade tags per the R17 two-scope model; title notes they're edited in Calendar). CalDay gained tags?; App threads them from the journal map via journalFor. No new persistence; demo read-only."
+    },
+    {
+      "id": "A167",
+      "title": "Tag-input autocomplete from the existing vocabulary",
+      "category": "FEATURES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "done",
+      "completedDate": "2026-07-01",
+      "partial": false,
+      "doneNote": "DONE (2026-07-01) — Every tag input autocompletes from the existing canonical vocabulary via a shared part (src/app/parts/TagInput.svelte): an Input + native <datalist>, dependency-free, keyboard-navigable, CSP-safe; suggestions prefix-match on the cleanTag form and picking one commits through the SAME onadd→cleanTag path as typing, so the round-trip stays canonical. Wired at all five entry points: Trade Editor row popover (fresh draft per open) + bulk tag, Blotter drawer + bulk tag (vocabulary = dash.tags), Calendar day rail (new dash.journalTags — the day-tag vocabulary kept separate per the two-scope model)."
     }
   ]
 }
