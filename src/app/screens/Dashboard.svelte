@@ -1,6 +1,21 @@
 <script lang="ts" module>
   export type DashStat = { label: string; value: string; badge?: string; up?: boolean; note: string; key?: string };
   export type DayCell = { pnl: number; tr: number };
+  // Live filter model for the dashboard Filters popover — current values + option lists + mutators
+  // (bound to the app's filter state on staging; a no-op mock in the /dev preview).
+  export type FilterPatch = Partial<{ root: string; side: string; session: string; from: string; to: string; dows: number[] }>;
+  export type FilterModel = {
+    root: string;
+    side: string;
+    session: string;
+    from: string;
+    to: string;
+    dows: number[];
+    roots: string[];
+    count: number;
+    set: (patch: FilterPatch) => void;
+    clear: () => void;
+  };
   // Per-card drill-in content (parity with app/demo's stat-card modal), built from metrics/cost.
   export type StatBar = { label: string; value: string; pct: number; tone: 'pos' | 'neg' | 'muted' };
   export type StatDetail = {
@@ -21,7 +36,13 @@
   import { SlidersHorizontal, Plus, GripVertical, MoreHorizontal } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
   import * as Card from '$lib/components/ui/card';
+  import * as Popover from '$lib/components/ui/popover';
+  import * as Select from '$lib/components/ui/select';
+  import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+  import { ChevronUp, ChevronDown, EyeOff } from '@lucide/svelte';
   import { X } from '@lucide/svelte';
   import * as Dialog from '$lib/components/ui/dialog';
   import { styleProps } from '../lib/actions.ts';
@@ -49,6 +70,19 @@
     { time: '10:12', sym: 'NQ', side: 'Short', qty: 1, pnl: -60 },
     { time: '11:48', sym: 'ES', side: 'Long', qty: 3, pnl: 240 },
   ];
+  // A no-op filter model for the /dev preview.
+  const MOCK_FILTERS: FilterModel = {
+    root: '',
+    side: '',
+    session: '',
+    from: '',
+    to: '',
+    dows: [],
+    roots: ['ES', 'NQ', 'CL', 'GC', 'MES'],
+    count: 1539,
+    set: () => {},
+    clear: () => {},
+  };
   // A representative KPI drill-in for the /dev preview.
   const MOCK_DETAIL = (key: string): StatDetail =>
     ({
@@ -94,13 +128,72 @@
     onsavenote?: (day: number, text: string) => void;
     /** Click-a-KPI-card drill-in: the metric's breakdown (parity with the app/demo stat-card modal). */
     statDetail?: (key: string) => StatDetail;
+    /** Live filter model for the Filters popover (bound to the app's filter state on staging). */
+    filterModel?: FilterModel;
+    /** Visible dashboard modules in order (persisted on staging); defaults to all shown. */
+    modules?: string[];
+    onmoduleschange?: (order: string[]) => void;
   }
   let {
     stats = MOCK_STATS, series = MOCK_SERIES, dateRange = '2024-07-01 → 2026-06-30',
     monthLabel = 'June 2026', monthNet = 4016.5, dayPnl = MOCK_PNL, firstDow = 1, daysInMonth = 30, onscope,
     dayTrades = () => MOCK_DAY_TRADES, getNote = () => '', onsavenote,
     statDetail = key => MOCK_DETAIL(key),
+    filterModel = MOCK_FILTERS,
+    modules, onmoduleschange,
   }: Props = $props();
+
+  // ── Module layout (hide / reorder / re-add — parity with app/demo, persisted on staging) ────────
+  const MODULES: { key: string; label: string }[] = [
+    { key: 'perf', label: 'Performance' },
+    { key: 'cal', label: 'Trading Calendar' },
+  ];
+  const validKeys = (ks?: string[]) => (ks ?? MODULES.map(m => m.key)).filter(k => MODULES.some(m => m.key === k));
+  // svelte-ignore state_referenced_locally — initial layout only; the app re-seeds via the prop below.
+  let modOrder = $state<string[]>(validKeys(modules));
+  // svelte-ignore state_referenced_locally
+  let lastModKey = modules ? modules.join(',') : '';
+  $effect(() => {
+    // Re-seed from the prop when the app supplies a persisted layout (e.g. on first load after boot).
+    const key = (modules ?? []).join(',');
+    if (key !== lastModKey) {
+      lastModKey = key;
+      modOrder = validKeys(modules);
+    }
+  });
+  const hiddenModules = $derived(MODULES.filter(m => !modOrder.includes(m.key)));
+  const moduleLabel = (key: string) => MODULES.find(m => m.key === key)?.label ?? key;
+  function commitModules(order: string[]) {
+    modOrder = order;
+    onmoduleschange?.(order);
+  }
+  function moveModule(key: string, dir: -1 | 1) {
+    const i = modOrder.indexOf(key),
+      j = i + dir;
+    if (i < 0 || j < 0 || j >= modOrder.length) return;
+    const next = [...modOrder];
+    [next[i], next[j]] = [next[j], next[i]];
+    commitModules(next);
+  }
+  const hideModule = (key: string) => commitModules(modOrder.filter(k => k !== key));
+  const addModule = (key: string) => commitModules([...modOrder, key]);
+
+  // ── Filters ──────────────────────────────────────────────────────────────────────────────────
+  const DOW_OPTS = [
+    { d: 1, label: 'Mon' },
+    { d: 2, label: 'Tue' },
+    { d: 3, label: 'Wed' },
+    { d: 4, label: 'Thu' },
+    { d: 5, label: 'Fri' },
+  ];
+  const filtersActive = $derived(
+    !!(filterModel.root || filterModel.side || filterModel.session || filterModel.from || filterModel.to || filterModel.dows.length)
+  );
+  const sideLabel = $derived(filterModel.side === 'long' ? 'Long' : filterModel.side === 'short' ? 'Short' : 'All sides');
+  const sessLabel = $derived(filterModel.session === 'rth' ? 'RTH' : filterModel.session === 'eth' ? 'ETH' : 'All sessions');
+  const rootLabel = $derived(filterModel.root || 'All symbols');
+  const toggleDow = (d: number) =>
+    filterModel.set({ dows: filterModel.dows.includes(d) ? filterModel.dows.filter(x => x !== d) : [...filterModel.dows, d] });
 
   // ── KPI card drill-in ────────────────────────────────────────────────────────────────────────
   let openStatKey = $state<string | null>(null);
@@ -147,22 +240,29 @@
     { key: 'net', label: 'Net', stroke: 'stroke-primary', fill: 'fill-primary', grad: 'perfNet' },
     { key: 'take', label: 'Take-home', stroke: 'stroke-chart-3', fill: 'fill-chart-3', grad: 'perfTake' },
   ];
-  let overlay = $state<SKey>('gross');
+  // Overlays are MULTI-select (parity with app/demo): any combination of the series can be drawn at
+  // once, keeping at least one on. Gross is on by default.
+  let enabled = $state<Record<SKey, boolean>>({ gross: true, net: false, take: false });
+  const enabledList = $derived(SERIES.filter(s => enabled[s.key])); // SERIES order; ≥1 (see toggle)
+  function toggleSeries(key: SKey) {
+    const on = SERIES.filter(s => enabled[s.key]);
+    if (enabled[key] && on.length === 1) return; // keep at least one series visible
+    enabled = { ...enabled, [key]: !enabled[key] };
+  }
   let cursor = $state<number | null>(null);
   let cw = $state(0); // measured plot width (px) → viewBox width, so labels/dots aren't stretched
   const VH = 256;
   const PAD = { l: 48, r: 72, t: 12, b: 22 };
   const W = $derived(Math.max(560, cw || 900));
-  const ser = $derived(SERIES.find(s => s.key === overlay) ?? SERIES[0]);
 
   const view = $derived.by(() => {
     if (!series.length) return null;
-    const key = overlay;
+    const on = enabledList.length ? enabledList : [SERIES[0]];
     const pts: DailyPoint[] = [{ date: '', gross: 0, net: 0, take: 0 }, ...series];
     let lo = Infinity, hi = -Infinity;
-    for (const p of pts) {
-      if (p[key] < lo) lo = p[key];
-      if (p[key] > hi) hi = p[key];
+    for (const p of pts) for (const s of on) {
+      if (p[s.key] < lo) lo = p[s.key];
+      if (p[s.key] > hi) hi = p[s.key];
     }
     const ticks = niceTicks(lo, hi, 4);
     lo = Math.min(lo, ticks[0]);
@@ -170,9 +270,13 @@
     const span = hi - lo || 1;
     const x = (i: number) => PAD.l + (i / (pts.length - 1)) * (W - PAD.l - PAD.r);
     const y = (v: number) => PAD.t + (1 - (v - lo) / span) * (VH - PAD.t - PAD.b);
-    const d = linePath(pts.map(p => p[key]), x, y);
     const baseY = (VH - PAD.b).toFixed(1);
-    const area = `${d} L${x(pts.length - 1).toFixed(1)},${baseY} L${x(0).toFixed(1)},${baseY} Z`;
+    const xN = x(pts.length - 1).toFixed(1),
+      x0 = x(0).toFixed(1);
+    const lines = on.map(s => {
+      const d = linePath(pts.map(p => p[s.key]), x, y);
+      return { ...s, d, area: `${d} L${xN},${baseY} L${x0},${baseY} Z` };
+    });
     const yticks = ticks.map(v => ({ y: y(v), label: axMoney(v) }));
     const xticks: { x: number; label: string }[] = [];
     const seen = new Set<string>();
@@ -185,9 +289,18 @@
       }
     }
     const last = pts[pts.length - 1];
-    return { pts, x, y, len: pts.length, d, area, yticks, xticks, zeroY: lo <= 0 && hi >= 0 ? y(0) : null, endY: y(last[key]), endLabel: usdWhole(last[key]) };
+    // End-of-line value labels, nudged apart so overlapping series (gross/net/take end close) stay legible.
+    const ends = on
+      .map(s => ({ key: s.key, fill: s.fill, y: y(last[s.key]), label: usdWhole(last[s.key]) }))
+      .sort((a, b) => a.y - b.y);
+    for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 12) ends[i].y = ends[i - 1].y + 12;
+    return { pts, x, y, len: pts.length, lines, yticks, xticks, ends, zeroY: lo <= 0 && hi >= 0 ? y(0) : null };
   });
-  const tip = $derived(view && cursor != null && view.pts[cursor]?.date ? `${view.pts[cursor].date} · ${ser.label} ${usd(view.pts[cursor][overlay])}` : '');
+  const tip = $derived(
+    view && cursor != null && view.pts[cursor]?.date
+      ? `${view.pts[cursor].date} · ${enabledList.map(s => `${s.label} ${usd(view.pts[cursor as number][s.key])}`).join(' · ')}`
+      : ''
+  );
 
   function idxFromX(e: PointerEvent) {
     const v = view;
@@ -205,13 +318,25 @@
   }
 </script>
 
-{#snippet moduleHeader(title: string)}
+{#snippet moduleHeader(key: string)}
   <div class="flex items-center gap-2 border-b border-border px-4 py-2.5">
-    <GripVertical class="size-4 cursor-grab text-muted-foreground" />
-    <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</span>
-    <button type="button" class="ml-auto grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Module menu">
-      <MoreHorizontal class="size-4" />
-    </button>
+    <GripVertical class="size-4 text-muted-foreground" />
+    <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{moduleLabel(key)}</span>
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger>
+        {#snippet child({ props })}
+          <button {...props} type="button" class="ml-auto grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Module menu">
+            <MoreHorizontal class="size-4" />
+          </button>
+        {/snippet}
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content align="end" class="min-w-[150px]">
+        <DropdownMenu.Item disabled={modOrder.indexOf(key) === 0} onSelect={() => moveModule(key, -1)}><ChevronUp class="size-4" /> Move up</DropdownMenu.Item>
+        <DropdownMenu.Item disabled={modOrder.indexOf(key) === modOrder.length - 1} onSelect={() => moveModule(key, 1)}><ChevronDown class="size-4" /> Move down</DropdownMenu.Item>
+        <DropdownMenu.Separator />
+        <DropdownMenu.Item onSelect={() => hideModule(key)}><EyeOff class="size-4" /> Hide module</DropdownMenu.Item>
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
   </div>
 {/snippet}
 
@@ -235,9 +360,91 @@
       {@render seg(scope === 'all', 'All time', () => setScope('all'))}
       {@render seg(scope === 'month', 'This month', () => setScope('month'))}
     </div>
-    <Button variant="outline" size="sm">
-      <SlidersHorizontal class="size-4" /> Filters
-    </Button>
+    <Popover.Root>
+      <Popover.Trigger>
+        {#snippet child({ props })}
+          <Button {...props} variant="outline" size="sm">
+            <SlidersHorizontal class="size-4" /> Filters
+            {#if filtersActive}<span class="ml-1 size-1.5 rounded-full bg-primary" title="Filters active"></span>{/if}
+          </Button>
+        {/snippet}
+      </Popover.Trigger>
+      <Popover.Content align="start" class="w-72 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Filters</span>
+          <span class="text-[11px] text-muted-foreground">{filterModel.count.toLocaleString()} trades</span>
+        </div>
+
+        <div class="grid gap-1.5">
+          <Label class="text-[11px]">Symbol</Label>
+          <Select.Root type="single" value={filterModel.root} onValueChange={v => filterModel.set({ root: v === '__all' ? '' : v })}>
+            <Select.Trigger class="h-8">{rootLabel}</Select.Trigger>
+            <Select.Content>
+              <Select.Item value="__all">All symbols</Select.Item>
+              {#each filterModel.roots as r (r)}<Select.Item value={r}>{r}</Select.Item>{/each}
+            </Select.Content>
+          </Select.Root>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div class="grid gap-1.5">
+            <Label class="text-[11px]">Side</Label>
+            <Select.Root type="single" value={filterModel.side || '__all'} onValueChange={v => filterModel.set({ side: v === '__all' ? '' : v })}>
+              <Select.Trigger class="h-8">{sideLabel}</Select.Trigger>
+              <Select.Content>
+                <Select.Item value="__all">All sides</Select.Item>
+                <Select.Item value="long">Long</Select.Item>
+                <Select.Item value="short">Short</Select.Item>
+              </Select.Content>
+            </Select.Root>
+          </div>
+          <div class="grid gap-1.5">
+            <Label class="text-[11px]">Session</Label>
+            <Select.Root type="single" value={filterModel.session || '__all'} onValueChange={v => filterModel.set({ session: v === '__all' ? '' : v })}>
+              <Select.Trigger class="h-8">{sessLabel}</Select.Trigger>
+              <Select.Content>
+                <Select.Item value="__all">All sessions</Select.Item>
+                <Select.Item value="rth">RTH</Select.Item>
+                <Select.Item value="eth">ETH</Select.Item>
+              </Select.Content>
+            </Select.Root>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div class="grid gap-1.5">
+            <Label class="text-[11px]" for="f-from">From</Label>
+            <Input id="f-from" type="date" value={filterModel.from} class="h-8" onchange={e => filterModel.set({ from: e.currentTarget.value })} />
+          </div>
+          <div class="grid gap-1.5">
+            <Label class="text-[11px]" for="f-to">To</Label>
+            <Input id="f-to" type="date" value={filterModel.to} class="h-8" onchange={e => filterModel.set({ to: e.currentTarget.value })} />
+          </div>
+        </div>
+
+        <div class="grid gap-1.5">
+          <Label class="text-[11px]">Weekday</Label>
+          <div class="flex gap-1">
+            {#each DOW_OPTS as o (o.d)}
+              <button
+                type="button"
+                onclick={() => toggleDow(o.d)}
+                class={[
+                  'flex-1 rounded border px-1.5 py-1 text-[11px] transition-colors',
+                  filterModel.dows.includes(o.d) ? 'border-border bg-secondary text-foreground' : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground',
+                ]}
+              >
+                {o.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-1">
+          <Button variant="ghost" size="sm" class="h-7" disabled={!filtersActive} onclick={() => filterModel.clear()}>Clear all</Button>
+        </div>
+      </Popover.Content>
+    </Popover.Root>
     <span class="ml-auto text-xs text-muted-foreground">{dateRange}</span>
   </div>
 
@@ -269,13 +476,10 @@
     {/each}
   </div>
 
-  <!-- Performance module -->
-  <Card.Root>
-    {@render moduleHeader('Performance')}
-    <Card.Content>
+  {#snippet perfBody()}
       <div class="mb-3 flex w-fit items-center gap-0.5 rounded-md border border-border p-0.5">
         {#each SERIES as s (s.key)}
-          {@render seg(overlay === s.key, s.label, () => (overlay = s.key))}
+          {@render seg(enabled[s.key], s.label, () => toggleSeries(s.key))}
         {/each}
       </div>
       <div bind:clientWidth={cw}>
@@ -285,7 +489,7 @@
             viewBox="0 0 {W} {VH}"
             class="h-64 w-full touch-none outline-none"
             role="img"
-            aria-label="Cumulative {ser.label} P&L curve"
+            aria-label="Cumulative P&L curve"
             tabindex="0"
             onpointermove={moveCursor}
             onpointerleave={() => (cursor = null)}
@@ -306,12 +510,20 @@
             {#each view.xticks as t, i (i)}
               <text x={t.x} y={VH - 6} text-anchor="middle" class="fill-muted-foreground text-[10px] tabular-nums">{t.label}</text>
             {/each}
-            <path d={view.area} fill="url(#{ser.grad})" />
-            <path d={view.d} fill="none" class={ser.stroke} stroke-width="2" vector-effect="non-scaling-stroke" />
-            <text x={W - PAD.r + 5} y={view.endY + 3.5} text-anchor="start" class={['text-[11px] font-medium tabular-nums', ser.fill]}>{view.endLabel}</text>
+            {#each view.lines as ln (ln.key)}
+              <path d={ln.area} fill="url(#{ln.grad})" />
+            {/each}
+            {#each view.lines as ln (ln.key)}
+              <path d={ln.d} fill="none" class={ln.stroke} stroke-width="2" vector-effect="non-scaling-stroke" />
+            {/each}
+            {#each view.ends as e (e.key)}
+              <text x={W - PAD.r + 5} y={e.y + 3.5} text-anchor="start" class={['text-[11px] font-medium tabular-nums', e.fill]}>{e.label}</text>
+            {/each}
             {#if cursor != null}
               <line x1={view.x(cursor)} y1={PAD.t} x2={view.x(cursor)} y2={VH - PAD.b} class="stroke-muted-foreground" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" />
-              <circle cx={view.x(cursor)} cy={view.y(view.pts[cursor][overlay])} r="3.5" class={[ser.stroke, ser.fill]} vector-effect="non-scaling-stroke" />
+              {#each view.lines as ln (ln.key)}
+                <circle cx={view.x(cursor)} cy={view.y(view.pts[cursor][ln.key])} r="3.5" class={[ln.stroke, ln.fill]} vector-effect="non-scaling-stroke" />
+              {/each}
             {/if}
           </svg>
           <div class="mt-1 text-center text-xs tabular-nums text-muted-foreground" aria-live="polite">{tip || 'Hover or arrow-key the curve for daily cumulative P&L'}</div>
@@ -319,13 +531,9 @@
           <p class="grid h-64 place-items-center text-sm text-muted-foreground">No trades in the selected range.</p>
         {/if}
       </div>
-    </Card.Content>
-  </Card.Root>
+  {/snippet}
 
-  <!-- Trading calendar module -->
-  <Card.Root>
-    {@render moduleHeader('Trading Calendar')}
-    <Card.Content>
+  {#snippet calBody()}
       <div class="mb-3 flex items-center justify-between">
         <span class="text-sm font-medium text-foreground">{monthLabel}</span>
         <span class={['text-sm tabular-nums', monthNet >= 0 ? 'text-chart-2' : 'text-destructive']}>{money(monthNet)}</span>
@@ -409,16 +617,39 @@
           </div>
         </div>
       {/if}
-    </Card.Content>
-  </Card.Root>
+  {/snippet}
 
-  <!-- Add-module affordance -->
-  <button
-    type="button"
-    class="flex items-center justify-center gap-2 rounded-md border border-dashed border-border py-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-  >
-    <Plus class="size-4" /> Add module
-  </button>
+  <!-- Modules — reorderable / hideable / re-addable (persisted on staging). -->
+  {#each modOrder as key (key)}
+    <Card.Root>
+      {@render moduleHeader(key)}
+      <Card.Content>
+        {#if key === 'perf'}{@render perfBody()}{:else if key === 'cal'}{@render calBody()}{/if}
+      </Card.Content>
+    </Card.Root>
+  {/each}
+
+  <!-- Add-module affordance — offers the hidden modules. -->
+  {#if hiddenModules.length}
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger>
+        {#snippet child({ props })}
+          <button
+            {...props}
+            type="button"
+            class="flex items-center justify-center gap-2 rounded-md border border-dashed border-border py-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <Plus class="size-4" /> Add module
+          </button>
+        {/snippet}
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content align="start" class="min-w-[180px]">
+        {#each hiddenModules as m (m.key)}
+          <DropdownMenu.Item onSelect={() => addModule(m.key)}><Plus class="size-4" /> {m.label}</DropdownMenu.Item>
+        {/each}
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
+  {/if}
 </div>
 
 <!-- KPI card drill-in dialog -->
