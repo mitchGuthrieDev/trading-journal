@@ -84,13 +84,11 @@
           <span
             class="ver font-mono text-xs font-semibold rounded-[5px] border px-2 py-0.5 {r.beta
               ? 'text-muted-foreground bg-card border-border'
-              : 'text-primary bg-primary/12 border-primary/28'}"
-            >v{r.version}</span
+              : 'text-primary bg-primary/12 border-primary/28'}">v{r.version}</span
           >
           <span class="font-mono text-[12.5px] text-muted-foreground">{fmtDate(r.date)}</span>
           {#if i === 0}<span
-              class="font-mono text-[10.5px] uppercase tracking-[0.08em] text-chart-2 bg-chart-2/12 rounded-[5px] px-2 py-0.5"
-              >Latest</span
+              class="font-mono text-[10.5px] uppercase tracking-[0.08em] text-chart-2 bg-chart-2/12 rounded-[5px] px-2 py-0.5">Latest</span
             >{/if}
         </div>
         <h3 class="text-[16.5px] m-0 font-semibold tracking-[-0.01em] leading-[1.4]">{r.title}</h3>

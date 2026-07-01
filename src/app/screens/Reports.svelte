@@ -31,14 +31,7 @@
     build: (range: ReportRange, compare: boolean) => ReportVM;
     onexport?: (kind: ExportKind, vm: ReportVM, meta: { title: string; account: string }) => void;
   }
-  let {
-    defaultTitle = '',
-    defaultAccount = '',
-    calYear,
-    calMonth,
-    build,
-    onexport,
-  }: Props = $props();
+  let { defaultTitle = '', defaultAccount = '', calYear, calMonth, build, onexport }: Props = $props();
 
   let template = $state<Tmpl>('full');
   // svelte-ignore state_referenced_locally — seed the editable fields from the prop defaults once.
@@ -108,7 +101,10 @@
     return { line, area: `${line} L${w} ${h} L0 ${h} Z` };
   }
   const cp = $derived(curvePaths(vm.curve));
-  const calCells = $derived<(number | null)[]>([...Array.from({ length: vm.calFirstDow }, () => null), ...Array.from({ length: vm.calDaysInMonth }, (_, i) => i + 1)]);
+  const calCells = $derived<(number | null)[]>([
+    ...Array.from({ length: vm.calFirstDow }, () => null),
+    ...Array.from({ length: vm.calDaysInMonth }, (_, i) => i + 1),
+  ]);
   const fire = (kind: ExportKind) => onexport?.(kind, vm, { title, account });
 </script>
 
@@ -144,7 +140,9 @@
                 onclick={() => selectTemplate(t.key)}
                 class={cn(
                   'flex items-center gap-2 rounded-md border px-2.5 py-2 text-xs transition-colors',
-                  template === t.key ? 'border-border bg-secondary text-foreground' : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+                  template === t.key
+                    ? 'border-border bg-secondary text-foreground'
+                    : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
                 )}
               >
                 <Icon class="size-4 shrink-0" /> <span class="truncate">{t.label}</span>
@@ -164,7 +162,14 @@
           <Label class="mb-1.5">Date range</Label>
           <div class="mb-2 flex items-center gap-0.5 rounded-md border border-border p-0.5">
             {#each [['all', 'All time'], ['month', 'Month'], ['custom', 'Custom']] as const as [k, lbl] (k)}
-              <button type="button" onclick={() => pickScope(k)} class={cn('flex-1 rounded px-2 py-1 text-xs transition-colors', scope === k ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}>{lbl}</button>
+              <button
+                type="button"
+                onclick={() => pickScope(k)}
+                class={cn(
+                  'flex-1 rounded px-2 py-1 text-xs transition-colors',
+                  scope === k ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
+                )}>{lbl}</button
+              >
             {/each}
           </div>
           {#if scope === 'custom'}
@@ -201,7 +206,9 @@
               <p class="mt-1 text-sm text-muted-foreground">{account} · {vm.rangeLabel}</p>
             </div>
             <div class="flex items-center gap-2 text-right">
-              <span class="grid size-9 place-items-center rounded-full border border-border"><span class="size-3.5 rounded-full bg-foreground"></span></span>
+              <span class="grid size-9 place-items-center rounded-full border border-border"
+                ><span class="size-3.5 rounded-full bg-foreground"></span></span
+              >
               <span class="text-sm font-semibold">Blotterbook</span>
             </div>
           </div>
@@ -212,7 +219,14 @@
               {#each vm.kpis as k (k.label)}
                 <div class="rounded-md border border-border bg-background p-3">
                   <div class="text-[11px] text-muted-foreground">{k.label}</div>
-                  <div class={cn('mt-0.5 text-lg font-semibold tabular-nums', k.tone === 'pos' ? 'text-chart-2' : k.tone === 'neg' ? 'text-destructive' : 'text-foreground')}>{k.value}</div>
+                  <div
+                    class={cn(
+                      'mt-0.5 text-lg font-semibold tabular-nums',
+                      k.tone === 'pos' ? 'text-chart-2' : k.tone === 'neg' ? 'text-destructive' : 'text-foreground'
+                    )}
+                  >
+                    {k.value}
+                  </div>
                   {#if compare && k.prior}<div class="text-[10px] text-muted-foreground">vs {k.prior}</div>{/if}
                 </div>
               {/each}
@@ -222,7 +236,14 @@
           {#if sections.curve}
             {@render sectionTitle('Equity curve')}
             <svg viewBox="0 0 1000 240" class="h-44 w-full" preserveAspectRatio="none" role="img" aria-label="Cumulative P&L">
-              <defs><linearGradient id="repFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" class="[stop-color:var(--chart-2)] [stop-opacity:0.25]" /><stop offset="100%" class="[stop-color:var(--chart-2)] [stop-opacity:0]" /></linearGradient></defs>
+              <defs
+                ><linearGradient id="repFill" x1="0" y1="0" x2="0" y2="1"
+                  ><stop offset="0%" class="[stop-color:var(--chart-2)] [stop-opacity:0.25]" /><stop
+                    offset="100%"
+                    class="[stop-color:var(--chart-2)] [stop-opacity:0]"
+                  /></linearGradient
+                ></defs
+              >
               {#each [48, 96, 144, 192] as y (y)}<line x1="0" y1={y} x2="1000" y2={y} class="stroke-border" stroke-width="1" />{/each}
               <path d={cp.area} fill="url(#repFill)" />
               <path d={cp.line} fill="none" class="stroke-chart-2" stroke-width="2" />
@@ -232,15 +253,28 @@
           {#if sections.calendar}
             {@render sectionTitle(`Trading calendar — ${vm.calMonthLabel}`)}
             <div class="grid grid-cols-7 gap-1">
-              {#each ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as d, i (i)}<div class="pb-0.5 text-center text-[9px] text-muted-foreground">{d}</div>{/each}
+              {#each ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as d, i (i)}<div class="pb-0.5 text-center text-[9px] text-muted-foreground">
+                  {d}
+                </div>{/each}
               {#each calCells as day, i (i)}
                 {#if day === null}
                   <div></div>
                 {:else}
                   {@const p = vm.calPnl[day]}
-                  <div class={cn('flex h-9 flex-col rounded-sm border p-1 text-[9px]', p === undefined ? 'border-border text-muted-foreground' : p >= 0 ? 'border-chart-2/30 bg-chart-2/10 text-chart-2' : 'border-destructive/30 bg-destructive/10 text-destructive')}>
+                  <div
+                    class={cn(
+                      'flex h-9 flex-col rounded-sm border p-1 text-[9px]',
+                      p === undefined
+                        ? 'border-border text-muted-foreground'
+                        : p >= 0
+                          ? 'border-chart-2/30 bg-chart-2/10 text-chart-2'
+                          : 'border-destructive/30 bg-destructive/10 text-destructive'
+                    )}
+                  >
                     <span class="text-muted-foreground">{day}</span>
-                    {#if p !== undefined}<span class="mt-auto text-right font-medium tabular-nums">{p >= 0 ? '+' : '-'}{Math.abs(Math.round(p))}</span>{/if}
+                    {#if p !== undefined}<span class="mt-auto text-right font-medium tabular-nums"
+                        >{p >= 0 ? '+' : '-'}{Math.abs(Math.round(p))}</span
+                      >{/if}
                   </div>
                 {/if}
               {/each}
@@ -251,7 +285,13 @@
             {@render sectionTitle('Cost breakdown')}
             <div class="overflow-hidden rounded-md border border-border">
               {#each vm.costRows as [label, amt, total], i (label)}
-                <div class={cn('flex items-center justify-between px-3 py-2 text-sm', i > 0 && 'border-t border-border', total && 'bg-secondary font-semibold')}>
+                <div
+                  class={cn(
+                    'flex items-center justify-between px-3 py-2 text-sm',
+                    i > 0 && 'border-t border-border',
+                    total && 'bg-secondary font-semibold'
+                  )}
+                >
                   <span class={total ? 'text-foreground' : 'text-muted-foreground'}>{label}</span>
                   <span class={cn('tabular-nums', amt.startsWith('-') ? 'text-destructive' : 'text-foreground')}>{amt}</span>
                 </div>
@@ -263,13 +303,23 @@
             {@render sectionTitle('Tax — Section 1256 (60/40)')}
             <div class="overflow-hidden rounded-md border border-border">
               {#each vm.taxRows as [label, amt, total], i (label)}
-                <div class={cn('flex items-center justify-between px-3 py-2 text-sm', i > 0 && 'border-t border-border', total && 'bg-secondary font-semibold')}>
+                <div
+                  class={cn(
+                    'flex items-center justify-between px-3 py-2 text-sm',
+                    i > 0 && 'border-t border-border',
+                    total && 'bg-secondary font-semibold'
+                  )}
+                >
                   <span class={total ? 'text-foreground' : 'text-muted-foreground'}>{label}</span>
-                  <span class={cn('tabular-nums', total ? 'text-chart-2' : amt.startsWith('-') ? 'text-destructive' : 'text-foreground')}>{amt}</span>
+                  <span class={cn('tabular-nums', total ? 'text-chart-2' : amt.startsWith('-') ? 'text-destructive' : 'text-foreground')}
+                    >{amt}</span
+                  >
                 </div>
               {/each}
             </div>
-            <p class="mt-1.5 text-[11px] text-muted-foreground">Estimate only — not tax advice. Section 1256 contracts are marked-to-market with 60% long-term / 40% short-term treatment.</p>
+            <p class="mt-1.5 text-[11px] text-muted-foreground">
+              Estimate only — not tax advice. Section 1256 contracts are marked-to-market with 60% long-term / 40% short-term treatment.
+            </p>
           {/if}
 
           {#if sections.advanced}

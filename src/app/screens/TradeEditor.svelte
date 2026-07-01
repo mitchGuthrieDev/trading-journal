@@ -171,7 +171,25 @@
   }
   function addTrade() {
     const id = `t-new-${nextId++}`;
-    draft = [...draft, { id, date: '2026-06-30', time: '00:00', symbol: '', side: 'Long', qty: 1, entry: 0, exit: 0, pnl: 0, fees: 0, tags: [], note: '', shots: [], isNew: true }];
+    draft = [
+      ...draft,
+      {
+        id,
+        date: '2026-06-30',
+        time: '00:00',
+        symbol: '',
+        side: 'Long',
+        qty: 1,
+        entry: 0,
+        exit: 0,
+        pnl: 0,
+        fees: 0,
+        tags: [],
+        note: '',
+        shots: [],
+        isNew: true,
+      },
+    ];
     startEdit(id, 'symbol');
   }
   function toggleRow(id: string, v: boolean) {
@@ -218,7 +236,11 @@
       class={cn('h-7 w-full rounded border border-ring bg-background px-1.5 text-sm outline-none', align)}
     />
   {:else if canEdit(field)}
-    <button type="button" onclick={() => startEdit(row.id, field)} class={cn('block w-full rounded px-1.5 py-1 text-sm hover:bg-accent', align)}>
+    <button
+      type="button"
+      onclick={() => startEdit(row.id, field)}
+      class={cn('block w-full rounded px-1.5 py-1 text-sm hover:bg-accent', align)}
+    >
       {value || '—'}
     </button>
   {:else}
@@ -238,7 +260,11 @@
       class="h-7 w-full rounded border border-ring bg-background px-1.5 text-right text-sm outline-none"
     />
   {:else if canEdit(field)}
-    <button type="button" onclick={() => startEdit(row.id, field)} class={cn('block w-full rounded px-1.5 py-1 text-right text-sm tabular-nums hover:bg-accent', extra)}>
+    <button
+      type="button"
+      onclick={() => startEdit(row.id, field)}
+      class={cn('block w-full rounded px-1.5 py-1 text-right text-sm tabular-nums hover:bg-accent', extra)}
+    >
       {numText(value)}
     </button>
   {:else}
@@ -253,11 +279,19 @@
       <Button size="sm" onclick={addTrade}><Plus class="size-4" /> Add trade</Button>
       <span class="text-xs text-muted-foreground">Click any cell to edit. Changes are staged until you save.</span>
     {:else if anyCoreEditable}
-      <span class="text-xs text-muted-foreground">Click a cell to edit <span class="text-foreground">date/time/symbol/side/qty/P&amp;L</span>, tags or notes. Entry/exit aren't stored. Changes are staged until you save.</span>
+      <span class="text-xs text-muted-foreground"
+        >Click a cell to edit <span class="text-foreground">date/time/symbol/side/qty/P&amp;L</span>, tags or notes. Entry/exit aren't
+        stored. Changes are staged until you save.</span
+      >
     {:else}
-      <span class="text-xs text-muted-foreground">Imported trades are fixed — edit <span class="text-foreground">tags</span> and <span class="text-foreground">notes</span>, or delete rows. Changes are staged until you save.</span>
+      <span class="text-xs text-muted-foreground"
+        >Imported trades are fixed — edit <span class="text-foreground">tags</span> and <span class="text-foreground">notes</span>, or
+        delete rows. Changes are staged until you save.</span
+      >
     {/if}
-    <span class={cn('ml-auto text-sm font-semibold tabular-nums', netPnl >= 0 ? 'text-chart-2' : 'text-destructive')}>Net {usdWhole(netPnl)}</span>
+    <span class={cn('ml-auto text-sm font-semibold tabular-nums', netPnl >= 0 ? 'text-chart-2' : 'text-destructive')}
+      >Net {usdWhole(netPnl)}</span
+    >
   </div>
 
   <!-- Bulk bar -->
@@ -278,7 +312,9 @@
           </div>
         </Popover.Content>
       </Popover.Root>
-      <Button variant="outline" size="sm" class="h-7 text-destructive" disabled={dataDisabled} onclick={() => askDelete([...selected])}><Trash2 class="size-3.5" /> Delete</Button>
+      <Button variant="outline" size="sm" class="h-7 text-destructive" disabled={dataDisabled} onclick={() => askDelete([...selected])}
+        ><Trash2 class="size-3.5" /> Delete</Button
+      >
       <Button variant="ghost" size="sm" class="ml-auto h-7" onclick={() => (selected = new Set())}>Clear</Button>
     </div>
   {/if}
@@ -288,7 +324,14 @@
       <Table.Root>
         <Table.Header>
           <Table.Row class="hover:bg-transparent">
-            <Table.Head class="w-9 pl-3"><Checkbox checked={allSelected} indeterminate={someSelected} onCheckedChange={toggleAll} aria-label="Select all" /></Table.Head>
+            <Table.Head class="w-9 pl-3"
+              ><Checkbox
+                checked={allSelected}
+                indeterminate={someSelected}
+                onCheckedChange={toggleAll}
+                aria-label="Select all"
+              /></Table.Head
+            >
             <Table.Head>Date</Table.Head>
             <Table.Head>Time</Table.Head>
             <Table.Head>Symbol</Table.Head>
@@ -320,22 +363,41 @@
               <Table.Cell class="p-1">
                 {#if canEdit('side')}
                   <button type="button" onclick={() => toggleSide(row.id)} title="Toggle side">
-                    <Badge variant="outline" class={row.side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}>{row.side}</Badge>
+                    <Badge
+                      variant="outline"
+                      class={row.side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}
+                      >{row.side}</Badge
+                    >
                   </button>
                 {:else}
-                  <Badge variant="outline" class={row.side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}>{row.side}</Badge>
+                  <Badge
+                    variant="outline"
+                    class={row.side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}
+                    >{row.side}</Badge
+                  >
                 {/if}
               </Table.Cell>
               <Table.Cell class="p-1">{@render numCell(row, 'qty', row.qty, '')}</Table.Cell>
               <Table.Cell class="p-1 text-muted-foreground">{@render numCell(row, 'entry', row.entry, 'text-muted-foreground')}</Table.Cell>
               <Table.Cell class="p-1 text-muted-foreground">{@render numCell(row, 'exit', row.exit, 'text-muted-foreground')}</Table.Cell>
-              <Table.Cell class="p-1">{@render numCell(row, 'pnl', row.pnl, row.pnl >= 0 ? 'font-semibold text-chart-2' : 'font-semibold text-destructive')}</Table.Cell>
+              <Table.Cell class="p-1"
+                >{@render numCell(
+                  row,
+                  'pnl',
+                  row.pnl,
+                  row.pnl >= 0 ? 'font-semibold text-chart-2' : 'font-semibold text-destructive'
+                )}</Table.Cell
+              >
               <Table.Cell class="p-1 text-muted-foreground">{@render numCell(row, 'fees', row.fees, 'text-muted-foreground')}</Table.Cell>
               <Table.Cell class="p-1">
                 <Popover.Root>
                   <Popover.Trigger>
                     {#snippet child({ props })}
-                      <button {...props} type="button" class="flex min-h-7 flex-wrap items-center gap-1 rounded px-1.5 py-1 hover:bg-accent">
+                      <button
+                        {...props}
+                        type="button"
+                        class="flex min-h-7 flex-wrap items-center gap-1 rounded px-1.5 py-1 hover:bg-accent"
+                      >
                         {#each row.tags as tag (tag)}<Badge variant="secondary" class="px-1.5 py-0">{tag}</Badge>{/each}
                         {#if !row.tags.length}<span class="text-xs text-muted-foreground">+ tag</span>{/if}
                       </button>
@@ -344,11 +406,27 @@
                   <Popover.Content class="w-56" align="start">
                     <div class="mb-2 flex flex-wrap gap-1">
                       {#each row.tags as tag (tag)}
-                        <Badge variant="secondary" class="gap-1">{tag}<button type="button" class="text-muted-foreground hover:text-foreground" onclick={() => removeTag(row.id, tag)} aria-label="Remove tag">×</button></Badge>
+                        <Badge variant="secondary" class="gap-1"
+                          >{tag}<button
+                            type="button"
+                            class="text-muted-foreground hover:text-foreground"
+                            onclick={() => removeTag(row.id, tag)}
+                            aria-label="Remove tag">×</button
+                          ></Badge
+                        >
                       {/each}
                       {#if !row.tags.length}<span class="text-xs text-muted-foreground">No tags</span>{/if}
                     </div>
-                    <Input placeholder="Add tag, Enter…" class="h-8" onkeydown={e => { if (e.key === 'Enter') { addTag(row.id, e.currentTarget.value); e.currentTarget.value = ''; } }} />
+                    <Input
+                      placeholder="Add tag, Enter…"
+                      class="h-8"
+                      onkeydown={e => {
+                        if (e.key === 'Enter') {
+                          addTag(row.id, e.currentTarget.value);
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
                   </Popover.Content>
                 </Popover.Root>
               </Table.Cell>
@@ -356,13 +434,23 @@
                 <Popover.Root>
                   <Popover.Trigger>
                     {#snippet child({ props })}
-                      <button {...props} type="button" class="grid size-7 place-items-center rounded hover:bg-accent" title={row.note || 'Add note'}>
+                      <button
+                        {...props}
+                        type="button"
+                        class="grid size-7 place-items-center rounded hover:bg-accent"
+                        title={row.note || 'Add note'}
+                      >
                         <StickyNote class={cn('size-4', row.note ? 'text-primary' : 'text-muted-foreground')} />
                       </button>
                     {/snippet}
                   </Popover.Trigger>
                   <Popover.Content class="w-64" align="start">
-                    <Textarea value={row.note} oninput={e => setNote(row.id, e.currentTarget.value)} placeholder="Journal note…" class="h-24" />
+                    <Textarea
+                      value={row.note}
+                      oninput={e => setNote(row.id, e.currentTarget.value)}
+                      placeholder="Journal note…"
+                      class="h-24"
+                    />
                   </Popover.Content>
                 </Popover.Root>
               </Table.Cell>
@@ -370,7 +458,12 @@
                 <Popover.Root>
                   <Popover.Trigger>
                     {#snippet child({ props })}
-                      <button {...props} type="button" class="flex min-h-7 items-center gap-1 rounded px-1.5 py-1 hover:bg-accent" title={row.shots.length ? `${row.shots.length} screenshot${row.shots.length === 1 ? '' : 's'}` : 'Add screenshot'}>
+                      <button
+                        {...props}
+                        type="button"
+                        class="flex min-h-7 items-center gap-1 rounded px-1.5 py-1 hover:bg-accent"
+                        title={row.shots.length ? `${row.shots.length} screenshot${row.shots.length === 1 ? '' : 's'}` : 'Add screenshot'}
+                      >
                         <Image class={cn('size-4', row.shots.length ? 'text-primary' : 'text-muted-foreground')} />
                         {#if row.shots.length}<span class="text-xs tabular-nums text-muted-foreground">{row.shots.length}</span>{/if}
                       </button>
@@ -384,12 +477,19 @@
                           <button type="button" class="block" onclick={() => (zoomShot = shot)} aria-label="Enlarge screenshot {i + 1}">
                             <img src={shot} alt="screenshot {i + 1}" class="block h-12 rounded-md border border-border" />
                           </button>
-                          <button type="button" class="absolute -right-1.5 -top-1.5 grid size-[18px] place-items-center rounded-full bg-destructive text-white" aria-label="Remove screenshot" onclick={() => removeShot(row.id, i)}><X class="size-3" /></button>
+                          <button
+                            type="button"
+                            class="absolute -right-1.5 -top-1.5 grid size-[18px] place-items-center rounded-full bg-destructive text-white"
+                            aria-label="Remove screenshot"
+                            onclick={() => removeShot(row.id, i)}><X class="size-3" /></button
+                          >
                         </span>
                       {/each}
                       {#if !row.shots.length}<span class="text-xs text-muted-foreground">No screenshots</span>{/if}
                     </div>
-                    <label class="mt-2 flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-border bg-secondary px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">
+                    <label
+                      class="mt-2 flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-border bg-secondary px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
                       <ImagePlus class="size-4" /> Add screenshot
                       <input type="file" accept="image/*" class="hidden" onchange={e => addShot(row.id, e)} />
                     </label>
@@ -397,7 +497,13 @@
                 </Popover.Root>
               </Table.Cell>
               <Table.Cell class="p-1">
-                <button type="button" class="grid size-7 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-destructive disabled:pointer-events-none disabled:opacity-40" aria-label="Delete trade" disabled={dataDisabled} onclick={() => askDelete([row.id])}>
+                <button
+                  type="button"
+                  class="grid size-7 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-destructive disabled:pointer-events-none disabled:opacity-40"
+                  aria-label="Delete trade"
+                  disabled={dataDisabled}
+                  onclick={() => askDelete([row.id])}
+                >
                   <Trash2 class="size-4" />
                 </button>
               </Table.Cell>
@@ -411,13 +517,28 @@
           <div class="ml-auto flex items-center gap-1.5">
             <span class="mr-1">Rows:</span>
             {#each PAGE_SIZES as sz (sz)}
-              <button type="button" onclick={() => (pageSize = sz)} class={['rounded px-1.5 py-0.5 transition-colors', pageSize === sz ? 'bg-secondary text-foreground' : 'hover:text-foreground']}>
+              <button
+                type="button"
+                onclick={() => (pageSize = sz)}
+                class={[
+                  'rounded px-1.5 py-0.5 transition-colors',
+                  pageSize === sz ? 'bg-secondary text-foreground' : 'hover:text-foreground',
+                ]}
+              >
                 {sz === Infinity ? 'All' : sz}
               </button>
             {/each}
-            <Button variant="outline" size="sm" class="ml-1 h-7" disabled={page === 0} onclick={() => (page = Math.max(0, page - 1))}>Prev</Button>
+            <Button variant="outline" size="sm" class="ml-1 h-7" disabled={page === 0} onclick={() => (page = Math.max(0, page - 1))}
+              >Prev</Button
+            >
             <span class="tabular-nums">{page + 1}/{totalPages}</span>
-            <Button variant="outline" size="sm" class="h-7" disabled={page >= totalPages - 1} onclick={() => (page = Math.min(totalPages - 1, page + 1))}>Next</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              class="h-7"
+              disabled={page >= totalPages - 1}
+              onclick={() => (page = Math.min(totalPages - 1, page + 1))}>Next</Button
+            >
           </div>
         </div>
       {/if}
@@ -427,7 +548,9 @@
   <!-- Sticky save bar -->
   {#if dirtyCount > 0}
     <div class="sticky bottom-0 flex items-center justify-between rounded-md border border-primary/40 bg-card px-4 py-2.5 shadow-lg">
-      <span class="flex items-center gap-2 text-sm"><Pencil class="size-4 text-primary" /> {dirtyCount} unsaved {dirtyCount === 1 ? 'change' : 'changes'}</span>
+      <span class="flex items-center gap-2 text-sm"
+        ><Pencil class="size-4 text-primary" /> {dirtyCount} unsaved {dirtyCount === 1 ? 'change' : 'changes'}</span
+      >
       <div class="flex gap-2">
         <Button variant="ghost" size="sm" onclick={revert} disabled={saving}>Revert</Button>
         <Button size="sm" onclick={saveAll} disabled={saving || dataDisabled}>{saving ? 'Saving…' : 'Save all'}</Button>
@@ -441,7 +564,9 @@
   <AlertDialog.Content>
     <AlertDialog.Header>
       <AlertDialog.Title>Delete {pendingDelete.length} {pendingDelete.length === 1 ? 'trade' : 'trades'}?</AlertDialog.Title>
-      <AlertDialog.Description>This removes the selected {pendingDelete.length === 1 ? 'trade' : 'trades'} from your data. This can't be undone.</AlertDialog.Description>
+      <AlertDialog.Description
+        >This removes the selected {pendingDelete.length === 1 ? 'trade' : 'trades'} from your data. This can't be undone.</AlertDialog.Description
+      >
     </AlertDialog.Header>
     <AlertDialog.Footer>
       <AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
@@ -451,7 +576,12 @@
 </AlertDialog.Root>
 
 <!-- Screenshot lightbox -->
-<Dialog.Root open={zoomOpen} onOpenChange={o => { if (!o) zoomShot = null; }}>
+<Dialog.Root
+  open={zoomOpen}
+  onOpenChange={o => {
+    if (!o) zoomShot = null;
+  }}
+>
   <Dialog.Content class="max-w-3xl p-2">
     {#if zoomShot}
       <img src={zoomShot} alt="Enlarged screenshot" class="mx-auto max-h-[80vh] w-auto rounded-md" />

@@ -21,16 +21,12 @@
   ];
 </script>
 
-<header
-  class="sticky top-0 z-50 border-b border-border bg-background/86 backdrop-blur-[10px] backdrop-saturate-150"
->
+<header class="sticky top-0 z-50 border-b border-border bg-background/86 backdrop-blur-[10px] backdrop-saturate-150">
   <nav class="nav relative mx-auto flex max-w-[1080px] items-center px-[22px] py-[13px]">
     <a
       class="wordmark inline-flex items-center gap-[9px] text-[16px] font-bold text-foreground no-underline hover:no-underline"
       href="index.html"
-      ><span
-        class="dot h-[9px] w-[9px] rounded-[2px] bg-[linear-gradient(135deg,var(--primary),var(--chart-3))]"
-      ></span>Blotterbook</a
+      ><span class="dot h-[9px] w-[9px] rounded-[2px] bg-[linear-gradient(135deg,var(--primary),var(--chart-3))]"></span>Blotterbook</a
     >
     <input
       type="checkbox"
@@ -56,8 +52,7 @@
     <label
       class="hamburger ml-auto h-9 w-10 cursor-pointer items-center justify-center rounded-[9px] border border-border bg-card"
       for="navtoggle"
-      title="Menu"
-      ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></label
+      title="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></label
     >
   </nav>
 </header>

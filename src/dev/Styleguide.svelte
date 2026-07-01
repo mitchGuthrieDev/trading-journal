@@ -106,9 +106,8 @@
   {/snippet}
 
   <p class="max-w-2xl text-sm text-muted-foreground">
-    Greyscale UI · Geist Mono · 4px corners. Every design token and installed shadcn-svelte primitive,
-    rendered with all variants and sizes. Add a section here whenever you install a new component so this
-    reference stays live.
+    Greyscale UI · Geist Mono · 4px corners. Every design token and installed shadcn-svelte primitive, rendered with all variants and sizes.
+    Add a section here whenever you install a new component so this reference stays live.
   </p>
 
   <!-- ── Stat cards ────────────────────────────────────────────────────────────────────────── -->
@@ -144,7 +143,10 @@
     {/each}
   </div>
 
-  {@render section('Chart / trading hues', 'The only color kept — chart-2 = positive P&L, chart-5/destructive = negative, chart-4 = warning.')}
+  {@render section(
+    'Chart / trading hues',
+    'The only color kept — chart-2 = positive P&L, chart-5/destructive = negative, chart-4 = warning.'
+  )}
   <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
     {#each chartTokens as t (t.name)}
       <div class="overflow-hidden rounded-md border border-border">

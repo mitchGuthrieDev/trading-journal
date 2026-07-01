@@ -37,8 +37,18 @@
   // trades, and per-file-only actions (rename/re-import/download/include) are hidden (perFileActions=
   // false). Delete clears the dataset. shadcn-svelte primitives; color in P&L.
   import {
-    Upload, FileText, MoreHorizontal, Download, Pencil, Trash2, RefreshCw, ExternalLink,
-    TriangleAlert, CircleCheck, CircleX, CloudUpload,
+    Upload,
+    FileText,
+    MoreHorizontal,
+    Download,
+    Pencil,
+    Trash2,
+    RefreshCw,
+    ExternalLink,
+    TriangleAlert,
+    CircleCheck,
+    CircleX,
+    CloudUpload,
   } from '@lucide/svelte';
   import { cn } from '$lib/utils';
   import { usd } from '../../lib/core/core.ts';
@@ -103,7 +113,14 @@
     }
   });
 
-  const mapping: [string, string][] = [['Date/Time', 'time'], ['Symbol', 'root'], ['Side', 'side'], ['Qty', 'qty'], ['Realized P&L', 'pnl'], ['Commission', 'fees']];
+  const mapping: [string, string][] = [
+    ['Date/Time', 'time'],
+    ['Symbol', 'root'],
+    ['Side', 'side'],
+    ['Qty', 'qty'],
+    ['Realized P&L', 'pnl'],
+    ['Commission', 'fees'],
+  ];
 
   let openId = $state<string | null>(null); // which file's detail sheet is showing
   let detailOpen = $state(false); // bits-ui owns the detail Sheet's open state (bind:open, per L11)
@@ -219,7 +236,9 @@
     onclick={pickFile}
     class="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border bg-card py-8 text-center transition-colors hover:border-ring hover:bg-accent"
   >
-    <span class="grid size-10 place-items-center rounded-full border border-border text-muted-foreground"><CloudUpload class="size-5" /></span>
+    <span class="grid size-10 place-items-center rounded-full border border-border text-muted-foreground"
+      ><CloudUpload class="size-5" /></span
+    >
     <span class="text-sm font-medium text-foreground">Drag &amp; drop CSVs, or click to browse</span>
     <span class="text-xs text-muted-foreground">TradingView, Tradovate, NinjaTrader, Apex… — auto-detected</span>
   </button>
@@ -280,7 +299,12 @@
                   <DropdownMenu.Root>
                     <DropdownMenu.Trigger>
                       {#snippet child({ props })}
-                        <button {...props} type="button" class="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="File actions">
+                        <button
+                          {...props}
+                          type="button"
+                          class="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                          aria-label="File actions"
+                        >
                           <MoreHorizontal class="size-4" />
                         </button>
                       {/snippet}
@@ -321,7 +345,13 @@
         <Button variant="outline" size="sm" disabled={dataDisabled} onclick={() => restoreInput?.click()}>
           <Upload class="size-4" /> Restore backup
         </Button>
-        <Button variant="outline" size="sm" class="text-destructive hover:text-destructive" disabled={dataDisabled} onclick={() => onerase?.()}>
+        <Button
+          variant="outline"
+          size="sm"
+          class="text-destructive hover:text-destructive"
+          disabled={dataDisabled}
+          onclick={() => onerase?.()}
+        >
           <Trash2 class="size-4" /> Erase all data
         </Button>
       </div>
@@ -373,12 +403,16 @@
 
         <div class="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-sm">
           <span class="text-muted-foreground">{fmt(openFile.trades)} trades contributed</span>
-          <a href={blotterHref} class="flex items-center gap-1 text-foreground hover:underline">View in Blotter <ExternalLink class="size-3" /></a>
+          <a href={blotterHref} class="flex items-center gap-1 text-foreground hover:underline"
+            >View in Blotter <ExternalLink class="size-3" /></a
+          >
         </div>
       </div>
       <Sheet.Footer class="flex-row justify-between">
         {#if perFileActions}<Button variant="outline" size="sm"><RefreshCw class="size-4" /> Re-import</Button>{/if}
-        <Button variant="outline" size="sm" class="text-destructive" onclick={() => askDelete(openFile.id)}><Trash2 class="size-4" /> Delete</Button>
+        <Button variant="outline" size="sm" class="text-destructive" onclick={() => askDelete(openFile.id)}
+          ><Trash2 class="size-4" /> Delete</Button
+        >
       </Sheet.Footer>
     {/if}
   </Sheet.Content>
@@ -404,7 +438,8 @@
           <Badge variant="secondary" class="ml-auto">{preview.platform}</Badge>
         </div>
         <p class="text-sm text-muted-foreground">
-          Parsed <b class="text-foreground">{fmt(preview.rows)} rows</b> → <b class="text-foreground">{fmt(preview.tradeCount)} trades</b> · covers <b class="text-foreground">{preview.from} → {preview.to}</b>.
+          Parsed <b class="text-foreground">{fmt(preview.rows)} rows</b> → <b class="text-foreground">{fmt(preview.tradeCount)} trades</b> ·
+          covers <b class="text-foreground">{preview.from} → {preview.to}</b>.
         </p>
         {#if preview.sample.length}
           <div>
@@ -422,9 +457,15 @@
                     <Table.Row>
                       <Table.Cell class="pl-3 text-muted-foreground">{r.time}</Table.Cell>
                       <Table.Cell class="font-medium">{r.sym}</Table.Cell>
-                      <Table.Cell><Badge variant="outline" class={r.up ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}>{r.side}</Badge></Table.Cell>
+                      <Table.Cell
+                        ><Badge variant="outline" class={r.up ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}
+                          >{r.side}</Badge
+                        ></Table.Cell
+                      >
                       <Table.Cell class="text-right tabular-nums">{r.qty}</Table.Cell>
-                      <Table.Cell class={cn('text-right tabular-nums pr-3', r.up ? 'text-chart-2' : 'text-destructive')}>{usd(r.pnl)}</Table.Cell>
+                      <Table.Cell class={cn('text-right tabular-nums pr-3', r.up ? 'text-chart-2' : 'text-destructive')}
+                        >{usd(r.pnl)}</Table.Cell
+                      >
                     </Table.Row>
                   {/each}
                 </Table.Body>
@@ -435,7 +476,10 @@
         {#if preview.estimatedRoots.length}
           <div class="flex items-start gap-2 rounded-md border border-chart-4/40 bg-chart-4/10 px-3 py-2 text-xs text-muted-foreground">
             <TriangleAlert class="size-4 shrink-0 text-chart-4" />
-            <span>{preview.estimatedRoots.length} symbol{preview.estimatedRoots.length === 1 ? '' : 's'} ({preview.estimatedRoots.join(', ')}) have no contract size on file — their P&L was estimated at $1/point. Double-check before importing.</span>
+            <span
+              >{preview.estimatedRoots.length} symbol{preview.estimatedRoots.length === 1 ? '' : 's'} ({preview.estimatedRoots.join(', ')})
+              have no contract size on file — their P&L was estimated at $1/point. Double-check before importing.</span
+            >
           </div>
         {/if}
       {/if}

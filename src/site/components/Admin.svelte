@@ -319,12 +319,15 @@
 
   <h2>Homepage “Live” indicator</h2>
   <p>
-    Override the status pill shown on the marketing homepage. <b>Auto</b> hands control back to the automatic check (pings <code>/app/</code>);
-    the others force a fixed state.
+    Override the status pill shown on the marketing homepage. <b>Auto</b> hands control back to the automatic check (pings
+    <code>/app/</code>); the others force a fixed state.
   </p>
 
   <p class="font-mono text-[13px] text-muted-foreground [&_b]:text-foreground">
-    {#if statusErr}Current: unavailable (deploy on Cloudflare to use){:else if status}Current: <b>{status.mode || 'auto'}</b>{#if status.label} — “{status.label}”{/if}{#if status.updatedAt} · updated {new Date(status.updatedAt).toLocaleString()}{/if}{:else}Current: loading…{/if}
+    {#if statusErr}Current: unavailable (deploy on Cloudflare to use){:else if status}Current: <b>{status.mode || 'auto'}</b
+      >{#if status.label}
+        — “{status.label}”{/if}{#if status.updatedAt}
+        · updated {new Date(status.updatedAt).toLocaleString()}{/if}{:else}Current: loading…{/if}
   </p>
 
   <p class="m-0 mb-[10px] min-h-[14px] font-mono text-[11.5px] text-chart-2">{authnote}</p>
@@ -345,10 +348,11 @@
   <!-- The admin credential is auto-issued as a short-lived token via Cloudflare Access (S3/S4). This
        manual field is a tucked-away fallback: only needed off-Access or if the token didn't issue. -->
   <details class="advkey mx-0 mt-[6px] mb-1 rounded-[9px] border border-border bg-secondary px-3 py-0">
-    <summary class="cursor-pointer list-none py-[10px] text-[12px] tracking-[0.04em] text-muted-foreground uppercase select-none">Advanced — manual admin key</summary>
+    <summary class="cursor-pointer list-none py-[10px] text-[12px] tracking-[0.04em] text-muted-foreground uppercase select-none"
+      >Advanced — manual admin key</summary
+    >
     <p class="m-0 mb-[10px] text-[12px] leading-[1.5] text-muted-foreground [&_code]:font-mono [&_code]:text-foreground">
-      Auto-filled from Cloudflare Access. Enter the raw <code>ADMIN_KEY</code> here only if you're working off-Access or the token didn't
-      issue.
+      Auto-filled from Cloudflare Access. Enter the raw <code>ADMIN_KEY</code> here only if you're working off-Access or the token didn't issue.
     </p>
     <div class="m-0 mb-3 flex max-w-[320px] flex-col gap-[5px]">
       <label class="text-[10.5px] tracking-[0.07em] text-muted-foreground uppercase" for="adminkey">Admin key</label>
@@ -385,7 +389,11 @@
       </button>
     {/each}
   </div>
-  <p class="mt-[10px] min-h-4 font-mono text-[12.5px] {amsg.kind === 'ok' ? 'text-chart-2' : amsg.kind === 'err' ? 'text-destructive' : ''}">{amsg.text}</p>
+  <p
+    class="mt-[10px] min-h-4 font-mono text-[12.5px] {amsg.kind === 'ok' ? 'text-chart-2' : amsg.kind === 'err' ? 'text-destructive' : ''}"
+  >
+    {amsg.text}
+  </p>
 
   <h2>Staging environment</h2>
   <p>
@@ -398,18 +406,26 @@
       onclick={launchStaging}><span class="h-2 w-2 rounded-full bg-chart-4"></span>Launch staging env &rarr;</button
     >
   </div>
-  <p class="mt-[10px] min-h-4 font-mono text-[12.5px] {stagemsg.kind === 'ok' ? 'text-chart-2' : stagemsg.kind === 'err' ? 'text-destructive' : ''}">
+  <p
+    class="mt-[10px] min-h-4 font-mono text-[12.5px] {stagemsg.kind === 'ok'
+      ? 'text-chart-2'
+      : stagemsg.kind === 'err'
+        ? 'text-destructive'
+        : ''}"
+  >
     {stagemsg.text}
   </p>
 
   <h2>Platform versions</h2>
   <p>
     Read-only. Versions are <b>automated</b> (CH12): a merge to main derives the bump from the PR's conventional-commit type and changed
-    paths, and writes <code>data/versions.json</code> — the single source of truth every surface reads at load. The platform phase (Beta →
-    stable) is derived from the prod major. There's nothing to set here.
+    paths, and writes <code>data/versions.json</code> — the single source of truth every surface reads at load. The platform phase (Beta → stable)
+    is derived from the prod major. There's nothing to set here.
   </p>
   <p class="font-mono text-[13px] text-muted-foreground [&_b]:text-foreground">
-    {#if verErr}Versions: unavailable{:else if versions}Prod (main + demo) <b>{versions.prod || '—'}</b> · Staging <b>{versions.staging || '—'}</b> · Platform <b>{platformLabel(versions.prod || '—')}</b>{:else}Versions: loading…{/if}
+    {#if verErr}Versions: unavailable{:else if versions}Prod (main + demo) <b>{versions.prod || '—'}</b> · Staging
+      <b>{versions.staging || '—'}</b>
+      · Platform <b>{platformLabel(versions.prod || '—')}</b>{:else}Versions: loading…{/if}
   </p>
 
   <h2>Feature flags</h2>
@@ -430,7 +446,13 @@
       onclick={saveFlags}><span class="h-2 w-2 rounded-full bg-primary"></span>Save flags</button
     >
   </div>
-  <p class="mt-[10px] min-h-4 font-mono text-[12.5px] {flagmsg.kind === 'ok' ? 'text-chart-2' : flagmsg.kind === 'err' ? 'text-destructive' : ''}">
+  <p
+    class="mt-[10px] min-h-4 font-mono text-[12.5px] {flagmsg.kind === 'ok'
+      ? 'text-chart-2'
+      : flagmsg.kind === 'err'
+        ? 'text-destructive'
+        : ''}"
+  >
     {flagmsg.text}
   </p>
 
@@ -445,8 +467,13 @@
       <div class="rounded-[9px] border border-border bg-secondary px-3 py-[10px]">
         <div class="mb-[6px] text-[10.5px] tracking-[0.05em] text-muted-foreground uppercase">{c.cat}</div>
         <div class="flex items-baseline gap-[7px] font-mono">
-          <span class="text-[18px] font-semibold text-chart-2">{c.done}</span><span class="text-[12.5px] text-muted-foreground">/ {c.tot} done</span>
-          <span class="ml-auto text-[11.5px] text-chart-4">{c.open} left{#if c.guard} · {c.guard} guard{/if}</span>
+          <span class="text-[18px] font-semibold text-chart-2">{c.done}</span><span class="text-[12.5px] text-muted-foreground"
+            >/ {c.tot} done</span
+          >
+          <span class="ml-auto text-[11.5px] text-chart-4"
+            >{c.open} left{#if c.guard}
+              · {c.guard} guard{/if}</span
+          >
         </div>
         <div class="bkbar mt-2 h-[5px] overflow-hidden rounded-[3px] bg-line"><i use:barWidth={c.pct}></i></div>
       </div>
@@ -454,7 +481,8 @@
   </div>
   {#if bkData}
     <div class="mx-0 mt-1 mb-4 font-mono text-[13px] text-muted-foreground [&_b]:text-foreground">
-      Overall: <b>{tDone}</b> done · <b>{tOpen}</b> remaining{#if tGuard} · {tGuard} guardrail{/if} · <b>{bkGrand ? Math.round((100 * tDone) / bkGrand) : 0}%</b>
+      Overall: <b>{tDone}</b> done · <b>{tOpen}</b> remaining{#if tGuard}
+        · {tGuard} guardrail{/if} · <b>{bkGrand ? Math.round((100 * tDone) / bkGrand) : 0}%</b>
       complete ({bkItems.length} items)
     </div>
   {/if}
@@ -482,7 +510,9 @@
       class="cursor-pointer rounded-[7px] border border-border bg-secondary px-3 py-2 font-sans text-[12.5px] text-muted-foreground hover:border-primary hover:text-foreground"
       onclick={clearFilters}>Clear filters</button
     >
-    <span class="ml-auto self-center font-mono text-[11px] text-muted-foreground">Counts above are full totals; filters narrow the list only.</span>
+    <span class="ml-auto self-center font-mono text-[11px] text-muted-foreground"
+      >Counts above are full totals; filters narrow the list only.</span
+    >
   </div>
   <div>
     {#each bkGroups as g (g.cat)}
@@ -507,7 +537,9 @@
       {#if bkData}<div class="mx-0 mt-1 mb-4 font-mono text-[13px] text-muted-foreground">No items match these filters.</div>{/if}
     {/each}
   </div>
-  <p class="mt-[10px] min-h-4 font-mono text-[12.5px] {bkErr ? 'text-destructive' : ''}">{bkErr ? 'Could not load data/backlog.json.' : ''}</p>
+  <p class="mt-[10px] min-h-4 font-mono text-[12.5px] {bkErr ? 'text-destructive' : ''}">
+    {bkErr ? 'Could not load data/backlog.json.' : ''}
+  </p>
 </SiteShell>
 
 <style>

@@ -33,19 +33,7 @@
     getJournal: (day: number) => { text: string; tags: string[]; shots: string[] };
     onsavenote?: (day: number, text: string, tags: string[], shots: string[]) => void;
   }
-  let {
-    monthDays,
-    year,
-    month,
-    monthLabel,
-    yearPnl,
-    onprev,
-    onnext,
-    onlatest,
-    tradesForDay,
-    getJournal,
-    onsavenote,
-  }: Props = $props();
+  let { monthDays, year, month, monthLabel, yearPnl, onprev, onnext, onlatest, tradesForDay, getJournal, onsavenote }: Props = $props();
 
   let view = $state<'month' | 'year'>('month');
   let selectedDay = $state<number | null>(null);
@@ -126,7 +114,12 @@
       const cells = flat.slice(i, i + 7);
       const traded = cells.filter((c): c is { day: number; rec: CalDay } => !!c?.rec);
       const anyDay = cells.find((c): c is { day: number; rec?: CalDay } => !!c);
-      rows.push({ wk: anyDay ? isoWeek(new Date(year, month, anyDay.day)) : 0, cells, pnl: traded.reduce((s, c) => s + c.rec.pnl, 0), days: traded.length });
+      rows.push({
+        wk: anyDay ? isoWeek(new Date(year, month, anyDay.day)) : 0,
+        cells,
+        pnl: traded.reduce((s, c) => s + c.rec.pnl, 0),
+        days: traded.length,
+      });
     }
     return rows;
   });
@@ -194,7 +187,10 @@
   <button
     type="button"
     {onclick}
-    class={cn('rounded px-2.5 py-1 text-xs transition-colors', active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}
+    class={cn(
+      'rounded px-2.5 py-1 text-xs transition-colors',
+      active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
+    )}
   >
     {label}
   </button>
@@ -203,7 +199,12 @@
 {#snippet stat(label: string, value: string, tone: 'pos' | 'neg' | 'plain' = 'plain')}
   <Card.Root class="px-3 py-2">
     <div class="text-[11px] text-muted-foreground">{label}</div>
-    <div class={cn('mt-0.5 text-sm font-semibold tabular-nums', tone === 'pos' ? 'text-chart-2' : tone === 'neg' ? 'text-destructive' : 'text-foreground')}>
+    <div
+      class={cn(
+        'mt-0.5 text-sm font-semibold tabular-nums',
+        tone === 'pos' ? 'text-chart-2' : tone === 'neg' ? 'text-destructive' : 'text-foreground'
+      )}
+    >
       {value}
     </div>
   </Card.Root>
@@ -218,26 +219,45 @@
     </div>
     {#if view === 'month'}
       <div class="flex items-center gap-1.5">
-        <Button variant="outline" size="icon" class="size-8" aria-label="Previous month" onclick={() => onprev?.()}><ChevronLeft class="size-4" /></Button>
+        <Button variant="outline" size="icon" class="size-8" aria-label="Previous month" onclick={() => onprev?.()}
+          ><ChevronLeft class="size-4" /></Button
+        >
         <span class="min-w-[8.5rem] text-center text-sm font-semibold">{monthLabel}</span>
-        <Button variant="outline" size="icon" class="size-8" aria-label="Next month" onclick={() => onnext?.()}><ChevronRight class="size-4" /></Button>
+        <Button variant="outline" size="icon" class="size-8" aria-label="Next month" onclick={() => onnext?.()}
+          ><ChevronRight class="size-4" /></Button
+        >
         <Button variant="secondary" size="sm" onclick={() => onlatest?.()}>Latest</Button>
       </div>
       <!-- Daily target stepper -->
       <div class="flex items-center gap-1.5 rounded-md border border-border px-2 py-1">
         <span class="text-[11px] text-muted-foreground">Target/day</span>
-        <button type="button" class="grid size-5 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Lower target" onclick={() => (target = Math.max(0, target - 50))}>
+        <button
+          type="button"
+          class="grid size-5 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+          aria-label="Lower target"
+          onclick={() => (target = Math.max(0, target - 50))}
+        >
           <Minus class="size-3" />
         </button>
         <span class="w-12 text-center text-xs tabular-nums">${target}</span>
-        <button type="button" class="grid size-5 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Raise target" onclick={() => (target += 50)}>
+        <button
+          type="button"
+          class="grid size-5 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+          aria-label="Raise target"
+          onclick={() => (target += 50)}
+        >
           <Plus class="size-3" />
         </button>
       </div>
     {:else}
       <span class="text-sm font-semibold">{year}</span>
     {/if}
-    <span class={cn('ml-auto text-sm font-semibold tabular-nums', (view === 'month' ? monthNet : yearNet) < 0 ? 'text-destructive' : 'text-chart-2')}>
+    <span
+      class={cn(
+        'ml-auto text-sm font-semibold tabular-nums',
+        (view === 'month' ? monthNet : yearNet) < 0 ? 'text-destructive' : 'text-chart-2'
+      )}
+    >
       {usdWhole(view === 'month' ? monthNet : yearNet)}
     </span>
   </div>
@@ -253,7 +273,12 @@
             {#each weeks as w, wi (wi)}
               <div class="flex flex-col justify-center gap-0.5 rounded border border-border bg-secondary px-1 py-1.5 text-center">
                 <div class="text-[9px] uppercase tracking-wide text-muted-foreground">Wk {w.wk}</div>
-                <div class={cn('text-[10px] font-bold tabular-nums', w.days ? (w.pnl >= 0 ? 'text-chart-2' : 'text-destructive') : 'text-muted-foreground')}>
+                <div
+                  class={cn(
+                    'text-[10px] font-bold tabular-nums',
+                    w.days ? (w.pnl >= 0 ? 'text-chart-2' : 'text-destructive') : 'text-muted-foreground'
+                  )}
+                >
                   {w.days ? usdWhole(w.pnl) : '$0'}
                 </div>
                 <div class="text-[9px] text-muted-foreground">{w.days}d</div>
@@ -271,12 +296,20 @@
                       selectedDay === c.day && 'ring-2 ring-primary'
                     )}
                   >
-                    {#if hit}<span class="absolute right-1 top-1 grid size-3 place-items-center rounded-full bg-chart-2 text-background" title="Hit daily target"><Check class="size-2" /></span>{/if}
+                    {#if hit}<span
+                        class="absolute right-1 top-1 grid size-3 place-items-center rounded-full bg-chart-2 text-background"
+                        title="Hit daily target"><Check class="size-2" /></span
+                      >{/if}
                     <span class="flex items-center gap-1 text-[11px] text-muted-foreground">
                       {c.day}{#if c.rec?.note}<span class="size-1.5 rounded-full bg-primary" title="Has a note"></span>{/if}
                     </span>
                     {#if c.rec}
-                      <span class={cn('mt-auto text-right text-xs font-bold tabular-nums', c.rec.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{usdWhole(c.rec.pnl)}</span>
+                      <span
+                        class={cn(
+                          'mt-auto text-right text-xs font-bold tabular-nums',
+                          c.rec.pnl >= 0 ? 'text-chart-2' : 'text-destructive'
+                        )}>{usdWhole(c.rec.pnl)}</span
+                      >
                       <span class="text-right text-[9px] text-muted-foreground">{c.rec.trades} tr · {pct(c.rec.wins, c.rec.trades)}%</span>
                     {/if}
                   </button>
@@ -287,7 +320,8 @@
             {/each}
           </div>
           <p class="mt-3 text-[11px] text-muted-foreground">
-            Cell shade scales with P&L size · <Check class="inline size-3 text-chart-2" /> = hit the ${target}/day target · dot = has a note.
+            Cell shade scales with P&L size · <Check class="inline size-3 text-chart-2" /> = hit the ${target}/day target · dot = has a
+            note.
           </p>
         </Card.Root>
       {:else}
@@ -302,7 +336,10 @@
                 <div class="flex flex-col gap-[3px]">
                   {#each col as cell, ri (ri)}
                     <div
-                      class={cn('size-[10px] rounded-[2px]', cell ? (cell.trading ? shade(cell.pnl) : 'bg-secondary/50') : 'bg-transparent')}
+                      class={cn(
+                        'size-[10px] rounded-[2px]',
+                        cell ? (cell.trading ? shade(cell.pnl) : 'bg-secondary/50') : 'bg-transparent'
+                      )}
                       title={cell?.trading ? `${cell.date} · ${usdWhole(cell.pnl)}` : ''}
                     ></div>
                   {/each}
@@ -329,7 +366,12 @@
         <Card.Root>
           <div class="flex items-center justify-between border-b border-border px-4 py-2.5">
             <span class="text-sm font-semibold">{monthLabel.split(' ')[0]} {selectedDay}, {year}</span>
-            <button type="button" class="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Close day detail" onclick={() => (selectedDay = null)}>
+            <button
+              type="button"
+              class="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              aria-label="Close day detail"
+              onclick={() => (selectedDay = null)}
+            >
               <X class="size-4" />
             </button>
           </div>
@@ -350,9 +392,15 @@
                   <div class={cn('flex items-center gap-2 px-2.5 py-1.5 text-xs', i > 0 && 'border-t border-border')}>
                     <span class="tabular-nums text-muted-foreground">{t.time || '—'}</span>
                     <span class="font-medium">{t.sym}</span>
-                    <Badge variant="outline" class={t.side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}>{t.side}</Badge>
+                    <Badge
+                      variant="outline"
+                      class={t.side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}
+                      >{t.side}</Badge
+                    >
                     <span class="text-muted-foreground">×{t.qty}</span>
-                    <span class={cn('ml-auto font-semibold tabular-nums', t.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{usdWhole(t.pnl)}</span>
+                    <span class={cn('ml-auto font-semibold tabular-nums', t.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}
+                      >{usdWhole(t.pnl)}</span
+                    >
                   </div>
                 {/each}
               </div>
@@ -373,7 +421,12 @@
               <div class="mb-1.5 flex flex-wrap gap-1">
                 {#each tags as t (t)}
                   <Badge variant="secondary" class="gap-1">
-                    {t}<button type="button" class="text-muted-foreground hover:text-foreground" aria-label="Remove tag {t}" onclick={() => removeTag(t)}><X class="size-3" /></button>
+                    {t}<button
+                      type="button"
+                      class="text-muted-foreground hover:text-foreground"
+                      aria-label="Remove tag {t}"
+                      onclick={() => removeTag(t)}><X class="size-3" /></button
+                    >
                   </Badge>
                 {/each}
                 {#if !tags.length}<span class="text-xs text-muted-foreground">No tags</span>{/if}
@@ -382,7 +435,12 @@
                 bind:value={tagDraft}
                 placeholder="Add tag, Enter…"
                 class="h-8"
-                onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                onkeydown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTag();
+                  }
+                }}
               />
             </div>
 
@@ -397,10 +455,18 @@
                     <button type="button" class="block" onclick={() => (zoomShot = shot)} aria-label="Enlarge screenshot {i + 1}">
                       <img src={shot} alt="screenshot {i + 1}" class="block h-12 rounded-md border border-border" />
                     </button>
-                    <button type="button" class="absolute -right-1.5 -top-1.5 grid size-[18px] place-items-center rounded-full bg-destructive text-white" aria-label="Remove screenshot" onclick={() => removeShot(i)}><X class="size-3" /></button>
+                    <button
+                      type="button"
+                      class="absolute -right-1.5 -top-1.5 grid size-[18px] place-items-center rounded-full bg-destructive text-white"
+                      aria-label="Remove screenshot"
+                      onclick={() => removeShot(i)}><X class="size-3" /></button
+                    >
                   </span>
                 {/each}
-                <label class="grid aspect-video w-16 cursor-pointer place-items-center rounded border border-dashed border-border text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Add screenshot">
+                <label
+                  class="grid aspect-video w-16 cursor-pointer place-items-center rounded border border-dashed border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                  aria-label="Add screenshot"
+                >
                   <ImagePlus class="size-4" />
                   <input type="file" accept="image/*" class="hidden" onchange={addShot} />
                 </label>

@@ -66,7 +66,14 @@
       { key: 'win', label: 'Win rate', value: `${m.winRate.toFixed(1)}%`, note: `${m.n} trades` },
       { key: 'pf', label: 'Profit factor', value: ratio(m.pf), note: 'gross win ÷ loss' },
       { key: 'exp', label: 'Expectancy', value: usd(m.expectancy), badge: 'per trade', up: m.expectancy >= 0, note: 'avg edge' },
-      { key: 'dd', label: 'Max drawdown', value: m.maxDD > 0 ? `-${money(m.maxDD)}` : '$0', badge: `${m.maxDDpct.toFixed(1)}%`, up: false, note: 'of peak' },
+      {
+        key: 'dd',
+        label: 'Max drawdown',
+        value: m.maxDD > 0 ? `-${money(m.maxDD)}` : '$0',
+        badge: `${m.maxDDpct.toFixed(1)}%`,
+        up: false,
+        note: 'of peak',
+      },
       { key: 'sharpe', label: 'Sharpe (daily)', value: num(m.sharpe), note: `${m.active} trading days` },
     ];
   });
@@ -147,7 +154,12 @@
     const m = dash.metricsActive;
     const c = dash.cost;
     const tone = (n: number): 'pos' | 'neg' => (n >= 0 ? 'pos' : 'neg');
-    const bar = (label: string, v: number, max: number, t: 'pos' | 'neg' | 'muted'): { label: string; value: string; pct: number; tone: 'pos' | 'neg' | 'muted' } => ({
+    const bar = (
+      label: string,
+      v: number,
+      max: number,
+      t: 'pos' | 'neg' | 'muted'
+    ): { label: string; value: string; pct: number; tone: 'pos' | 'neg' | 'muted' } => ({
       label,
       value: usd(v),
       pct: max ? (Math.abs(v) / max) * 100 : 0,
@@ -372,7 +384,8 @@
     const origById = new Map(editorRows.map(r => [r.id, r]));
     for (const r of changed) {
       const o = origById.get(r.id);
-      const coreChanged = !!o && (o.date !== r.date || o.time !== r.time || o.symbol !== r.symbol || o.side !== r.side || o.qty !== r.qty || o.pnl !== r.pnl);
+      const coreChanged =
+        !!o && (o.date !== r.date || o.time !== r.time || o.symbol !== r.symbol || o.side !== r.side || o.qty !== r.qty || o.pnl !== r.pnl);
       if (coreChanged) await dash.editTradeCore(r);
       else await dash.saveTradeMeta(r.id, r.tags, r.note, r.shots);
     }
@@ -400,7 +413,10 @@
     else if (kind === 'pdf') window.print();
     else if (kind === 'csv') {
       const esc = (c: string) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
-      const rows = [['date', 'time', 'symbol', 'side', 'qty', 'pnl'], ...dash.allTrades.map(t => [t.date, t.time, t.root, t.side, String(t.qty ?? 1), String(t.pnl)])];
+      const rows = [
+        ['date', 'time', 'symbol', 'side', 'qty', 'pnl'],
+        ...dash.allTrades.map(t => [t.date, t.time, t.root, t.side, String(t.qty ?? 1), String(t.pnl)]),
+      ];
       downloadBlob('blotterbook-trades.csv', new Blob([rows.map(r => r.map(esc).join(',')).join('\n')], { type: 'text/csv' }));
     }
   }
@@ -434,13 +450,39 @@
     const r = Adapters.parse(text);
     if (!r.ok || !r.trades) {
       pendingTrades = [];
-      return { name, platform: '', rows: 0, tradeCount: 0, from: '', to: '', estimatedRoots: [], sample: [], error: r.ok ? 'No completed trades found.' : r.error };
+      return {
+        name,
+        platform: '',
+        rows: 0,
+        tradeCount: 0,
+        from: '',
+        to: '',
+        estimatedRoots: [],
+        sample: [],
+        error: r.ok ? 'No completed trades found.' : r.error,
+      };
     }
     const trades = r.trades;
     pendingTrades = trades;
     const rows = Math.max(0, text.trim().split(/\r?\n/).length - 1);
-    const sample = trades.slice(0, 3).map(t => ({ time: (t.time || '').slice(11, 16), sym: t.root, side: t.side === 'short' ? 'Short' : 'Long', qty: t.qty ?? 1, pnl: t.pnl, up: t.pnl >= 0 }));
-    return { name, platform: r.label ?? 'CSV', rows, tradeCount: trades.length, from: trades[0]?.date ?? '', to: trades[trades.length - 1]?.date ?? '', estimatedRoots: r.estimatedRoots ?? [], sample };
+    const sample = trades.slice(0, 3).map(t => ({
+      time: (t.time || '').slice(11, 16),
+      sym: t.root,
+      side: t.side === 'short' ? 'Short' : 'Long',
+      qty: t.qty ?? 1,
+      pnl: t.pnl,
+      up: t.pnl >= 0,
+    }));
+    return {
+      name,
+      platform: r.label ?? 'CSV',
+      rows,
+      tradeCount: trades.length,
+      from: trades[0]?.date ?? '',
+      to: trades[trades.length - 1]?.date ?? '',
+      estimatedRoots: r.estimatedRoots ?? [],
+      sample,
+    };
   }
   async function importPreview() {
     if (pendingTrades.length) await dash.importTrades(pendingTrades);
@@ -453,7 +495,8 @@
   async function onboardImport(file: File): Promise<string> {
     const text = await file.text();
     const r = Adapters.parse(text);
-    if (!r.ok || !r.trades || !r.trades.length) return r.ok ? 'No completed trades found in that CSV.' : r.error || 'Could not read that CSV.';
+    if (!r.ok || !r.trades || !r.trades.length)
+      return r.ok ? 'No completed trades found in that CSV.' : r.error || 'Could not read that CSV.';
     await dash.importTrades(r.trades);
     return '';
   }
@@ -477,7 +520,8 @@
   }
   function doErase() {
     const where = isStaging ? ' (staging)' : '';
-    if (typeof confirm === 'function' && !confirm(`Erase ALL trades, day-notes and per-trade tags/notes${where}? This cannot be undone.`)) return;
+    if (typeof confirm === 'function' && !confirm(`Erase ALL trades, day-notes and per-trade tags/notes${where}? This cannot be undone.`))
+      return;
     void dash.purgeAll();
   }
 
@@ -509,7 +553,9 @@
       .then(r => (r.ok ? r.json() : null))
       .then(v => (versions = v))
       .catch(() => {});
-    loadFlags().then(f => (flags = f)).catch(() => {});
+    loadFlags()
+      .then(f => (flags = f))
+      .catch(() => {});
   });
 </script>
 
@@ -590,7 +636,14 @@
   {:else if active === 'blotter'}
     <Blotter rows={blotterRows} />
   {:else if active === 'trades'}
-    <TradeEditor rows={editorRows} coreEditable={false} editableFields={EDITABLE_FIELDS} onsave={persistEditorRows} ondelete={ids => dash.deleteTrades(ids)} dataDisabled={dash.isDemo} />
+    <TradeEditor
+      rows={editorRows}
+      coreEditable={false}
+      editableFields={EDITABLE_FIELDS}
+      onsave={persistEditorRows}
+      ondelete={ids => dash.deleteTrades(ids)}
+      dataDisabled={dash.isDemo}
+    />
   {:else if active === 'reports'}
     <Reports
       defaultTitle="Performance report"
