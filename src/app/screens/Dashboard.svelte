@@ -1,7 +1,18 @@
 <script lang="ts" module>
-  export type DashStat = { label: string; value: string; badge?: string; up?: boolean; note: string };
+  export type DashStat = { label: string; value: string; badge?: string; up?: boolean; note: string; key?: string };
   export type DayCell = { pnl: number; tr: number };
+  // Per-card drill-in content (parity with app/demo's stat-card modal), built from metrics/cost.
+  export type StatBar = { label: string; value: string; pct: number; tone: 'pos' | 'neg' | 'muted' };
+  export type StatDetail = {
+    title: string;
+    value: string;
+    tone?: 'pos' | 'neg';
+    desc: string;
+    rows: { label: string; value: string; tone?: 'pos' | 'neg' }[];
+    bars?: StatBar[];
+  };
 </script>
+
 
 <script lang="ts">
   // Dashboard — the redesigned overview: a scope toolbar, a KPI stat-card row, and the Performance
@@ -12,17 +23,19 @@
   import { Badge } from '$lib/components/ui/badge';
   import * as Card from '$lib/components/ui/card';
   import { X } from '@lucide/svelte';
+  import * as Dialog from '$lib/components/ui/dialog';
+  import { styleProps } from '../lib/actions.ts';
   import { usd, usdWhole, axMoney, niceTicks, linePath } from '../../lib/core/core.ts';
   import type { DailyPoint } from '../../lib/core/curveseries.ts';
   import { type DayTrade } from './Calendar.svelte';
 
   const MOCK_STATS: DashStat[] = [
-    { label: 'Net P&L', value: '+$79,467.75', badge: '+12.5%', up: true, note: '892W · 647L' },
-    { label: 'Win rate', value: '58.0%', note: '1,539 trades' },
-    { label: 'Profit factor', value: '3.01', note: 'gross win ÷ loss' },
-    { label: 'Expectancy', value: '+$51.64', badge: 'per trade', up: true, note: 'avg edge' },
-    { label: 'Max drawdown', value: '-$502.75', badge: '0.8%', up: false, note: 'of peak' },
-    { label: 'Sharpe (daily)', value: '0.80', note: '443 trading days' },
+    { key: 'net', label: 'Net P&L', value: '+$79,467.75', badge: '+12.5%', up: true, note: '892W · 647L' },
+    { key: 'win', label: 'Win rate', value: '58.0%', note: '1,539 trades' },
+    { key: 'pf', label: 'Profit factor', value: '3.01', note: 'gross win ÷ loss' },
+    { key: 'exp', label: 'Expectancy', value: '+$51.64', badge: 'per trade', up: true, note: 'avg edge' },
+    { key: 'dd', label: 'Max drawdown', value: '-$502.75', badge: '0.8%', up: false, note: 'of peak' },
+    { key: 'sharpe', label: 'Sharpe (daily)', value: '0.80', note: '443 trading days' },
   ];
   const MOCK_PNL: Record<number, DayCell> = {
     2: { pnl: 454, tr: 4 }, 3: { pnl: 383, tr: 4 }, 4: { pnl: 216, tr: 3 }, 5: { pnl: 90, tr: 4 },
@@ -36,6 +49,27 @@
     { time: '10:12', sym: 'NQ', side: 'Short', qty: 1, pnl: -60 },
     { time: '11:48', sym: 'ES', side: 'Long', qty: 3, pnl: 240 },
   ];
+  // A representative KPI drill-in for the /dev preview.
+  const MOCK_DETAIL = (key: string): StatDetail =>
+    ({
+      net: {
+        title: 'Net P&L',
+        value: '+$79,467.75',
+        tone: 'pos' as const,
+        desc: 'Realized P&L after commissions, subscriptions and estimated Section 1256 tax.',
+        rows: [
+          { label: 'Gross P&L', value: '+$86,107.00', tone: 'pos' as const },
+          { label: 'Commissions', value: '-$4,210.00', tone: 'neg' as const },
+          { label: 'Take-home', value: '+$62,046.00', tone: 'pos' as const },
+        ],
+        bars: [
+          { label: 'Gross', value: '+$86,107', pct: 100, tone: 'pos' as const },
+          { label: 'Net', value: '+$79,468', pct: 92, tone: 'pos' as const },
+          { label: 'Take-home', value: '+$62,046', pct: 72, tone: 'muted' as const },
+        ],
+      },
+    })[key] ?? { title: key, value: '—', desc: '', rows: [] };
+
   // A representative daily gross/net/take series for the /dev preview.
   const MOCK_SERIES: DailyPoint[] = [0, 800, 1600, 2100, 3000, 3500, 4300, 5200, 6000, 7200, 8100, 9400].map((g, i) => ({
     date: `2026-06-${String(i + 2).padStart(2, '0')}`,
@@ -58,12 +92,28 @@
     dayTrades?: (day: number) => DayTrade[];
     getNote?: (day: number) => string;
     onsavenote?: (day: number, text: string) => void;
+    /** Click-a-KPI-card drill-in: the metric's breakdown (parity with the app/demo stat-card modal). */
+    statDetail?: (key: string) => StatDetail;
   }
   let {
     stats = MOCK_STATS, series = MOCK_SERIES, dateRange = '2024-07-01 → 2026-06-30',
     monthLabel = 'June 2026', monthNet = 4016.5, dayPnl = MOCK_PNL, firstDow = 1, daysInMonth = 30, onscope,
     dayTrades = () => MOCK_DAY_TRADES, getNote = () => '', onsavenote,
+    statDetail = key => MOCK_DETAIL(key),
   }: Props = $props();
+
+  // ── KPI card drill-in ────────────────────────────────────────────────────────────────────────
+  let openStatKey = $state<string | null>(null);
+  let statOpen = $state(false); // bits-ui owns the Dialog open state (bind:open, per L11)
+  $effect(() => {
+    if (!statOpen) openStatKey = null;
+  });
+  const openStat = (key?: string) => {
+    if (!key) return;
+    openStatKey = key;
+    statOpen = true;
+  };
+  const detail = $derived(openStatKey ? statDetail(openStatKey) : null);
 
   let scope = $state<'all' | 'month'>('all');
   const setScope = (s: 'all' | 'month') => { scope = s; onscope?.(s); };
@@ -191,10 +241,15 @@
     <span class="ml-auto text-xs text-muted-foreground">{dateRange}</span>
   </div>
 
-  <!-- KPI stat cards -->
+  <!-- KPI stat cards — click a card to drill into its breakdown (parity with app/demo). -->
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
     {#each stats as s (s.label)}
-      <Card.Root class="p-4">
+      <button
+        type="button"
+        onclick={() => openStat(s.key)}
+        disabled={!s.key}
+        class="rounded-xl border border-border bg-card p-4 text-left transition-colors enabled:cursor-pointer enabled:hover:border-ring enabled:hover:bg-accent/30"
+      >
         <div class="flex items-start justify-between gap-2">
           <span class="text-xs text-muted-foreground">{s.label}</span>
           {#if s.badge}
@@ -210,7 +265,7 @@
           {s.value}
         </div>
         <div class="mt-1 text-[11px] text-muted-foreground">{s.note}</div>
-      </Card.Root>
+      </button>
     {/each}
   </div>
 
@@ -365,3 +420,46 @@
     <Plus class="size-4" /> Add module
   </button>
 </div>
+
+<!-- KPI card drill-in dialog -->
+<Dialog.Root bind:open={statOpen}>
+  <Dialog.Content class="sm:max-w-md">
+    {#if detail}
+      <Dialog.Header>
+        <Dialog.Title class="flex items-baseline justify-between gap-3 pr-6">
+          <span>{detail.title}</span>
+          <span class={['text-lg tabular-nums', detail.tone === 'pos' ? 'text-chart-2' : detail.tone === 'neg' ? 'text-destructive' : 'text-foreground']}>{detail.value}</span>
+        </Dialog.Title>
+        {#if detail.desc}<Dialog.Description>{detail.desc}</Dialog.Description>{/if}
+      </Dialog.Header>
+      <div class="space-y-4">
+        {#if detail.bars?.length}
+          <div class="space-y-1.5">
+            {#each detail.bars as bar, i (i)}
+              <div class="flex items-center gap-2 text-xs">
+                <span class="w-24 shrink-0 text-muted-foreground">{bar.label}</span>
+                <div class="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    class={['h-full rounded-full', bar.tone === 'pos' ? 'bg-chart-2' : bar.tone === 'neg' ? 'bg-destructive' : 'bg-muted-foreground']}
+                    use:styleProps={{ width: `${Math.max(2, Math.min(100, bar.pct))}%` }}
+                  ></div>
+                </div>
+                <span class={['w-20 shrink-0 text-right font-medium tabular-nums', bar.tone === 'pos' ? 'text-chart-2' : bar.tone === 'neg' ? 'text-destructive' : 'text-foreground']}>{bar.value}</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
+        {#if detail.rows.length}
+          <div class="overflow-hidden rounded-md border border-border">
+            {#each detail.rows as r, i (i)}
+              <div class={['flex items-center justify-between px-3 py-2 text-sm', i > 0 && 'border-t border-border']}>
+                <span class="text-muted-foreground">{r.label}</span>
+                <span class={['tabular-nums', r.tone === 'pos' ? 'text-chart-2' : r.tone === 'neg' ? 'text-destructive' : 'text-foreground']}>{r.value}</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    {/if}
+  </Dialog.Content>
+</Dialog.Root>
