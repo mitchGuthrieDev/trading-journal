@@ -1,6 +1,21 @@
 <script lang="ts" module>
   export type DashStat = { label: string; value: string; badge?: string; up?: boolean; note: string; key?: string };
   export type DayCell = { pnl: number; tr: number };
+  // Live filter model for the dashboard Filters popover — current values + option lists + mutators
+  // (bound to the app's filter state on staging; a no-op mock in the /dev preview).
+  export type FilterPatch = Partial<{ root: string; side: string; session: string; from: string; to: string; dows: number[] }>;
+  export type FilterModel = {
+    root: string;
+    side: string;
+    session: string;
+    from: string;
+    to: string;
+    dows: number[];
+    roots: string[];
+    count: number;
+    set: (patch: FilterPatch) => void;
+    clear: () => void;
+  };
   // Per-card drill-in content (parity with app/demo's stat-card modal), built from metrics/cost.
   export type StatBar = { label: string; value: string; pct: number; tone: 'pos' | 'neg' | 'muted' };
   export type StatDetail = {
@@ -21,7 +36,11 @@
   import { SlidersHorizontal, Plus, GripVertical, MoreHorizontal } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
   import * as Card from '$lib/components/ui/card';
+  import * as Popover from '$lib/components/ui/popover';
+  import * as Select from '$lib/components/ui/select';
   import { X } from '@lucide/svelte';
   import * as Dialog from '$lib/components/ui/dialog';
   import { styleProps } from '../lib/actions.ts';
@@ -49,6 +68,19 @@
     { time: '10:12', sym: 'NQ', side: 'Short', qty: 1, pnl: -60 },
     { time: '11:48', sym: 'ES', side: 'Long', qty: 3, pnl: 240 },
   ];
+  // A no-op filter model for the /dev preview.
+  const MOCK_FILTERS: FilterModel = {
+    root: '',
+    side: '',
+    session: '',
+    from: '',
+    to: '',
+    dows: [],
+    roots: ['ES', 'NQ', 'CL', 'GC', 'MES'],
+    count: 1539,
+    set: () => {},
+    clear: () => {},
+  };
   // A representative KPI drill-in for the /dev preview.
   const MOCK_DETAIL = (key: string): StatDetail =>
     ({
@@ -94,13 +126,33 @@
     onsavenote?: (day: number, text: string) => void;
     /** Click-a-KPI-card drill-in: the metric's breakdown (parity with the app/demo stat-card modal). */
     statDetail?: (key: string) => StatDetail;
+    /** Live filter model for the Filters popover (bound to the app's filter state on staging). */
+    filterModel?: FilterModel;
   }
   let {
     stats = MOCK_STATS, series = MOCK_SERIES, dateRange = '2024-07-01 → 2026-06-30',
     monthLabel = 'June 2026', monthNet = 4016.5, dayPnl = MOCK_PNL, firstDow = 1, daysInMonth = 30, onscope,
     dayTrades = () => MOCK_DAY_TRADES, getNote = () => '', onsavenote,
     statDetail = key => MOCK_DETAIL(key),
+    filterModel = MOCK_FILTERS,
   }: Props = $props();
+
+  // ── Filters ──────────────────────────────────────────────────────────────────────────────────
+  const DOW_OPTS = [
+    { d: 1, label: 'Mon' },
+    { d: 2, label: 'Tue' },
+    { d: 3, label: 'Wed' },
+    { d: 4, label: 'Thu' },
+    { d: 5, label: 'Fri' },
+  ];
+  const filtersActive = $derived(
+    !!(filterModel.root || filterModel.side || filterModel.session || filterModel.from || filterModel.to || filterModel.dows.length)
+  );
+  const sideLabel = $derived(filterModel.side === 'long' ? 'Long' : filterModel.side === 'short' ? 'Short' : 'All sides');
+  const sessLabel = $derived(filterModel.session === 'rth' ? 'RTH' : filterModel.session === 'eth' ? 'ETH' : 'All sessions');
+  const rootLabel = $derived(filterModel.root || 'All symbols');
+  const toggleDow = (d: number) =>
+    filterModel.set({ dows: filterModel.dows.includes(d) ? filterModel.dows.filter(x => x !== d) : [...filterModel.dows, d] });
 
   // ── KPI card drill-in ────────────────────────────────────────────────────────────────────────
   let openStatKey = $state<string | null>(null);
@@ -255,9 +307,91 @@
       {@render seg(scope === 'all', 'All time', () => setScope('all'))}
       {@render seg(scope === 'month', 'This month', () => setScope('month'))}
     </div>
-    <Button variant="outline" size="sm">
-      <SlidersHorizontal class="size-4" /> Filters
-    </Button>
+    <Popover.Root>
+      <Popover.Trigger>
+        {#snippet child({ props })}
+          <Button {...props} variant="outline" size="sm">
+            <SlidersHorizontal class="size-4" /> Filters
+            {#if filtersActive}<span class="ml-1 size-1.5 rounded-full bg-primary" title="Filters active"></span>{/if}
+          </Button>
+        {/snippet}
+      </Popover.Trigger>
+      <Popover.Content align="start" class="w-72 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Filters</span>
+          <span class="text-[11px] text-muted-foreground">{filterModel.count.toLocaleString()} trades</span>
+        </div>
+
+        <div class="grid gap-1.5">
+          <Label class="text-[11px]">Symbol</Label>
+          <Select.Root type="single" value={filterModel.root} onValueChange={v => filterModel.set({ root: v === '__all' ? '' : v })}>
+            <Select.Trigger class="h-8">{rootLabel}</Select.Trigger>
+            <Select.Content>
+              <Select.Item value="__all">All symbols</Select.Item>
+              {#each filterModel.roots as r (r)}<Select.Item value={r}>{r}</Select.Item>{/each}
+            </Select.Content>
+          </Select.Root>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div class="grid gap-1.5">
+            <Label class="text-[11px]">Side</Label>
+            <Select.Root type="single" value={filterModel.side || '__all'} onValueChange={v => filterModel.set({ side: v === '__all' ? '' : v })}>
+              <Select.Trigger class="h-8">{sideLabel}</Select.Trigger>
+              <Select.Content>
+                <Select.Item value="__all">All sides</Select.Item>
+                <Select.Item value="long">Long</Select.Item>
+                <Select.Item value="short">Short</Select.Item>
+              </Select.Content>
+            </Select.Root>
+          </div>
+          <div class="grid gap-1.5">
+            <Label class="text-[11px]">Session</Label>
+            <Select.Root type="single" value={filterModel.session || '__all'} onValueChange={v => filterModel.set({ session: v === '__all' ? '' : v })}>
+              <Select.Trigger class="h-8">{sessLabel}</Select.Trigger>
+              <Select.Content>
+                <Select.Item value="__all">All sessions</Select.Item>
+                <Select.Item value="rth">RTH</Select.Item>
+                <Select.Item value="eth">ETH</Select.Item>
+              </Select.Content>
+            </Select.Root>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div class="grid gap-1.5">
+            <Label class="text-[11px]" for="f-from">From</Label>
+            <Input id="f-from" type="date" value={filterModel.from} class="h-8" onchange={e => filterModel.set({ from: e.currentTarget.value })} />
+          </div>
+          <div class="grid gap-1.5">
+            <Label class="text-[11px]" for="f-to">To</Label>
+            <Input id="f-to" type="date" value={filterModel.to} class="h-8" onchange={e => filterModel.set({ to: e.currentTarget.value })} />
+          </div>
+        </div>
+
+        <div class="grid gap-1.5">
+          <Label class="text-[11px]">Weekday</Label>
+          <div class="flex gap-1">
+            {#each DOW_OPTS as o (o.d)}
+              <button
+                type="button"
+                onclick={() => toggleDow(o.d)}
+                class={[
+                  'flex-1 rounded border px-1.5 py-1 text-[11px] transition-colors',
+                  filterModel.dows.includes(o.d) ? 'border-border bg-secondary text-foreground' : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground',
+                ]}
+              >
+                {o.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-1">
+          <Button variant="ghost" size="sm" class="h-7" disabled={!filtersActive} onclick={() => filterModel.clear()}>Clear all</Button>
+        </div>
+      </Popover.Content>
+    </Popover.Root>
     <span class="ml-auto text-xs text-muted-foreground">{dateRange}</span>
   </div>
 

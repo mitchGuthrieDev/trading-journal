@@ -12,7 +12,7 @@
   import { createDashboard } from './lib/dashboard.svelte.ts';
   import { dailySeries } from '../lib/core/curveseries.ts';
   import { navSections, navLabel, navItems } from './lib/nav';
-  import Dashboard, { type DashStat, type DayCell, type StatDetail } from './screens/Dashboard.svelte';
+  import Dashboard, { type DashStat, type DayCell, type StatDetail, type FilterModel, type FilterPatch } from './screens/Dashboard.svelte';
   import Calendar, { type CalDay, type DayTrade } from './screens/Calendar.svelte';
   import Analytics from './screens/Analytics.svelte';
   import { buildAnalytics } from './lib/analytics.ts';
@@ -63,6 +63,21 @@
   const dashSeries = $derived(
     dailySeries(dash.metricsActive, { broker: String(dash.costInputs.broker ?? ''), tEff: dash.cost.tEff, fixedMo: dash.cost.fixedMo }).pts
   );
+  // Live filter model for the dashboard Filters popover — reads the app's filter state; the setters
+  // mutate it in place so filtered/metrics/series/calendar all re-derive.
+  const filterModel = $derived<FilterModel>({
+    root: dash.filters.root,
+    side: dash.filters.side,
+    session: dash.filters.session,
+    from: dash.filters.from,
+    to: dash.filters.to,
+    dows: dash.filters.dows,
+    roots: dash.roots,
+    count: dash.filtered.length,
+    set: (patch: FilterPatch) => Object.assign(dash.filters, patch),
+    clear: () => dash.clearFilters(),
+  });
+
   // KPI card drill-in content (parity with the app/demo stat-card modal), from metrics + cost.
   function statDetail(key: string): StatDetail {
     const m = dash.metricsActive;
@@ -372,6 +387,7 @@
       getNote={day => dash.noteFor(dateOf(day))}
       onsavenote={(day, text) => dash.saveNote(dateOf(day), text)}
       {statDetail}
+      {filterModel}
     />
   {:else if active === 'calendar'}
     <Calendar
