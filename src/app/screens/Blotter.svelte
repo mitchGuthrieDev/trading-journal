@@ -135,7 +135,9 @@
 {/snippet}
 
 {#snippet sideBadge(side: 'Long' | 'Short')}
-  <Badge variant="outline" class={side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}>{side}</Badge>
+  <Badge variant="outline" class={side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}
+    >{side}</Badge
+  >
 {/snippet}
 
 <Card.Root>
@@ -183,7 +185,10 @@
 
     <!-- Bulk action bar -->
     {#if selected.size > 0}
-      <div class="flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-1.5 text-xs" transition:fade={{ duration: 120 }}>
+      <div
+        class="flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-1.5 text-xs"
+        transition:fade={{ duration: 120 }}
+      >
         <span class="font-medium">{selected.size} selected</span>
         <Button variant="outline" size="sm" class="h-7"><Tag class="size-3.5" /> Tag</Button>
         <Button variant="outline" size="sm" class="h-7 text-destructive"><Trash2 class="size-3.5" /> Delete</Button>
@@ -226,7 +231,9 @@
               <Table.Cell colspan={colCount} class="py-1.5 pl-3">
                 <span class="text-xs font-semibold">{g.label}</span>
                 <span class="ml-2 text-xs text-muted-foreground">{g.trades.length} trades</span>
-                <span class={cn('ml-2 text-xs font-semibold tabular-nums', g.subtotal >= 0 ? 'text-chart-2' : 'text-destructive')}>{money(g.subtotal)}</span>
+                <span class={cn('ml-2 text-xs font-semibold tabular-nums', g.subtotal >= 0 ? 'text-chart-2' : 'text-destructive')}
+                  >{money(g.subtotal)}</span
+                >
               </Table.Cell>
             </Table.Row>
           {/if}
@@ -237,22 +244,29 @@
               </Table.Cell>
               <Table.Cell class="text-muted-foreground">
                 <span class="flex items-center gap-1.5">
-                  {t.date.slice(5)} {t.time}
+                  {t.date.slice(5)}
+                  {t.time}
                   {#if t.note}<span class="size-1.5 rounded-full bg-primary" title="Has a note"></span>{/if}
                 </span>
               </Table.Cell>
               <Table.Cell class="font-medium">{t.sym}</Table.Cell>
               <Table.Cell>{@render sideBadge(t.side)}</Table.Cell>
               <Table.Cell class="text-right tabular-nums">{t.qty}</Table.Cell>
-              <Table.Cell class={cn('text-right font-semibold tabular-nums', t.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{money(t.pnl)}</Table.Cell>
+              <Table.Cell class={cn('text-right font-semibold tabular-nums', t.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}
+                >{money(t.pnl)}</Table.Cell
+              >
               {#if cols.prices}
                 <Table.Cell class="text-right tabular-nums text-muted-foreground">{t.entry ?? '—'}</Table.Cell>
                 <Table.Cell class="text-right tabular-nums text-muted-foreground">{t.exit ?? '—'}</Table.Cell>
                 <Table.Cell class="text-right tabular-nums text-muted-foreground">{t.holdMin != null ? `${t.holdMin}m` : '—'}</Table.Cell>
               {/if}
               {#if cols.costs}
-                <Table.Cell class="text-right tabular-nums text-muted-foreground">{t.fees != null ? `-$${t.fees.toFixed(2)}` : '—'}</Table.Cell>
-                <Table.Cell class={cn('text-right tabular-nums', net(t) >= 0 ? 'text-chart-2' : 'text-destructive')}>{money(net(t))}</Table.Cell>
+                <Table.Cell class="text-right tabular-nums text-muted-foreground"
+                  >{t.fees != null ? `-$${t.fees.toFixed(2)}` : '—'}</Table.Cell
+                >
+                <Table.Cell class={cn('text-right tabular-nums', net(t) >= 0 ? 'text-chart-2' : 'text-destructive')}
+                  >{money(net(t))}</Table.Cell
+                >
               {/if}
               {#if cols.context}
                 <Table.Cell>
@@ -270,19 +284,38 @@
         <Table.Row class="hover:bg-transparent">
           <Table.Cell colspan={colCount} class="pl-3">
             <span class="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <span class="text-xs tabular-nums text-muted-foreground">{pageStart.toLocaleString()}–{pageEnd.toLocaleString()} of {filtered.length.toLocaleString()}</span>
+              <span class="text-xs tabular-nums text-muted-foreground"
+                >{pageStart.toLocaleString()}–{pageEnd.toLocaleString()} of {filtered.length.toLocaleString()}</span
+              >
               <span class="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span class="mr-1">Rows:</span>
                 {#each PAGE_SIZES as sz (sz)}
-                  <button type="button" onclick={() => (pageSize = sz)} class={cn('rounded px-1.5 py-0.5 transition-colors', pageSize === sz ? 'bg-secondary text-foreground' : 'hover:text-foreground')}>
+                  <button
+                    type="button"
+                    onclick={() => (pageSize = sz)}
+                    class={cn(
+                      'rounded px-1.5 py-0.5 transition-colors',
+                      pageSize === sz ? 'bg-secondary text-foreground' : 'hover:text-foreground'
+                    )}
+                  >
                     {sz === Infinity ? 'All' : sz}
                   </button>
                 {/each}
-                <Button variant="outline" size="sm" class="ml-1 h-7" disabled={page === 0} onclick={() => (page = Math.max(0, page - 1))}>Prev</Button>
+                <Button variant="outline" size="sm" class="ml-1 h-7" disabled={page === 0} onclick={() => (page = Math.max(0, page - 1))}
+                  >Prev</Button
+                >
                 <span class="tabular-nums">{page + 1}/{totalPages}</span>
-                <Button variant="outline" size="sm" class="h-7" disabled={page >= totalPages - 1} onclick={() => (page = Math.min(totalPages - 1, page + 1))}>Next</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  class="h-7"
+                  disabled={page >= totalPages - 1}
+                  onclick={() => (page = Math.min(totalPages - 1, page + 1))}>Next</Button
+                >
               </span>
-              <span class={cn('ml-auto text-sm font-semibold tabular-nums', totalPnl >= 0 ? 'text-chart-2' : 'text-destructive')}>Net {money(totalPnl)}</span>
+              <span class={cn('ml-auto text-sm font-semibold tabular-nums', totalPnl >= 0 ? 'text-chart-2' : 'text-destructive')}
+                >Net {money(totalPnl)}</span
+              >
             </span>
           </Table.Cell>
         </Table.Row>
@@ -294,14 +327,22 @@
 <!-- Detail drawer -->
 {#if openTrade}
   <div class="fixed inset-0 z-40 bg-black/60" transition:fade={{ duration: 150 }} onclick={() => (openId = null)} role="presentation"></div>
-  <aside class="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border bg-card" transition:fly={{ x: 400, duration: 200 }}>
+  <aside
+    class="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-border bg-card"
+    transition:fly={{ x: 400, duration: 200 }}
+  >
     <div class="flex items-center justify-between border-b border-border px-4 py-3">
       <div class="flex items-center gap-2">
         <span class="text-sm font-semibold">{openTrade.sym}</span>
         {@render sideBadge(openTrade.side)}
         <span class="text-xs text-muted-foreground">{openTrade.date} · {openTrade.time}</span>
       </div>
-      <button type="button" class="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Close" onclick={() => (openId = null)}>
+      <button
+        type="button"
+        class="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+        aria-label="Close"
+        onclick={() => (openId = null)}
+      >
         <X class="size-4" />
       </button>
     </div>
@@ -310,7 +351,14 @@
         {#snippet field(label: string, value: string, tone: 'pos' | 'neg' | 'plain' = 'plain')}
           <div class="rounded-md border border-border bg-background px-3 py-2">
             <div class="text-[11px] text-muted-foreground">{label}</div>
-            <div class={cn('mt-0.5 font-semibold tabular-nums', tone === 'pos' ? 'text-chart-2' : tone === 'neg' ? 'text-destructive' : 'text-foreground')}>{value}</div>
+            <div
+              class={cn(
+                'mt-0.5 font-semibold tabular-nums',
+                tone === 'pos' ? 'text-chart-2' : tone === 'neg' ? 'text-destructive' : 'text-foreground'
+              )}
+            >
+              {value}
+            </div>
           </div>
         {/snippet}
         {@render field('Gross P&L', money(openTrade.pnl), openTrade.pnl >= 0 ? 'pos' : 'neg')}
@@ -331,11 +379,19 @@
       </div>
       <div>
         <div class="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Journal note</div>
-        <textarea class="h-24 w-full resize-none rounded-md border border-border bg-background p-2 text-xs leading-relaxed outline-none focus-visible:border-ring" placeholder="Notes for this trade…"></textarea>
+        <textarea
+          class="h-24 w-full resize-none rounded-md border border-border bg-background p-2 text-xs leading-relaxed outline-none focus-visible:border-ring"
+          placeholder="Notes for this trade…"
+        ></textarea>
       </div>
       <div>
-        <div class="mb-1.5 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"><Paperclip class="size-3" /> Screenshot</div>
-        <button type="button" class="grid aspect-video w-full place-items-center rounded-md border border-dashed border-border text-muted-foreground hover:bg-accent hover:text-foreground">
+        <div class="mb-1.5 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          <Paperclip class="size-3" /> Screenshot
+        </div>
+        <button
+          type="button"
+          class="grid aspect-video w-full place-items-center rounded-md border border-dashed border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
           <span class="flex flex-col items-center gap-1 text-xs"><ImagePlus class="size-5" /> Drop a chart image</span>
         </button>
       </div>

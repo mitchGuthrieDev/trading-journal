@@ -24,8 +24,7 @@
     actions?: Snippet;
     children: Snippet;
   }
-  let { brand = 'Blotterbook', brandHref = '/', sections, active = '', onnavigate, title, actions, children }: Props =
-    $props();
+  let { brand = 'Blotterbook', brandHref = '/', sections, active = '', onnavigate, title, actions, children }: Props = $props();
 
   let collapsed = $state(false); // desktop icon-rail
   let mobileOpen = $state(false); // mobile drawer
@@ -34,10 +33,7 @@
 <div class="flex h-dvh overflow-hidden">
   <!-- Desktop rail: static column, collapsible. -->
   <aside
-    class={[
-      'hidden shrink-0 border-r border-border bg-card transition-[width] duration-200 md:block',
-      collapsed ? 'md:w-14' : 'md:w-60',
-    ]}
+    class={['hidden shrink-0 border-r border-border bg-card transition-[width] duration-200 md:block', collapsed ? 'md:w-14' : 'md:w-60']}
   >
     <SidebarNav {brand} {brandHref} {sections} {active} {onnavigate} {collapsed} />
   </aside>
@@ -50,10 +46,7 @@
       onclick={() => (mobileOpen = false)}
       role="presentation"
     ></div>
-    <aside
-      class="fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-card md:hidden"
-      transition:fly={{ x: -260, duration: 200 }}
-    >
+    <aside class="fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-card md:hidden" transition:fly={{ x: -260, duration: 200 }}>
       <SidebarNav
         {brand}
         {brandHref}

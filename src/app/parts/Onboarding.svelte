@@ -39,8 +39,8 @@
 <div class="mx-auto max-w-2xl py-8">
   <h2 class="text-lg font-semibold text-foreground">Welcome to Blotterbook</h2>
   <p class="mt-1 text-sm text-muted-foreground">
-    Your trades are parsed and stored entirely in this browser — nothing is uploaded. Set up your cost model, then import a
-    balance-history CSV to get started.
+    Your trades are parsed and stored entirely in this browser — nothing is uploaded. Set up your cost model, then import a balance-history
+    CSV to get started.
   </p>
 
   <div class="mt-6">

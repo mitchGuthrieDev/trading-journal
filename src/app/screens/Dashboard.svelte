@@ -35,7 +35,6 @@
   };
 </script>
 
-
 <script lang="ts">
   // Dashboard — the redesigned overview: a scope toolbar, a KPI stat-card row, and the Performance
   // (equity curve) + Trading Calendar modules. Data comes from props (real metrics, wired by App.svelte
@@ -103,15 +102,29 @@
     };
   }
   let {
-    stats, series, dateRange,
-    monthLabel, monthNet, dayPnl, firstDow, daysInMonth, onscope,
-    dayTrades, getNote, onsavenote,
+    stats,
+    series,
+    dateRange,
+    monthLabel,
+    monthNet,
+    dayPnl,
+    firstDow,
+    daysInMonth,
+    onscope,
+    dayTrades,
+    getNote,
+    onsavenote,
     statDetail,
     filterModel,
     onpickdate,
-    costRows, advStats,
-    setup, onsetupsave, costDisabled = false,
-    modules, onmoduleschange, layouts,
+    costRows,
+    advStats,
+    setup,
+    onsetupsave,
+    costDisabled = false,
+    modules,
+    onmoduleschange,
+    layouts,
   }: Props = $props();
 
   function doSaveLayout() {
@@ -200,7 +213,10 @@
   const detail = $derived(openStatKey ? statDetail(openStatKey) : null);
 
   let scope = $state<'all' | 'month'>('all');
-  const setScope = (s: 'all' | 'month') => { scope = s; onscope?.(s); };
+  const setScope = (s: 'all' | 'month') => {
+    scope = s;
+    onscope?.(s);
+  };
 
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const cells = $derived.by<(number | null)[]>(() => {
@@ -249,11 +265,13 @@
     if (!series.length) return null;
     const on = enabledList.length ? enabledList : [SERIES[0]];
     const pts: DailyPoint[] = [{ date: '', gross: 0, net: 0, take: 0 }, ...series];
-    let lo = Infinity, hi = -Infinity;
-    for (const p of pts) for (const s of on) {
-      if (p[s.key] < lo) lo = p[s.key];
-      if (p[s.key] > hi) hi = p[s.key];
-    }
+    let lo = Infinity,
+      hi = -Infinity;
+    for (const p of pts)
+      for (const s of on) {
+        if (p[s.key] < lo) lo = p[s.key];
+        if (p[s.key] > hi) hi = p[s.key];
+      }
     const ticks = niceTicks(lo, hi, 4);
     lo = Math.min(lo, ticks[0]);
     hi = Math.max(hi, ticks[ticks.length - 1]);
@@ -264,7 +282,11 @@
     const xN = x(pts.length - 1).toFixed(1),
       x0 = x(0).toFixed(1);
     const lines = on.map(s => {
-      const d = linePath(pts.map(p => p[s.key]), x, y);
+      const d = linePath(
+        pts.map(p => p[s.key]),
+        x,
+        y
+      );
       return { ...s, d, area: `${d} L${xN},${baseY} L${x0},${baseY} Z` };
     });
     const yticks = ticks.map(v => ({ y: y(v), label: axMoney(v) }));
@@ -280,9 +302,7 @@
     }
     const last = pts[pts.length - 1];
     // End-of-line value labels, nudged apart so overlapping series (gross/net/take end close) stay legible.
-    const ends = on
-      .map(s => ({ key: s.key, fill: s.fill, y: y(last[s.key]), label: usdWhole(last[s.key]) }))
-      .sort((a, b) => a.y - b.y);
+    const ends = on.map(s => ({ key: s.key, fill: s.fill, y: y(last[s.key]), label: usdWhole(last[s.key]) })).sort((a, b) => a.y - b.y);
     for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 12) ends[i].y = ends[i - 1].y + 12;
     return { pts, x, y, len: pts.length, lines, yticks, xticks, ends, zeroY: lo <= 0 && hi >= 0 ? y(0) : null };
   });
@@ -333,14 +353,23 @@
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
         {#snippet child({ props })}
-          <button {...props} type="button" class="ml-auto grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Module menu">
+          <button
+            {...props}
+            type="button"
+            class="ml-auto grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            aria-label="Module menu"
+          >
             <MoreHorizontal class="size-4" />
           </button>
         {/snippet}
       </DropdownMenu.Trigger>
       <DropdownMenu.Content align="end" class="min-w-[150px]">
-        <DropdownMenu.Item disabled={modOrder.indexOf(key) === 0} onSelect={() => moveModule(key, -1)}><ChevronUp class="size-4" /> Move up</DropdownMenu.Item>
-        <DropdownMenu.Item disabled={modOrder.indexOf(key) === modOrder.length - 1} onSelect={() => moveModule(key, 1)}><ChevronDown class="size-4" /> Move down</DropdownMenu.Item>
+        <DropdownMenu.Item disabled={modOrder.indexOf(key) === 0} onSelect={() => moveModule(key, -1)}
+          ><ChevronUp class="size-4" /> Move up</DropdownMenu.Item
+        >
+        <DropdownMenu.Item disabled={modOrder.indexOf(key) === modOrder.length - 1} onSelect={() => moveModule(key, 1)}
+          ><ChevronDown class="size-4" /> Move down</DropdownMenu.Item
+        >
         <DropdownMenu.Separator />
         <DropdownMenu.Item onSelect={() => hideModule(key)}><EyeOff class="size-4" /> Hide module</DropdownMenu.Item>
       </DropdownMenu.Content>
@@ -397,7 +426,11 @@
         <div class="grid grid-cols-2 gap-2">
           <div class="grid gap-1.5">
             <Label class="text-[11px]">Side</Label>
-            <Select.Root type="single" value={filterModel.side || '__all'} onValueChange={v => filterModel.set({ side: v === '__all' ? '' : v })}>
+            <Select.Root
+              type="single"
+              value={filterModel.side || '__all'}
+              onValueChange={v => filterModel.set({ side: v === '__all' ? '' : v })}
+            >
               <Select.Trigger class="h-8">{sideLabel}</Select.Trigger>
               <Select.Content>
                 <Select.Item value="__all">All sides</Select.Item>
@@ -408,7 +441,11 @@
           </div>
           <div class="grid gap-1.5">
             <Label class="text-[11px]">Session</Label>
-            <Select.Root type="single" value={filterModel.session || '__all'} onValueChange={v => filterModel.set({ session: v === '__all' ? '' : v })}>
+            <Select.Root
+              type="single"
+              value={filterModel.session || '__all'}
+              onValueChange={v => filterModel.set({ session: v === '__all' ? '' : v })}
+            >
               <Select.Trigger class="h-8">{sessLabel}</Select.Trigger>
               <Select.Content>
                 <Select.Item value="__all">All sessions</Select.Item>
@@ -422,11 +459,23 @@
         <div class="grid grid-cols-2 gap-2">
           <div class="grid gap-1.5">
             <Label class="text-[11px]" for="f-from">From</Label>
-            <Input id="f-from" type="date" value={filterModel.from} class="h-8" onchange={e => filterModel.set({ from: e.currentTarget.value })} />
+            <Input
+              id="f-from"
+              type="date"
+              value={filterModel.from}
+              class="h-8"
+              onchange={e => filterModel.set({ from: e.currentTarget.value })}
+            />
           </div>
           <div class="grid gap-1.5">
             <Label class="text-[11px]" for="f-to">To</Label>
-            <Input id="f-to" type="date" value={filterModel.to} class="h-8" onchange={e => filterModel.set({ to: e.currentTarget.value })} />
+            <Input
+              id="f-to"
+              type="date"
+              value={filterModel.to}
+              class="h-8"
+              onchange={e => filterModel.set({ to: e.currentTarget.value })}
+            />
           </div>
         </div>
 
@@ -439,7 +488,9 @@
                 onclick={() => toggleDow(o.d)}
                 class={[
                   'flex-1 rounded border px-1.5 py-1 text-[11px] transition-colors',
-                  filterModel.dows.includes(o.d) ? 'border-border bg-secondary text-foreground' : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground',
+                  filterModel.dows.includes(o.d)
+                    ? 'border-border bg-secondary text-foreground'
+                    : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground',
                 ]}
               >
                 {o.label}
@@ -461,10 +512,20 @@
                   {v.name}
                 </button>
                 {#if canSaveView}
-                  <button type="button" aria-label="Rename view" class="grid size-6 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-foreground" onclick={() => doRenameView(v.id, v.name)}>
+                  <button
+                    type="button"
+                    aria-label="Rename view"
+                    class="grid size-6 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+                    onclick={() => doRenameView(v.id, v.name)}
+                  >
                     <Pencil class="size-3.5" />
                   </button>
-                  <button type="button" aria-label="Delete view" class="grid size-6 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-destructive" onclick={() => filterModel.deleteView?.(v.id)}>
+                  <button
+                    type="button"
+                    aria-label="Delete view"
+                    class="grid size-6 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-destructive"
+                    onclick={() => filterModel.deleteView?.(v.id)}
+                  >
                     <X class="size-3.5" />
                   </button>
                 {/if}
@@ -472,8 +533,16 @@
             {/each}
             {#if canSaveView}
               <div class="flex items-center gap-1">
-                <Input bind:value={newViewName} placeholder="Name this view…" class="h-8 flex-1" disabled={!filtersActive} onkeydown={e => e.key === 'Enter' && doSaveView()} />
-                <Button variant="secondary" size="sm" class="h-8" disabled={!filtersActive || !newViewName.trim()} onclick={doSaveView}>Save</Button>
+                <Input
+                  bind:value={newViewName}
+                  placeholder="Name this view…"
+                  class="h-8 flex-1"
+                  disabled={!filtersActive}
+                  onkeydown={e => e.key === 'Enter' && doSaveView()}
+                />
+                <Button variant="secondary" size="sm" class="h-8" disabled={!filtersActive || !newViewName.trim()} onclick={doSaveView}
+                  >Save</Button
+                >
               </div>
             {/if}
           </div>
@@ -535,7 +604,9 @@
         <div class="flex items-start justify-between gap-2">
           <span class="text-xs text-muted-foreground">{s.label}</span>
           {#if s.badge}
-            <Badge variant="outline" class={s.up ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}>{s.badge}</Badge>
+            <Badge variant="outline" class={s.up ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}
+              >{s.badge}</Badge
+            >
           {/if}
         </div>
         <div
@@ -552,147 +623,196 @@
   </div>
 
   {#snippet perfBody()}
-      <div class="mb-3 flex w-fit items-center gap-0.5 rounded-md border border-border p-0.5">
-        {#each SERIES as s (s.key)}
-          {@render seg(enabled[s.key], s.label, () => toggleSeries(s.key))}
-        {/each}
-      </div>
-      <div bind:clientWidth={cw}>
-        {#if view}
-          <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
-          <svg
-            viewBox="0 0 {W} {VH}"
-            class="h-64 w-full cursor-pointer touch-none outline-none"
-            role="img"
-            aria-label="Cumulative P&L curve — click a point to open that day in the calendar"
-            tabindex="0"
-            onpointermove={moveCursor}
-            onpointerleave={() => (cursor = null)}
-            onclick={onCurveClick}
-            onkeydown={onCurveKey}
-          >
-            <defs>
-              <linearGradient id="perfGross" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" class="[stop-color:var(--chart-2)] [stop-opacity:0.24]" /><stop offset="100%" class="[stop-color:var(--chart-2)] [stop-opacity:0]" /></linearGradient>
-              <linearGradient id="perfNet" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" class="[stop-color:var(--primary)] [stop-opacity:0.2]" /><stop offset="100%" class="[stop-color:var(--primary)] [stop-opacity:0]" /></linearGradient>
-              <linearGradient id="perfTake" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" class="[stop-color:var(--chart-3)] [stop-opacity:0.24]" /><stop offset="100%" class="[stop-color:var(--chart-3)] [stop-opacity:0]" /></linearGradient>
-            </defs>
-            {#each view.yticks as t, i (i)}
-              <line x1={PAD.l} y1={t.y} x2={W - PAD.r} y2={t.y} class="stroke-border" stroke-width="1" vector-effect="non-scaling-stroke" />
-              <text x={PAD.l - 6} y={t.y + 3.5} text-anchor="end" class="fill-muted-foreground text-[11px] tabular-nums">{t.label}</text>
-            {/each}
-            {#if view.zeroY != null}
-              <line x1={PAD.l} y1={view.zeroY} x2={W - PAD.r} y2={view.zeroY} class="stroke-muted-foreground/50" stroke-width="1" vector-effect="non-scaling-stroke" />
-            {/if}
-            {#each view.xticks as t, i (i)}
-              <text x={t.x} y={VH - 6} text-anchor="middle" class="fill-muted-foreground text-[10px] tabular-nums">{t.label}</text>
-            {/each}
+    <div class="mb-3 flex w-fit items-center gap-0.5 rounded-md border border-border p-0.5">
+      {#each SERIES as s (s.key)}
+        {@render seg(enabled[s.key], s.label, () => toggleSeries(s.key))}
+      {/each}
+    </div>
+    <div bind:clientWidth={cw}>
+      {#if view}
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+        <svg
+          viewBox="0 0 {W} {VH}"
+          class="h-64 w-full cursor-pointer touch-none outline-none"
+          role="img"
+          aria-label="Cumulative P&L curve — click a point to open that day in the calendar"
+          tabindex="0"
+          onpointermove={moveCursor}
+          onpointerleave={() => (cursor = null)}
+          onclick={onCurveClick}
+          onkeydown={onCurveKey}
+        >
+          <defs>
+            <linearGradient id="perfGross" x1="0" y1="0" x2="0" y2="1"
+              ><stop offset="0%" class="[stop-color:var(--chart-2)] [stop-opacity:0.24]" /><stop
+                offset="100%"
+                class="[stop-color:var(--chart-2)] [stop-opacity:0]"
+              /></linearGradient
+            >
+            <linearGradient id="perfNet" x1="0" y1="0" x2="0" y2="1"
+              ><stop offset="0%" class="[stop-color:var(--primary)] [stop-opacity:0.2]" /><stop
+                offset="100%"
+                class="[stop-color:var(--primary)] [stop-opacity:0]"
+              /></linearGradient
+            >
+            <linearGradient id="perfTake" x1="0" y1="0" x2="0" y2="1"
+              ><stop offset="0%" class="[stop-color:var(--chart-3)] [stop-opacity:0.24]" /><stop
+                offset="100%"
+                class="[stop-color:var(--chart-3)] [stop-opacity:0]"
+              /></linearGradient
+            >
+          </defs>
+          {#each view.yticks as t, i (i)}
+            <line x1={PAD.l} y1={t.y} x2={W - PAD.r} y2={t.y} class="stroke-border" stroke-width="1" vector-effect="non-scaling-stroke" />
+            <text x={PAD.l - 6} y={t.y + 3.5} text-anchor="end" class="fill-muted-foreground text-[11px] tabular-nums">{t.label}</text>
+          {/each}
+          {#if view.zeroY != null}
+            <line
+              x1={PAD.l}
+              y1={view.zeroY}
+              x2={W - PAD.r}
+              y2={view.zeroY}
+              class="stroke-muted-foreground/50"
+              stroke-width="1"
+              vector-effect="non-scaling-stroke"
+            />
+          {/if}
+          {#each view.xticks as t, i (i)}
+            <text x={t.x} y={VH - 6} text-anchor="middle" class="fill-muted-foreground text-[10px] tabular-nums">{t.label}</text>
+          {/each}
+          {#each view.lines as ln (ln.key)}
+            <path d={ln.area} fill="url(#{ln.grad})" />
+          {/each}
+          {#each view.lines as ln (ln.key)}
+            <path d={ln.d} fill="none" class={ln.stroke} stroke-width="2" vector-effect="non-scaling-stroke" />
+          {/each}
+          {#each view.ends as e (e.key)}
+            <text x={W - PAD.r + 5} y={e.y + 3.5} text-anchor="start" class={['text-[11px] font-medium tabular-nums', e.fill]}
+              >{e.label}</text
+            >
+          {/each}
+          {#if cursor != null}
+            <line
+              x1={view.x(cursor)}
+              y1={PAD.t}
+              x2={view.x(cursor)}
+              y2={VH - PAD.b}
+              class="stroke-muted-foreground"
+              stroke-width="1"
+              stroke-dasharray="3 3"
+              vector-effect="non-scaling-stroke"
+            />
             {#each view.lines as ln (ln.key)}
-              <path d={ln.area} fill="url(#{ln.grad})" />
+              <circle
+                cx={view.x(cursor)}
+                cy={view.y(view.pts[cursor][ln.key])}
+                r="3.5"
+                class={[ln.stroke, ln.fill]}
+                vector-effect="non-scaling-stroke"
+              />
             {/each}
-            {#each view.lines as ln (ln.key)}
-              <path d={ln.d} fill="none" class={ln.stroke} stroke-width="2" vector-effect="non-scaling-stroke" />
-            {/each}
-            {#each view.ends as e (e.key)}
-              <text x={W - PAD.r + 5} y={e.y + 3.5} text-anchor="start" class={['text-[11px] font-medium tabular-nums', e.fill]}>{e.label}</text>
-            {/each}
-            {#if cursor != null}
-              <line x1={view.x(cursor)} y1={PAD.t} x2={view.x(cursor)} y2={VH - PAD.b} class="stroke-muted-foreground" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" />
-              {#each view.lines as ln (ln.key)}
-                <circle cx={view.x(cursor)} cy={view.y(view.pts[cursor][ln.key])} r="3.5" class={[ln.stroke, ln.fill]} vector-effect="non-scaling-stroke" />
-              {/each}
-            {/if}
-          </svg>
-          <div class="mt-1 text-center text-xs tabular-nums text-muted-foreground" aria-live="polite">{tip || 'Hover or arrow-key the curve for daily cumulative P&L'}</div>
-        {:else}
-          <p class="grid h-64 place-items-center text-sm text-muted-foreground">No trades in the selected range.</p>
-        {/if}
-      </div>
+          {/if}
+        </svg>
+        <div class="mt-1 text-center text-xs tabular-nums text-muted-foreground" aria-live="polite">
+          {tip || 'Hover or arrow-key the curve for daily cumulative P&L'}
+        </div>
+      {:else}
+        <p class="grid h-64 place-items-center text-sm text-muted-foreground">No trades in the selected range.</p>
+      {/if}
+    </div>
   {/snippet}
 
   {#snippet calBody()}
-      <div class="mb-3 flex items-center justify-between">
-        <span class="text-sm font-medium text-foreground">{monthLabel}</span>
-        <span class={['text-sm tabular-nums', monthNet >= 0 ? 'text-chart-2' : 'text-destructive']}>{usdWhole(monthNet)}</span>
-      </div>
-      <div class="grid grid-cols-7 gap-1.5">
-        {#each weekdays as d (d)}
-          <div class="pb-1 text-center text-[11px] text-muted-foreground">{d}</div>
-        {/each}
-        {#each cells as day, i (i)}
-          {#if day === null}
-            <div></div>
-          {:else}
-            {@const t = dayPnl[day]}
-            {@const up = t && t.pnl >= 0}
-            <button
-              type="button"
-              onclick={() => t && pickDay(day)}
-              disabled={!t}
-              class={[
-                'min-h-16 rounded border p-1.5 text-left transition-colors',
-                t
-                  ? up
-                    ? 'border-chart-2/30 bg-chart-2/10'
-                    : 'border-destructive/30 bg-destructive/10'
-                  : 'cursor-default border-border',
-                selectedDay === day && 'ring-2 ring-primary',
-              ]}
-            >
-              <span class="flex items-center gap-1 text-[11px] text-muted-foreground">
-                {day}{#if getNote(day)}<span class="size-1.5 rounded-full bg-primary" title="Has a note"></span>{/if}
-              </span>
-              {#if t}
-                <div class={['mt-1 text-right text-xs font-medium tabular-nums', up ? 'text-chart-2' : 'text-destructive']}>
-                  {usdWhole(t.pnl)}
-                </div>
-                <div class="text-right text-[10px] text-muted-foreground">{t.tr} tr</div>
-              {/if}
-            </button>
-          {/if}
-        {/each}
-      </div>
-
-      <!-- Selected-day detail: the day's trades + its journal note (parity with app/demo). -->
-      {#if selectedDay && dayPnl[selectedDay]}
-        {@const t = dayPnl[selectedDay]}
-        <div class="mt-4 rounded-md border border-border bg-background p-4">
-          <div class="mb-3 flex items-center justify-between">
-            <span class="text-sm font-semibold text-foreground">
-              {monthWord} {selectedDay}
-              <span class={['ml-2 tabular-nums', t.pnl >= 0 ? 'text-chart-2' : 'text-destructive']}>{usdWhole(t.pnl)}</span>
-              <span class="ml-2 text-xs font-normal text-muted-foreground">{t.tr} {t.tr === 1 ? 'trade' : 'trades'}</span>
+    <div class="mb-3 flex items-center justify-between">
+      <span class="text-sm font-medium text-foreground">{monthLabel}</span>
+      <span class={['text-sm tabular-nums', monthNet >= 0 ? 'text-chart-2' : 'text-destructive']}>{usdWhole(monthNet)}</span>
+    </div>
+    <div class="grid grid-cols-7 gap-1.5">
+      {#each weekdays as d (d)}
+        <div class="pb-1 text-center text-[11px] text-muted-foreground">{d}</div>
+      {/each}
+      {#each cells as day, i (i)}
+        {#if day === null}
+          <div></div>
+        {:else}
+          {@const t = dayPnl[day]}
+          {@const up = t && t.pnl >= 0}
+          <button
+            type="button"
+            onclick={() => t && pickDay(day)}
+            disabled={!t}
+            class={[
+              'min-h-16 rounded border p-1.5 text-left transition-colors',
+              t ? (up ? 'border-chart-2/30 bg-chart-2/10' : 'border-destructive/30 bg-destructive/10') : 'cursor-default border-border',
+              selectedDay === day && 'ring-2 ring-primary',
+            ]}
+          >
+            <span class="flex items-center gap-1 text-[11px] text-muted-foreground">
+              {day}{#if getNote(day)}<span class="size-1.5 rounded-full bg-primary" title="Has a note"></span>{/if}
             </span>
-            <button type="button" class="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Close day detail" onclick={() => (selectedDay = null)}>
-              <X class="size-4" />
-            </button>
-          </div>
-          <div class="grid gap-4 lg:grid-cols-2">
-            <div class="overflow-hidden rounded-md border border-border">
-              {#each selTrades as tr, i (i)}
-                <div class={['flex items-center gap-2 px-2.5 py-1.5 text-xs', i > 0 && 'border-t border-border']}>
-                  <span class="tabular-nums text-muted-foreground">{tr.time || '—'}</span>
-                  <span class="font-medium">{tr.sym}</span>
-                  <Badge variant="outline" class={tr.side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}>{tr.side}</Badge>
-                  <span class="text-muted-foreground">×{tr.qty}</span>
-                  <span class={['ml-auto font-semibold tabular-nums', tr.pnl >= 0 ? 'text-chart-2' : 'text-destructive']}>{usdWhole(tr.pnl)}</span>
-                </div>
-              {:else}
-                <div class="px-2.5 py-3 text-center text-xs text-muted-foreground">No intraday trades recorded.</div>
-              {/each}
-            </div>
-            <div>
-              <div class="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Journal note</div>
-              <textarea
-                class="h-24 w-full resize-none rounded-md border border-border bg-card p-2 text-xs leading-relaxed text-foreground outline-none focus-visible:border-ring"
-                bind:value={note}
-              ></textarea>
-              <div class="mt-1.5 flex justify-end">
-                <Button size="sm" onclick={() => selectedDay && onsavenote?.(selectedDay, note)}>Save note</Button>
+            {#if t}
+              <div class={['mt-1 text-right text-xs font-medium tabular-nums', up ? 'text-chart-2' : 'text-destructive']}>
+                {usdWhole(t.pnl)}
               </div>
+              <div class="text-right text-[10px] text-muted-foreground">{t.tr} tr</div>
+            {/if}
+          </button>
+        {/if}
+      {/each}
+    </div>
+
+    <!-- Selected-day detail: the day's trades + its journal note (parity with app/demo). -->
+    {#if selectedDay && dayPnl[selectedDay]}
+      {@const t = dayPnl[selectedDay]}
+      <div class="mt-4 rounded-md border border-border bg-background p-4">
+        <div class="mb-3 flex items-center justify-between">
+          <span class="text-sm font-semibold text-foreground">
+            {monthWord}
+            {selectedDay}
+            <span class={['ml-2 tabular-nums', t.pnl >= 0 ? 'text-chart-2' : 'text-destructive']}>{usdWhole(t.pnl)}</span>
+            <span class="ml-2 text-xs font-normal text-muted-foreground">{t.tr} {t.tr === 1 ? 'trade' : 'trades'}</span>
+          </span>
+          <button
+            type="button"
+            class="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            aria-label="Close day detail"
+            onclick={() => (selectedDay = null)}
+          >
+            <X class="size-4" />
+          </button>
+        </div>
+        <div class="grid gap-4 lg:grid-cols-2">
+          <div class="overflow-hidden rounded-md border border-border">
+            {#each selTrades as tr, i (i)}
+              <div class={['flex items-center gap-2 px-2.5 py-1.5 text-xs', i > 0 && 'border-t border-border']}>
+                <span class="tabular-nums text-muted-foreground">{tr.time || '—'}</span>
+                <span class="font-medium">{tr.sym}</span>
+                <Badge
+                  variant="outline"
+                  class={tr.side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}>{tr.side}</Badge
+                >
+                <span class="text-muted-foreground">×{tr.qty}</span>
+                <span class={['ml-auto font-semibold tabular-nums', tr.pnl >= 0 ? 'text-chart-2' : 'text-destructive']}
+                  >{usdWhole(tr.pnl)}</span
+                >
+              </div>
+            {:else}
+              <div class="px-2.5 py-3 text-center text-xs text-muted-foreground">No intraday trades recorded.</div>
+            {/each}
+          </div>
+          <div>
+            <div class="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Journal note</div>
+            <textarea
+              class="h-24 w-full resize-none rounded-md border border-border bg-card p-2 text-xs leading-relaxed text-foreground outline-none focus-visible:border-ring"
+              bind:value={note}
+            ></textarea>
+            <div class="mt-1.5 flex justify-end">
+              <Button size="sm" onclick={() => selectedDay && onsavenote?.(selectedDay, note)}>Save note</Button>
             </div>
           </div>
         </div>
-      {/if}
+      </div>
+    {/if}
   {/snippet}
 
   {#snippet costBody()}
@@ -701,9 +821,17 @@
     </div>
     <div class="overflow-hidden rounded-md border border-border">
       {#each costRows as r, i (r.label)}
-        <div class={['flex items-center justify-between px-3 py-2 text-sm', i > 0 && 'border-t border-border', r.total && 'bg-secondary font-semibold']}>
+        <div
+          class={[
+            'flex items-center justify-between px-3 py-2 text-sm',
+            i > 0 && 'border-t border-border',
+            r.total && 'bg-secondary font-semibold',
+          ]}
+        >
           <span class={r.total ? 'text-foreground' : 'text-muted-foreground'}>{r.label}</span>
-          <span class={['tabular-nums', r.tone === 'pos' ? 'text-chart-2' : r.tone === 'neg' ? 'text-destructive' : 'text-foreground']}>{r.value}</span>
+          <span class={['tabular-nums', r.tone === 'pos' ? 'text-chart-2' : r.tone === 'neg' ? 'text-destructive' : 'text-foreground']}
+            >{r.value}</span
+          >
         </div>
       {/each}
     </div>
@@ -715,7 +843,12 @@
       {#each advStats as r (r.k)}
         <div class="flex items-baseline justify-between gap-3 border-b border-border py-[7px]">
           <span class="text-xs text-muted-foreground">{r.k}</span>
-          <span class={['text-[13px] font-bold tabular-nums whitespace-nowrap', r.tone === 'pos' ? 'text-chart-2' : r.tone === 'neg' ? 'text-destructive' : 'text-foreground']}>{r.v}</span>
+          <span
+            class={[
+              'text-[13px] font-bold tabular-nums whitespace-nowrap',
+              r.tone === 'pos' ? 'text-chart-2' : r.tone === 'neg' ? 'text-destructive' : 'text-foreground',
+            ]}>{r.v}</span
+          >
         </div>
       {/each}
     </div>
@@ -756,11 +889,15 @@
   <!-- Chrome parity (R12/F27): the boot/activity log + the metric & cost definitions/caveats. -->
   <div class="grid gap-4 lg:grid-cols-2">
     <Card.Root>
-      <Card.Header class="pb-2"><Card.Title class="text-xs uppercase tracking-wider text-muted-foreground">Activity</Card.Title></Card.Header>
+      <Card.Header class="pb-2"
+        ><Card.Title class="text-xs uppercase tracking-wider text-muted-foreground">Activity</Card.Title></Card.Header
+      >
       <Card.Content><ActivityTerminal /></Card.Content>
     </Card.Root>
     <Card.Root>
-      <Card.Header class="pb-2"><Card.Title class="text-xs uppercase tracking-wider text-muted-foreground">Definitions</Card.Title></Card.Header>
+      <Card.Header class="pb-2"
+        ><Card.Title class="text-xs uppercase tracking-wider text-muted-foreground">Definitions</Card.Title></Card.Header
+      >
       <Card.Content><Definitions /></Card.Content>
     </Card.Root>
   </div>
@@ -773,7 +910,12 @@
       <Dialog.Header>
         <Dialog.Title class="flex items-baseline justify-between gap-3 pr-6">
           <span>{detail.title}</span>
-          <span class={['text-lg tabular-nums', detail.tone === 'pos' ? 'text-chart-2' : detail.tone === 'neg' ? 'text-destructive' : 'text-foreground']}>{detail.value}</span>
+          <span
+            class={[
+              'text-lg tabular-nums',
+              detail.tone === 'pos' ? 'text-chart-2' : detail.tone === 'neg' ? 'text-destructive' : 'text-foreground',
+            ]}>{detail.value}</span
+          >
         </Dialog.Title>
         {#if detail.desc}<Dialog.Description>{detail.desc}</Dialog.Description>{/if}
       </Dialog.Header>
@@ -785,11 +927,19 @@
                 <span class="w-24 shrink-0 text-muted-foreground">{bar.label}</span>
                 <div class="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
                   <div
-                    class={['h-full rounded-full', bar.tone === 'pos' ? 'bg-chart-2' : bar.tone === 'neg' ? 'bg-destructive' : 'bg-muted-foreground']}
+                    class={[
+                      'h-full rounded-full',
+                      bar.tone === 'pos' ? 'bg-chart-2' : bar.tone === 'neg' ? 'bg-destructive' : 'bg-muted-foreground',
+                    ]}
                     use:styleProps={{ width: `${Math.max(2, Math.min(100, bar.pct))}%` }}
                   ></div>
                 </div>
-                <span class={['w-20 shrink-0 text-right font-medium tabular-nums', bar.tone === 'pos' ? 'text-chart-2' : bar.tone === 'neg' ? 'text-destructive' : 'text-foreground']}>{bar.value}</span>
+                <span
+                  class={[
+                    'w-20 shrink-0 text-right font-medium tabular-nums',
+                    bar.tone === 'pos' ? 'text-chart-2' : bar.tone === 'neg' ? 'text-destructive' : 'text-foreground',
+                  ]}>{bar.value}</span
+                >
               </div>
             {/each}
           </div>
@@ -799,7 +949,10 @@
             {#each detail.rows as r, i (i)}
               <div class={['flex items-center justify-between px-3 py-2 text-sm', i > 0 && 'border-t border-border']}>
                 <span class="text-muted-foreground">{r.label}</span>
-                <span class={['tabular-nums', r.tone === 'pos' ? 'text-chart-2' : r.tone === 'neg' ? 'text-destructive' : 'text-foreground']}>{r.value}</span>
+                <span
+                  class={['tabular-nums', r.tone === 'pos' ? 'text-chart-2' : r.tone === 'neg' ? 'text-destructive' : 'text-foreground']}
+                  >{r.value}</span
+                >
               </div>
             {/each}
           </div>

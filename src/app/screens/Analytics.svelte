@@ -29,21 +29,7 @@
     symbols: SymbolRow[];
     statRows: StatRow[];
   }
-  let {
-    kpis,
-    dist,
-    wins,
-    losses,
-    curve,
-    maxDD,
-    maxDDpct,
-    long,
-    short,
-    hours,
-    wdays,
-    symbols,
-    statRows,
-  }: Props = $props();
+  let { kpis, dist, wins, losses, curve, maxDD, maxDDpct, long, short, hours, wdays, symbols, statRows }: Props = $props();
 
   const winShare = $derived(wins + losses ? Math.round((wins / (wins + losses)) * 100) : 0);
   const longShare = $derived(long.n + short.n ? Math.round((long.n / (long.n + short.n)) * 100) : 0);
@@ -98,7 +84,13 @@
     {#each items as d, i (i)}
       {@const bw = step * 0.55}
       {@const h = (Math.abs(d.value) / max) * 26}
-      <rect x={i * step + (step - bw) / 2} y={d.value >= 0 ? 30 - h : 30} width={bw} height={h} class={d.value >= 0 ? 'fill-chart-2' : 'fill-destructive'} />
+      <rect
+        x={i * step + (step - bw) / 2}
+        y={d.value >= 0 ? 30 - h : 30}
+        width={bw}
+        height={h}
+        class={d.value >= 0 ? 'fill-chart-2' : 'fill-destructive'}
+      />
     {/each}
   </svg>
   <div class="mt-1 flex justify-between text-[10px] text-muted-foreground">
@@ -112,7 +104,12 @@
     {#each kpis as k (k.label)}
       <Card.Root class="p-4">
         <div class="text-xs text-muted-foreground">{k.label}</div>
-        <div class={cn('mt-1 text-xl font-semibold tabular-nums', k.tone === 'pos' ? 'text-chart-2' : k.tone === 'neg' ? 'text-destructive' : 'text-foreground')}>
+        <div
+          class={cn(
+            'mt-1 text-xl font-semibold tabular-nums',
+            k.tone === 'pos' ? 'text-chart-2' : k.tone === 'neg' ? 'text-destructive' : 'text-foreground'
+          )}
+        >
           {k.value}
         </div>
       </Card.Root>
@@ -162,11 +159,15 @@
         <div class="grid grid-cols-2 gap-2">
           <div class="rounded-md border border-border bg-background px-3 py-2">
             <div class="text-[11px] text-muted-foreground">Long · {long.n}</div>
-            <div class={cn('mt-0.5 text-sm font-semibold tabular-nums', long.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{usdWhole(long.pnl)}</div>
+            <div class={cn('mt-0.5 text-sm font-semibold tabular-nums', long.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>
+              {usdWhole(long.pnl)}
+            </div>
           </div>
           <div class="rounded-md border border-border bg-background px-3 py-2">
             <div class="text-[11px] text-muted-foreground">Short · {short.n}</div>
-            <div class={cn('mt-0.5 text-sm font-semibold tabular-nums', short.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{usdWhole(short.pnl)}</div>
+            <div class={cn('mt-0.5 text-sm font-semibold tabular-nums', short.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>
+              {usdWhole(short.pnl)}
+            </div>
           </div>
         </div>
         <svg viewBox="0 0 100 8" class="mt-3 h-2 w-full" preserveAspectRatio="none" aria-hidden="true">
@@ -201,9 +202,17 @@
             <span class="w-28 text-muted-foreground">{s.trades} tr · {s.win}%</span>
             <svg viewBox="0 0 100 8" class="h-2 flex-1" preserveAspectRatio="none" aria-hidden="true">
               <rect x="0" y="0" width="100" height="8" class="fill-secondary" />
-              <rect x="0" y="0" width={Math.round((Math.abs(s.pnl) / maxSym) * 100)} height="8" class={s.pnl >= 0 ? 'fill-chart-2' : 'fill-destructive'} />
+              <rect
+                x="0"
+                y="0"
+                width={Math.round((Math.abs(s.pnl) / maxSym) * 100)}
+                height="8"
+                class={s.pnl >= 0 ? 'fill-chart-2' : 'fill-destructive'}
+              />
             </svg>
-            <span class={cn('w-20 text-right font-semibold tabular-nums', s.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{usdWhole(s.pnl)}</span>
+            <span class={cn('w-20 text-right font-semibold tabular-nums', s.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}
+              >{usdWhole(s.pnl)}</span
+            >
           </div>
         {/each}
       </Card.Content>
@@ -216,7 +225,12 @@
         {#each statRows as r (r.k)}
           <div class="flex items-baseline justify-between gap-3 border-b border-border py-[7px]">
             <span class="text-xs text-muted-foreground">{r.k}</span>
-            <span class={cn('text-[13px] font-bold tabular-nums whitespace-nowrap', r.tone === 'pos' ? 'text-chart-2' : r.tone === 'neg' ? 'text-destructive' : 'text-foreground')}>{r.v}</span>
+            <span
+              class={cn(
+                'text-[13px] font-bold tabular-nums whitespace-nowrap',
+                r.tone === 'pos' ? 'text-chart-2' : r.tone === 'neg' ? 'text-destructive' : 'text-foreground'
+              )}>{r.v}</span
+            >
           </div>
         {/each}
       </Card.Content>

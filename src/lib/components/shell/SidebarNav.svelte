@@ -32,8 +32,7 @@
     /** Icon-only rail. */
     collapsed?: boolean;
   }
-  let { brand = 'Blotterbook', brandHref = '/', sections, active = '', onnavigate, collapsed = false }: Props =
-    $props();
+  let { brand = 'Blotterbook', brandHref = '/', sections, active = '', onnavigate, collapsed = false }: Props = $props();
 </script>
 
 <nav class="flex h-full flex-col gap-1 overflow-y-auto p-2" aria-label="Primary">
