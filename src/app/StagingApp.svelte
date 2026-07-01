@@ -24,6 +24,7 @@
   import { buildReportVM } from './lib/reports.ts';
   import { downloadBlob } from './lib/files.ts';
   import CsvLibrary, { type Csv, type ImportPreview } from './screens/CsvLibrary.svelte';
+  import Onboarding from './parts/Onboarding.svelte';
   import { Adapters } from '../lib/core/adapters.ts';
   import type { Trade } from '../lib/core/types.ts';
 
@@ -400,6 +401,17 @@
     pendingTrades = [];
   }
 
+  // First-run onboarding (prod /app only): shown when the real Store is empty. Parses + imports a CSV
+  // directly (setup is already persisted via CostSetup → dash.saveSetup on each change).
+  const needsOnboarding = $derived(!isDemo && !isStaging && dash.loaded && !dash.allTrades.length);
+  async function onboardImport(file: File): Promise<string> {
+    const text = await file.text();
+    const r = Adapters.parse(text);
+    if (!r.ok || !r.trades || !r.trades.length) return r.ok ? 'No completed trades found in that CSV.' : r.error || 'Could not read that CSV.';
+    await dash.importTrades(r.trades);
+    return '';
+  }
+
   // Header meta: the running version (staging track), the platform phase (Beta while prod is pre-1.0,
   // mirroring platformLabel), and the environment. Fetched from the CH12 versions.json single source.
   let versions = $state<{ prod?: string; staging?: string } | null>(null);
@@ -434,6 +446,8 @@
     <p class="text-sm text-destructive" role="alert">Could not start the app: {dash.error}</p>
   {:else if !dash.loaded}
     <p class="text-sm text-muted-foreground">Loading…</p>
+  {:else if needsOnboarding}
+    <Onboarding setup={dash.setup} onsetupsave={s => dash.saveSetup(s)} onimport={onboardImport} />
   {:else if active === 'dashboard'}
     <Dashboard
       stats={dStats}
