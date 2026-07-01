@@ -32,6 +32,7 @@
   import { readImage } from '../lib/files.ts';
   import { createPagination } from '../lib/pagination.svelte.ts';
   import PaginationControls from '../parts/PaginationControls.svelte';
+  import TagInput from '../parts/TagInput.svelte';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Checkbox } from '$lib/components/ui/checkbox';
@@ -56,8 +57,10 @@
     ondelete?: (ids: string[]) => void | Promise<void>;
     /** Disable every write control (Save all + per-row/bulk delete) on demo (never mutates). */
     dataDisabled?: boolean;
+    /** The existing trade-tag vocabulary, for the tag-input autocomplete (A167). */
+    tagVocab?: string[];
   }
-  let { rows: rowsProp, coreEditable = true, editableFields, onsave, ondelete, dataDisabled = false }: Props = $props();
+  let { rows: rowsProp, coreEditable = true, editableFields, onsave, ondelete, dataDisabled = false, tagVocab = [] }: Props = $props();
   // A field is editable if it's in editableFields (when provided) or coreEditable covers everything.
   const canEdit = (field: string) => (editableFields ? editableFields.includes(field) : coreEditable);
   const anyCoreEditable = $derived(coreEditable || !!editableFields?.length);
@@ -86,6 +89,7 @@
   let pendingDelete = $state<string[]>([]);
   let deleteOpen = $state(false);
   let bulkTag = $state('');
+  let rowTagDraft = $state(''); // the open tag-popover's draft (one popover at a time)
   let saving = $state(false);
   let nextId = 100;
 
@@ -306,7 +310,7 @@
         <Popover.Content class="w-56" align="start">
           <p class="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Add tag to {selected.size}</p>
           <div class="flex gap-2">
-            <Input bind:value={bulkTag} placeholder="tag…" class="h-8" onkeydown={e => e.key === 'Enter' && applyBulkTag()} />
+            <TagInput bind:value={bulkTag} suggestions={tagVocab} placeholder="tag…" onadd={() => applyBulkTag()} />
             <Button size="sm" class="h-8" onclick={applyBulkTag}>Add</Button>
           </div>
         </Popover.Content>
@@ -389,7 +393,11 @@
               >
               <Table.Cell class="p-1 text-muted-foreground">{@render numCell(row, 'fees', row.fees, 'text-muted-foreground')}</Table.Cell>
               <Table.Cell class="p-1">
-                <Popover.Root>
+                <Popover.Root
+                  onOpenChange={o => {
+                    if (o) rowTagDraft = ''; // fresh draft per popover (one is open at a time)
+                  }}
+                >
                   <Popover.Trigger>
                     {#snippet child({ props })}
                       <button
@@ -416,16 +424,7 @@
                       {/each}
                       {#if !row.tags.length}<span class="text-xs text-muted-foreground">No tags</span>{/if}
                     </div>
-                    <Input
-                      placeholder="Add tag, Enter…"
-                      class="h-8"
-                      onkeydown={e => {
-                        if (e.key === 'Enter') {
-                          addTag(row.id, e.currentTarget.value);
-                          e.currentTarget.value = '';
-                        }
-                      }}
-                    />
+                    <TagInput bind:value={rowTagDraft} suggestions={tagVocab} onadd={t => addTag(row.id, t)} />
                   </Popover.Content>
                 </Popover.Root>
               </Table.Cell>

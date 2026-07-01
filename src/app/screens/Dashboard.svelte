@@ -58,6 +58,9 @@
   import { X } from '@lucide/svelte';
   import * as Dialog from '$lib/components/ui/dialog';
   import { styleProps } from '../lib/actions.ts';
+  import { flip } from 'svelte/animate';
+  import { fade, slide } from 'svelte/transition';
+  import { dur } from '../lib/motion.ts';
   import { usd, usdWhole, axMoney, niceTicks, linePath, minMax, monthCells, DOW_LABEL } from '../../lib/core/core.ts';
   import type { DailyPoint } from '../../lib/core/curveseries.ts';
   import type { AppSetup } from '../../lib/core/types.ts';
@@ -80,6 +83,8 @@
     /** Click-a-day drill-in (parity with app/demo): the day's trades + its persistent journal note. */
     dayTrades: (day: number) => DayTrade[];
     getNote: (day: number) => string;
+    /** The day's journal (context) tags — shown read-only in the drill-in; edited on the Calendar screen (A166). */
+    getDayTags?: (day: number) => string[];
     onsavenote?: (day: number, text: string) => void;
     /** Click-a-KPI-card drill-in: the metric's breakdown (parity with the app/demo stat-card modal). */
     statDetail: (key: string) => StatDetail;
@@ -120,6 +125,7 @@
     onscope,
     dayTrades,
     getNote,
+    getDayTags,
     onsavenote,
     statDetail,
     filterModel,
@@ -787,7 +793,7 @@
     <!-- Selected-day detail: the day's trades + its journal note (parity with app/demo). -->
     {#if selectedDay && dayPnl[selectedDay]}
       {@const t = dayPnl[selectedDay]}
-      <div class="mt-4 rounded-md border border-border bg-background p-4">
+      <div class="mt-4 rounded-md border border-border bg-background p-4" transition:slide={{ duration: dur(150) }}>
         <div class="mb-3 flex items-center justify-between">
           <span class="text-sm font-semibold text-foreground">
             {monthWord}
@@ -825,6 +831,17 @@
           </div>
           <div>
             <div class="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Journal note</div>
+            {#if getDayTags && selectedDay}
+              {@const dayTags = getDayTags(selectedDay)}
+              {#if dayTags.length}
+                <!-- Day (context) tags — outline/muted to stay visually distinct from per-trade tags (A166). -->
+                <div class="mb-1.5 flex flex-wrap gap-1">
+                  {#each dayTags as tg (tg)}<Badge variant="outline" class="text-muted-foreground" title="Day tag — edit in Calendar"
+                      >{tg}</Badge
+                    >{/each}
+                </div>
+              {/if}
+            {/if}
             <textarea
               class="h-24 w-full resize-none rounded-md border border-border bg-card p-2 text-xs leading-relaxed text-foreground outline-none focus-visible:border-ring"
               bind:value={note}
@@ -877,14 +894,17 @@
     </div>
   {/snippet}
 
-  <!-- Modules — reorderable / hideable / re-addable (persisted to Store.local). -->
+  <!-- Modules — reorderable / hideable / re-addable (persisted to Store.local). A146: reorders
+       FLIP into place and add/remove fades (durations collapse under reduced motion). -->
   {#each modOrder as key (key)}
-    <Card.Root id="dashmod-{key}">
-      {@render moduleHeader(key)}
-      <Card.Content>
-        {#if key === 'perf'}{@render perfBody()}{:else if key === 'cal'}{@render calBody()}{:else if key === 'cost'}{@render costBody()}{:else if key === 'adv'}{@render advBody()}{/if}
-      </Card.Content>
-    </Card.Root>
+    <div animate:flip={{ duration: dur(180) }} transition:fade={{ duration: dur(140) }}>
+      <Card.Root id="dashmod-{key}">
+        {@render moduleHeader(key)}
+        <Card.Content>
+          {#if key === 'perf'}{@render perfBody()}{:else if key === 'cal'}{@render calBody()}{:else if key === 'cost'}{@render costBody()}{:else if key === 'adv'}{@render advBody()}{/if}
+        </Card.Content>
+      </Card.Root>
+    </div>
   {/each}
 
   <!-- Add-module affordance — offers the hidden modules. -->

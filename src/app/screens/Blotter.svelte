@@ -44,15 +44,19 @@
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import { createPagination } from '../lib/pagination.svelte.ts';
   import PaginationControls from '../parts/PaginationControls.svelte';
+  import TagInput from '../parts/TagInput.svelte';
   import { fade } from 'svelte/transition';
 
   let {
     rows,
+    tagVocab = [],
     onsavemeta,
     ondelete,
     dataDisabled = false,
   }: {
     rows: BlotterRow[];
+    /** The existing trade-tag vocabulary, for the tag-input autocomplete (A167). */
+    tagVocab?: string[];
     /** Persist a trade's tags + journal note (the drawer's Save — A149). */
     onsavemeta?: (id: string, tags: string[], note: string) => void;
     /** Delete the given trade ids (the bulk Delete — A149). */
@@ -257,18 +261,10 @@
           <Popover.Content class="w-56" align="start">
             <p class="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Tag {selected.size} selected</p>
             <div class="flex items-center gap-1">
-              <Input
-                bind:value={bulkTag}
-                placeholder="Tag name…"
-                class="h-8 flex-1"
-                onkeydown={e => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    applyBulkTag();
-                  }
-                }}
-              />
-              <Button variant="secondary" size="sm" class="h-8" disabled={!bulkTag.trim()} onclick={applyBulkTag}>Apply</Button>
+              <div class="flex-1">
+                <TagInput bind:value={bulkTag} suggestions={tagVocab} placeholder="Tag name…" onadd={applyBulkTag} />
+              </div>
+              <Button variant="secondary" size="sm" class="h-8" disabled={!bulkTag.trim()} onclick={() => applyBulkTag()}>Apply</Button>
             </div>
           </Popover.Content>
         </Popover.Root>
@@ -441,18 +437,7 @@
             {/each}
             {#if !draftTags.length}<span class="text-xs text-muted-foreground">No tags</span>{/if}
           </div>
-          <Input
-            bind:value={tagDraft}
-            placeholder="Add tag, Enter…"
-            class="h-8"
-            disabled={dataDisabled}
-            onkeydown={e => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addDraftTag();
-              }
-            }}
-          />
+          <TagInput bind:value={tagDraft} suggestions={tagVocab} disabled={dataDisabled} onadd={addDraftTag} />
         </div>
         <div>
           <div class="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Journal note</div>

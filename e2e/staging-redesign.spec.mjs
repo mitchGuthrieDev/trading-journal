@@ -271,6 +271,17 @@ test('staging redesign: Dashboard modules hide/reorder and persist across reload
   await page.reload({ waitUntil: 'networkidle' });
   await expect(page.getByText('Net P&L', { exact: true })).toBeVisible({ timeout: 6000 });
   expect(await order()).toEqual(['Trading Calendar', 'Performance']); // persisted via Store.local
+
+  // A139: hide a module, add it back via the 'Add module' picker, and the add-back persists.
+  await page.locator('#dashmod-perf button[aria-label="Module menu"]').click();
+  await page.getByRole('menuitem', { name: 'Hide' }).click();
+  await expect(page.locator('#dashmod-perf')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Add module' }).click();
+  await page.getByRole('menuitem', { name: 'Performance' }).click();
+  await expect(page.locator('#dashmod-perf')).toBeVisible();
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(page.getByText('Net P&L', { exact: true })).toBeVisible({ timeout: 6000 });
+  await expect(page.locator('#dashmod-perf')).toBeVisible(); // the add-back persisted too
 });
 
 test('staging redesign: the Blotter paginates (50/page)', async ({ page }) => {

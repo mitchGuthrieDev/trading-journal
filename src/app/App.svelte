@@ -15,6 +15,8 @@
   import { createDashboard } from './lib/dashboard.svelte.ts';
   import { dailySeries } from '../lib/core/curveseries.ts';
   import { navSections, navLabel, navItems } from './lib/nav';
+  import { fade } from 'svelte/transition';
+  import { dur } from './lib/motion.ts';
   import Dashboard, {
     DEFAULT_MODULE_KEYS,
     type DashStat,
@@ -313,7 +315,14 @@
     for (const d of dash.metricsAll.days) {
       const dt = new Date(d.date + 'T00:00:00');
       if (dt.getFullYear() === dash.calYear && dt.getMonth() === dash.calMonth) {
-        out[dt.getDate()] = { pnl: d.pnl, trades: d.trades, wins: d.wins, note: dash.journalDates.has(d.date) };
+        // A166: carry the day's journal (context) tags so the month grid can surface them (cell title).
+        out[dt.getDate()] = {
+          pnl: d.pnl,
+          trades: d.trades,
+          wins: d.wins,
+          note: dash.journalDates.has(d.date),
+          tags: dash.journalFor(d.date).tags,
+        };
       }
     }
     return out;
@@ -610,127 +619,138 @@
 
   <StatusBanner maintenance={flags.maintenanceBanner} {importWarning} />
 
-  {#if dash.error}
-    <p class="text-sm text-destructive" role="alert">Could not start the app: {dash.error}</p>
-  {:else if !dash.loaded}
-    <p class="text-sm text-muted-foreground">Loading…</p>
-  {:else if needsOnboarding}
-    <Onboarding setup={dash.setup} onsetupsave={s => dash.saveSetup(s)} onimport={onboardImport} />
-  {:else if active === 'dashboard'}
-    <Dashboard
-      stats={dStats}
-      series={dashSeries}
-      dateRange={dash.dateRange}
-      monthLabel={calData.label}
-      monthNet={calData.net}
-      dayPnl={calData.dayPnl}
-      firstDow={calData.firstDow}
-      daysInMonth={calData.daysInMonth}
-      onscope={dash.setScope}
-      dayTrades={calTradesForDay}
-      getNote={day => dash.noteFor(dateOf(day))}
-      onsavenote={(day, text) => dash.saveNote(dateOf(day), text)}
-      {statDetail}
-      {filterModel}
-      onpickdate={(y, m) => dash.setCal(y, m)}
-      costRows={dashCostRows}
-      advStats={dashAdvStats}
-      setup={dash.setup}
-      onsetupsave={s => dash.saveSetup(s)}
-      costDisabled={dash.isDemo}
-      modules={dashModules}
-      onmoduleschange={saveModules}
-      layouts={dashLayouts}
-    />
-  {:else if active === 'calendar'}
-    {#await SCREEN_LOADERS.calendar() then Calendar}
-      <Calendar.default
-        monthDays={calMonthDays}
-        year={dash.calYear}
-        month={dash.calMonth}
-        monthLabel={calData.label}
-        yearPnl={calYearPnl}
-        onprev={() => dash.navMonth(-1)}
-        onnext={() => dash.navMonth(1)}
-        onlatest={() => dash.jumpToLatest()}
-        tradesForDay={calTradesForDay}
-        getJournal={day => dash.journalFor(dateOf(day))}
-        onsavenote={(day, text, tags, shots) => dash.saveNote(dateOf(day), text, tags, shots)}
-      />
-    {/await}
-  {:else if active === 'analytics'}
-    {#await SCREEN_LOADERS.analytics() then Analytics}
-      <Analytics.default
-        kpis={analytics.kpis}
-        dist={analytics.dist}
-        wins={analytics.wins}
-        losses={analytics.losses}
-        curve={dash.metricsActive.curve}
-        maxDD={dash.metricsActive.maxDD}
-        maxDDpct={dash.metricsActive.maxDDpct}
-        long={analytics.long}
-        short={analytics.short}
-        hours={analytics.hours}
-        wdays={analytics.wdays}
-        symbols={analytics.symbols}
-        byTag={analytics.byTag}
-        untagged={analytics.untagged}
-        statRows={analytics.statRows}
-      />
-    {/await}
-  {:else if active === 'blotter'}
-    {#await SCREEN_LOADERS.blotter() then Blotter}
-      <Blotter.default
-        rows={blotterRows}
-        onsavemeta={(id, tags, note) => dash.saveTradeMeta(id, tags, note)}
-        ondelete={ids => dash.deleteTrades(ids)}
-        dataDisabled={dash.isDemo}
-      />
-    {/await}
-  {:else if active === 'trades'}
-    {#await SCREEN_LOADERS.trades() then TradeEditor}
-      <TradeEditor.default
-        rows={editorRows}
-        coreEditable={false}
-        editableFields={EDITABLE_FIELDS}
-        onsave={persistEditorRows}
-        ondelete={ids => dash.deleteTrades(ids)}
-        dataDisabled={dash.isDemo}
-      />
-    {/await}
-  {:else if active === 'reports'}
-    {#await SCREEN_LOADERS.reports() then Reports}
-      <Reports.default
-        defaultTitle="Performance report"
-        defaultAccount={dash.brokerName(dash.setup.broker)}
-        calYear={dash.calYear}
-        calMonth={dash.calMonth}
-        build={buildReport}
-        onexport={onReportExport}
-      />
-    {/await}
-  {:else if active === 'csv'}
-    {#await SCREEN_LOADERS.csv() then CsvLibrary}
-      <CsvLibrary.default
-        files={csvFiles}
-        perFileActions={false}
-        blotterHref="#blotter"
-        parse={parseCsv}
-        onimport={importPreview}
-        ondelete={() => dash.purgeAll()}
-        onbackup={doBackup}
-        onrestore={doRestore}
-        onerase={doErase}
-        dataDisabled={dash.isDemo}
-        {restoreMsg}
-      />
-    {/await}
-  {:else}
-    <div class="grid min-h-[60vh] place-items-center">
-      <div class="flex max-w-md flex-col items-center gap-2 text-center">
-        <h2 class="text-lg font-semibold text-foreground">Screen not found</h2>
-        <p class="text-sm text-muted-foreground">There's no <code>{active}</code> screen. Pick a section from the sidebar to continue.</p>
-      </div>
+  <!-- A146: screen changes fade in (keyed on the route; instant under reduced motion). -->
+  {#key active}
+    <div in:fade={{ duration: dur(120) }}>
+      {#if dash.error}
+        <p class="text-sm text-destructive" role="alert">Could not start the app: {dash.error}</p>
+      {:else if !dash.loaded}
+        <p class="text-sm text-muted-foreground">Loading…</p>
+      {:else if needsOnboarding}
+        <Onboarding setup={dash.setup} onsetupsave={s => dash.saveSetup(s)} onimport={onboardImport} />
+      {:else if active === 'dashboard'}
+        <Dashboard
+          stats={dStats}
+          series={dashSeries}
+          dateRange={dash.dateRange}
+          monthLabel={calData.label}
+          monthNet={calData.net}
+          dayPnl={calData.dayPnl}
+          firstDow={calData.firstDow}
+          daysInMonth={calData.daysInMonth}
+          onscope={dash.setScope}
+          dayTrades={calTradesForDay}
+          getNote={day => dash.noteFor(dateOf(day))}
+          getDayTags={day => dash.journalFor(dateOf(day)).tags}
+          onsavenote={(day, text) => dash.saveNote(dateOf(day), text)}
+          {statDetail}
+          {filterModel}
+          onpickdate={(y, m) => dash.setCal(y, m)}
+          costRows={dashCostRows}
+          advStats={dashAdvStats}
+          setup={dash.setup}
+          onsetupsave={s => dash.saveSetup(s)}
+          costDisabled={dash.isDemo}
+          modules={dashModules}
+          onmoduleschange={saveModules}
+          layouts={dashLayouts}
+        />
+      {:else if active === 'calendar'}
+        {#await SCREEN_LOADERS.calendar() then Calendar}
+          <Calendar.default
+            monthDays={calMonthDays}
+            year={dash.calYear}
+            month={dash.calMonth}
+            monthLabel={calData.label}
+            yearPnl={calYearPnl}
+            tagVocab={dash.journalTags}
+            onprev={() => dash.navMonth(-1)}
+            onnext={() => dash.navMonth(1)}
+            onlatest={() => dash.jumpToLatest()}
+            tradesForDay={calTradesForDay}
+            getJournal={day => dash.journalFor(dateOf(day))}
+            onsavenote={(day, text, tags, shots) => dash.saveNote(dateOf(day), text, tags, shots)}
+          />
+        {/await}
+      {:else if active === 'analytics'}
+        {#await SCREEN_LOADERS.analytics() then Analytics}
+          <Analytics.default
+            kpis={analytics.kpis}
+            dist={analytics.dist}
+            wins={analytics.wins}
+            losses={analytics.losses}
+            curve={dash.metricsActive.curve}
+            maxDD={dash.metricsActive.maxDD}
+            maxDDpct={dash.metricsActive.maxDDpct}
+            long={analytics.long}
+            short={analytics.short}
+            hours={analytics.hours}
+            wdays={analytics.wdays}
+            symbols={analytics.symbols}
+            byTag={analytics.byTag}
+            untagged={analytics.untagged}
+            statRows={analytics.statRows}
+          />
+        {/await}
+      {:else if active === 'blotter'}
+        {#await SCREEN_LOADERS.blotter() then Blotter}
+          <Blotter.default
+            rows={blotterRows}
+            tagVocab={dash.tags}
+            onsavemeta={(id, tags, note) => dash.saveTradeMeta(id, tags, note)}
+            ondelete={ids => dash.deleteTrades(ids)}
+            dataDisabled={dash.isDemo}
+          />
+        {/await}
+      {:else if active === 'trades'}
+        {#await SCREEN_LOADERS.trades() then TradeEditor}
+          <TradeEditor.default
+            rows={editorRows}
+            coreEditable={false}
+            editableFields={EDITABLE_FIELDS}
+            tagVocab={dash.tags}
+            onsave={persistEditorRows}
+            ondelete={ids => dash.deleteTrades(ids)}
+            dataDisabled={dash.isDemo}
+          />
+        {/await}
+      {:else if active === 'reports'}
+        {#await SCREEN_LOADERS.reports() then Reports}
+          <Reports.default
+            defaultTitle="Performance report"
+            defaultAccount={dash.brokerName(dash.setup.broker)}
+            calYear={dash.calYear}
+            calMonth={dash.calMonth}
+            build={buildReport}
+            onexport={onReportExport}
+          />
+        {/await}
+      {:else if active === 'csv'}
+        {#await SCREEN_LOADERS.csv() then CsvLibrary}
+          <CsvLibrary.default
+            files={csvFiles}
+            perFileActions={false}
+            blotterHref="#blotter"
+            parse={parseCsv}
+            onimport={importPreview}
+            ondelete={() => dash.purgeAll()}
+            onbackup={doBackup}
+            onrestore={doRestore}
+            onerase={doErase}
+            dataDisabled={dash.isDemo}
+            {restoreMsg}
+          />
+        {/await}
+      {:else}
+        <div class="grid min-h-[60vh] place-items-center">
+          <div class="flex max-w-md flex-col items-center gap-2 text-center">
+            <h2 class="text-lg font-semibold text-foreground">Screen not found</h2>
+            <p class="text-sm text-muted-foreground">
+              There's no <code>{active}</code> screen. Pick a section from the sidebar to continue.
+            </p>
+          </div>
+        </div>
+      {/if}
     </div>
-  {/if}
+  {/key}
 </AppShell>

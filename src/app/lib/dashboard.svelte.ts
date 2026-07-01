@@ -62,6 +62,9 @@ export function createDashboard(store: StoreLike, opts: { seed: boolean; isDemo?
   const metricsActive = $derived(filters.scope === 'month' ? compute(filtered.filter(t => inMonth(t, calYear, calMonth))) : metricsAll);
   const roots = $derived([...new Set(allTrades.map(t => t.root).filter(Boolean))].sort());
   const tags = $derived([...new Set([...tradeMeta.values()].flatMap(m => m.tags || []))].sort());
+  // The day-journal (context) tag vocabulary — feeds the Calendar tag-input autocomplete (A167);
+  // kept separate from the per-trade `tags` above per the R17 two-scope model.
+  const journalTags = $derived([...new Set([...journal.values()].flatMap(j => j.tags || []))].sort());
   const costInputs = $derived({
     broker: setup.broker,
     platform: setup.platform,
@@ -321,6 +324,9 @@ export function createDashboard(store: StoreLike, opts: { seed: boolean; isDemo?
     },
     get tags() {
       return tags;
+    },
+    get journalTags() {
+      return journalTags;
     },
     get tradeMeta() {
       return tradeMeta;
