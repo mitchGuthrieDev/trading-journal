@@ -67,7 +67,7 @@ test('staging redesign: every screen navigates + renders real content', async ({
   await expect(page.getByText('Imported trades')).toBeVisible();
 
   await gotoScreen(page, 'Trade Editor');
-  await expect(page.getByText('Imported trades are fixed', { exact: false })).toBeVisible();
+  await expect(page.getByText(/Click a cell to edit/)).toBeVisible();
   await expect(page.locator('table tbody tr').first()).toBeVisible();
 
   await gotoScreen(page, 'Reports');
@@ -219,4 +219,83 @@ test('staging redesign: Dashboard is interactive — chart overlays, day detail,
     .first()
     .click({ timeout: 3000 });
   await expect(page.locator('[data-slot="dialog-content"]')).toBeVisible();
+});
+
+test('staging redesign: unstyled controls inherit the theme text color under a light OS theme', async ({ page }) => {
+  // Reproduces the ButtonText system-color gap: without the reset, native <button>/<input> render dark
+  // on a light-themed OS. Force light color-scheme and assert the controls compute to the light foreground.
+  await page.emulateMedia({ colorScheme: 'light' });
+  await bootDashboard(page);
+  const filterColor = await page.getByRole('button', { name: 'Filters' }).evaluate(el => getComputedStyle(el).color);
+  expect(filterColor).toBe('rgb(250, 250, 250)'); // theme foreground, not dark ButtonText
+});
+
+test('staging redesign: the Filters popover narrows the dataset and clears', async ({ page }) => {
+  await bootDashboard(page);
+  const count = () =>
+    page
+      .getByText(/\d[\d,]* trades/)
+      .first()
+      .textContent()
+      .then(t => parseInt(t.replace(/[^\d]/g, ''), 10));
+  const before = await count();
+  await page.getByRole('button', { name: 'Filters' }).click();
+  await page.getByRole('button', { name: 'Mon', exact: true }).click(); // Monday-only
+  await expect.poll(count).toBeLessThan(before);
+  await page.getByRole('button', { name: 'Clear all' }).click();
+  await expect.poll(count).toBe(before);
+});
+
+test('staging redesign: Performance chart overlays multiple series at once', async ({ page }) => {
+  await bootDashboard(page);
+  const lines = () => page.locator('svg[aria-label="Cumulative P&L curve"] path[class*="stroke-"]').count();
+  expect(await lines()).toBe(1); // Gross by default
+  await page.getByRole('button', { name: 'Net', exact: true }).click();
+  await page.getByRole('button', { name: 'Take-home', exact: true }).click();
+  expect(await lines()).toBe(3); // all three overlaid
+});
+
+test('staging redesign: Dashboard modules hide/reorder and persist across reload', async ({ page }) => {
+  await bootDashboard(page);
+  const order = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('span')].map(s => s.textContent.trim()).filter(t => t === 'Performance' || t === 'Trading Calendar')
+    );
+  expect(await order()).toEqual(['Performance', 'Trading Calendar']);
+  await page.locator('button[aria-label="Module menu"]').last().click(); // Trading Calendar's menu
+  await page.getByRole('menuitem', { name: 'Move up' }).click();
+  expect(await order()).toEqual(['Trading Calendar', 'Performance']);
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(page.getByText('Net P&L', { exact: true })).toBeVisible({ timeout: 6000 });
+  expect(await order()).toEqual(['Trading Calendar', 'Performance']); // persisted via Store.local
+});
+
+test('staging redesign: the Blotter paginates (50/page)', async ({ page }) => {
+  await bootDashboard(page);
+  await gotoScreen(page, 'Blotter');
+  await expect(page.locator('table tbody tr').first()).toBeVisible();
+  expect(await page.locator('table tbody tr').count()).toBe(50);
+  await expect(page.getByText(/1–50 of/)).toBeVisible();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByText(/51–100 of/)).toBeVisible();
+});
+
+test('staging redesign: Trade Editor edits a core field and it persists (updateTrade seam)', async ({ page }) => {
+  test.setTimeout(60_000);
+  await bootDashboard(page);
+  await gotoScreen(page, 'Trade Editor');
+  await expect(page.locator('table tbody tr').first()).toBeVisible();
+  // Edit the first row's Symbol cell → ZZTEST, save.
+  const symCell = page.locator('table tbody tr').first().locator('td').nth(3).locator('button');
+  await symCell.click();
+  const input = page.locator('table tbody tr').first().locator('td').nth(3).locator('input');
+  await input.fill('ZZTEST');
+  await input.press('Enter');
+  await expect(page.getByRole('button', { name: 'Save all' })).toBeVisible();
+  await page.getByRole('button', { name: 'Save all' }).click();
+  await page.waitForTimeout(600);
+  // Persists across a reload under its recomputed id.
+  await page.reload({ waitUntil: 'networkidle' });
+  await gotoScreen(page, 'Trade Editor');
+  await expect(page.locator('table tbody tr td', { hasText: 'ZZTEST' }).first()).toBeVisible({ timeout: 10_000 });
 });
