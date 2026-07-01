@@ -12,6 +12,7 @@
     fees: number;
     tags: string[];
     note: string;
+    shots: string[];
     isNew?: boolean;
   };
 </script>
@@ -24,8 +25,9 @@
   // saveTradeMeta) and rows can be deleted; the core price/qty/P&L cells render read-only (the figures
   // came from your CSV) and entry/exit aren't in the trade model. Save all / Revert commit the staged
   // tag/note edits. shadcn-svelte primitives; color only in P&L.
-  import { Plus, Trash2, Tag, StickyNote, Pencil } from '@lucide/svelte';
+  import { Plus, Trash2, Tag, StickyNote, Pencil, ImagePlus, Image, X } from '@lucide/svelte';
   import { cn } from '$lib/utils';
+  import { readImage } from '../lib/files.ts';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Checkbox } from '$lib/components/ui/checkbox';
@@ -35,14 +37,15 @@
   import * as Table from '$lib/components/ui/table';
   import * as Popover from '$lib/components/ui/popover';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
+  import * as Dialog from '$lib/components/ui/dialog';
 
   const MOCK: EditorRow[] = [
-    { id: 't1', date: '2026-06-24', time: '09:34', symbol: 'ES', side: 'Long', qty: 2, entry: 5482.25, exit: 5486.0, pnl: 375, fees: 4.7, tags: ['breakout'], note: 'Clean retest.' },
-    { id: 't2', date: '2026-06-24', time: '10:18', symbol: 'NQ', side: 'Short', qty: 1, entry: 19840.5, exit: 19852.0, pnl: -230, fees: 2.4, tags: ['fade'], note: '' },
-    { id: 't3', date: '2026-06-24', time: '11:46', symbol: 'ES', side: 'Long', qty: 3, entry: 5489.0, exit: 5492.75, pnl: 562, fees: 7.05, tags: ['trend', 'A+'], note: '' },
-    { id: 't4', date: '2026-06-25', time: '09:31', symbol: 'ES', side: 'Long', qty: 2, entry: 5494.5, exit: 5491.0, pnl: -350, fees: 4.7, tags: [], note: '' },
-    { id: 't5', date: '2026-06-25', time: '10:05', symbol: 'NQ', side: 'Long', qty: 1, entry: 19860.0, exit: 19878.5, pnl: 370, fees: 2.4, tags: ['trend'], note: 'Sized up.' },
-    { id: 't6', date: '2026-06-26', time: '13:15', symbol: 'MES', side: 'Long', qty: 5, entry: 5502.5, exit: 5504.0, pnl: 188, fees: 3.5, tags: ['scalp'], note: '' },
+    { id: 't1', date: '2026-06-24', time: '09:34', symbol: 'ES', side: 'Long', qty: 2, entry: 5482.25, exit: 5486.0, pnl: 375, fees: 4.7, tags: ['breakout'], note: 'Clean retest.', shots: [] },
+    { id: 't2', date: '2026-06-24', time: '10:18', symbol: 'NQ', side: 'Short', qty: 1, entry: 19840.5, exit: 19852.0, pnl: -230, fees: 2.4, tags: ['fade'], note: '', shots: [] },
+    { id: 't3', date: '2026-06-24', time: '11:46', symbol: 'ES', side: 'Long', qty: 3, entry: 5489.0, exit: 5492.75, pnl: 562, fees: 7.05, tags: ['trend', 'A+'], note: '', shots: [] },
+    { id: 't4', date: '2026-06-25', time: '09:31', symbol: 'ES', side: 'Long', qty: 2, entry: 5494.5, exit: 5491.0, pnl: -350, fees: 4.7, tags: [], note: '', shots: [] },
+    { id: 't5', date: '2026-06-25', time: '10:05', symbol: 'NQ', side: 'Long', qty: 1, entry: 19860.0, exit: 19878.5, pnl: 370, fees: 2.4, tags: ['trend'], note: 'Sized up.', shots: [] },
+    { id: 't6', date: '2026-06-26', time: '13:15', symbol: 'MES', side: 'Long', qty: 5, entry: 5502.5, exit: 5504.0, pnl: 188, fees: 3.5, tags: ['scalp'], note: '', shots: [] },
   ];
 
   interface Props {
@@ -120,6 +123,20 @@
   function setNote(id: string, v: string) {
     draft = draft.map(r => (r.id === id ? { ...r, note: v } : r));
   }
+  async function addShot(id: string, e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const f = input.files?.[0];
+    input.value = '';
+    if (!f) return;
+    const url = await readImage(f);
+    if (url) draft = draft.map(r => (r.id === id ? { ...r, shots: [...r.shots, url] } : r));
+  }
+  function removeShot(id: string, idx: number) {
+    draft = draft.map(r => (r.id === id ? { ...r, shots: r.shots.filter((_, j) => j !== idx) } : r));
+  }
+  // Enlarged-screenshot lightbox.
+  let zoomShot = $state<string | null>(null);
+  const zoomOpen = $derived(zoomShot !== null);
 
   const editFields = (r: EditorRow) => JSON.stringify({ ...r, isNew: undefined });
   const isDirty = (r: EditorRow) => {
@@ -159,7 +176,7 @@
   }
   function addTrade() {
     const id = `t-new-${nextId++}`;
-    draft = [...draft, { id, date: '2026-06-30', time: '00:00', symbol: '', side: 'Long', qty: 1, entry: 0, exit: 0, pnl: 0, fees: 0, tags: [], note: '', isNew: true }];
+    draft = [...draft, { id, date: '2026-06-30', time: '00:00', symbol: '', side: 'Long', qty: 1, entry: 0, exit: 0, pnl: 0, fees: 0, tags: [], note: '', shots: [], isNew: true }];
     startEdit(id, 'symbol');
   }
   function toggleRow(id: string, v: boolean) {
@@ -288,6 +305,7 @@
             <Table.Head class="text-right">Fees</Table.Head>
             <Table.Head>Tags</Table.Head>
             <Table.Head>Note</Table.Head>
+            <Table.Head>Shots</Table.Head>
             <Table.Head class="w-9"></Table.Head>
           </Table.Row>
         </Table.Header>
@@ -354,6 +372,36 @@
                 </Popover.Root>
               </Table.Cell>
               <Table.Cell class="p-1">
+                <Popover.Root>
+                  <Popover.Trigger>
+                    {#snippet child({ props })}
+                      <button {...props} type="button" class="flex min-h-7 items-center gap-1 rounded px-1.5 py-1 hover:bg-accent" title={row.shots.length ? `${row.shots.length} screenshot${row.shots.length === 1 ? '' : 's'}` : 'Add screenshot'}>
+                        <Image class={cn('size-4', row.shots.length ? 'text-primary' : 'text-muted-foreground')} />
+                        {#if row.shots.length}<span class="text-xs tabular-nums text-muted-foreground">{row.shots.length}</span>{/if}
+                      </button>
+                    {/snippet}
+                  </Popover.Trigger>
+                  <Popover.Content class="w-64" align="start">
+                    <p class="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Screenshots</p>
+                    <div class="flex flex-wrap items-center gap-2">
+                      {#each row.shots as shot, i (i)}
+                        <span class="relative inline-block">
+                          <button type="button" class="block" onclick={() => (zoomShot = shot)} aria-label="Enlarge screenshot {i + 1}">
+                            <img src={shot} alt="screenshot {i + 1}" class="block h-12 rounded-md border border-border" />
+                          </button>
+                          <button type="button" class="absolute -right-1.5 -top-1.5 grid size-[18px] place-items-center rounded-full bg-destructive text-white" aria-label="Remove screenshot" onclick={() => removeShot(row.id, i)}><X class="size-3" /></button>
+                        </span>
+                      {/each}
+                      {#if !row.shots.length}<span class="text-xs text-muted-foreground">No screenshots</span>{/if}
+                    </div>
+                    <label class="mt-2 flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-border bg-secondary px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">
+                      <ImagePlus class="size-4" /> Add screenshot
+                      <input type="file" accept="image/*" class="hidden" onchange={e => addShot(row.id, e)} />
+                    </label>
+                  </Popover.Content>
+                </Popover.Root>
+              </Table.Cell>
+              <Table.Cell class="p-1">
                 <button type="button" class="grid size-7 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-destructive" aria-label="Delete trade" onclick={() => askDelete([row.id])}>
                   <Trash2 class="size-4" />
                 </button>
@@ -406,3 +454,12 @@
     </AlertDialog.Footer>
   </AlertDialog.Content>
 </AlertDialog.Root>
+
+<!-- Screenshot lightbox -->
+<Dialog.Root open={zoomOpen} onOpenChange={o => { if (!o) zoomShot = null; }}>
+  <Dialog.Content class="max-w-3xl p-2">
+    {#if zoomShot}
+      <img src={zoomShot} alt="Enlarged screenshot" class="mx-auto max-h-[80vh] w-auto rounded-md" />
+    {/if}
+  </Dialog.Content>
+</Dialog.Root>

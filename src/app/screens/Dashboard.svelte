@@ -15,6 +15,13 @@
     count: number;
     set: (patch: FilterPatch) => void;
     clear: () => void;
+    /** Saved filter views (A49 parity) — CRUD is optional so the /dev mock can omit it. */
+    views?: { id: string; name: string }[];
+    canSaveView?: boolean;
+    saveView?: (name: string) => void;
+    applyView?: (id: string) => void;
+    deleteView?: (id: string) => void;
+    renameView?: (id: string, name: string) => void;
   };
   // Per-card drill-in content (parity with app/demo's stat-card modal), built from metrics/cost.
   export type StatBar = { label: string; value: string; pct: number; tone: 'pos' | 'neg' | 'muted' };
@@ -33,7 +40,7 @@
   // Dashboard — the redesigned overview: a scope toolbar, a KPI stat-card row, and the Performance
   // (equity curve) + Trading Calendar modules. Data comes from props (real metrics on the staging app);
   // the defaults below are the /dev mock for the preview harness. Color lives only in the P&L.
-  import { SlidersHorizontal, Plus, GripVertical, MoreHorizontal } from '@lucide/svelte';
+  import { SlidersHorizontal, Plus, GripVertical, MoreHorizontal, Pencil, LayoutGrid, RotateCcw } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Input } from '$lib/components/ui/input';
@@ -48,6 +55,10 @@
   import { styleProps } from '../lib/actions.ts';
   import { usd, usdWhole, axMoney, niceTicks, linePath } from '../../lib/core/core.ts';
   import type { DailyPoint } from '../../lib/core/curveseries.ts';
+  import type { AppSetup } from '../../lib/core/types.ts';
+  import CostSetup from '../parts/CostSetup.svelte';
+  import ActivityTerminal from '../parts/ActivityTerminal.svelte';
+  import Definitions from '../parts/Definitions.svelte';
   import { type DayTrade } from './Calendar.svelte';
 
   const MOCK_STATS: DashStat[] = [
@@ -149,9 +160,23 @@
     /** Break-even & Cost module rows (from costModel) and Advanced Statistics rows (from metrics). */
     costRows?: { label: string; value: string; tone?: 'pos' | 'neg'; total?: boolean }[];
     advStats?: { k: string; v: string; tone?: 'pos' | 'neg' }[];
+    /** Cost setup (broker/feed/state/platform) that drives costModel; edited in the Break-even module. */
+    setup?: AppSetup;
+    onsetupsave?: (s: AppSetup) => void;
+    /** Disable the cost-setup inputs on demo (never mutates). */
+    costDisabled?: boolean;
     /** Visible dashboard modules in order (persisted on staging); defaults to all shown. */
     modules?: string[];
     onmoduleschange?: (order: string[]) => void;
+    /** Named workspace layout templates (R12 parity) — save/apply/delete/revert the module layout. */
+    layouts?: {
+      names: string[];
+      canSave: boolean;
+      save: (name: string) => void;
+      apply: (name: string) => void;
+      remove: (name: string) => void;
+      revert: () => void;
+    };
   }
   let {
     stats = MOCK_STATS, series = MOCK_SERIES, dateRange = '2024-07-01 → 2026-06-30',
@@ -161,8 +186,14 @@
     filterModel = MOCK_FILTERS,
     onpickdate,
     costRows = MOCK_COST_ROWS, advStats = MOCK_ADV_STATS,
-    modules, onmoduleschange,
+    setup = { broker: 'amp', feed: '', stateAbbr: '', platform: 35 }, onsetupsave, costDisabled = false,
+    modules, onmoduleschange, layouts,
   }: Props = $props();
+
+  function doSaveLayout() {
+    const name = typeof prompt === 'function' ? prompt('Save current layout as…') : null;
+    if (name && name.trim()) layouts?.save(name.trim());
+  }
 
   // ── Module layout (hide / reorder / re-add — parity with app/demo, persisted on staging) ────────
   const MODULES: { key: string; label: string }[] = [
@@ -217,6 +248,19 @@
   const rootLabel = $derived(filterModel.root || 'All symbols');
   const toggleDow = (d: number) =>
     filterModel.set({ dows: filterModel.dows.includes(d) ? filterModel.dows.filter(x => x !== d) : [...filterModel.dows, d] });
+  // Saved filter views (A49 parity)
+  let newViewName = $state('');
+  const savedViews = $derived(filterModel.views ?? []);
+  const canSaveView = $derived(!!filterModel.canSaveView && !!filterModel.saveView);
+  function doSaveView() {
+    if (!canSaveView) return;
+    filterModel.saveView?.(newViewName);
+    newViewName = '';
+  }
+  function doRenameView(id: string, current: string) {
+    const name = typeof prompt === 'function' ? prompt('Rename view', current) : null;
+    if (name && name.trim()) filterModel.renameView?.(id, name.trim());
+  }
 
   // ── KPI card drill-in ────────────────────────────────────────────────────────────────────────
   let openStatKey = $state<string | null>(null);
@@ -481,11 +525,78 @@
           </div>
         </div>
 
+        {#if canSaveView || savedViews.length}
+          <div class="grid gap-1.5 border-t border-border pt-2">
+            <Label class="text-[11px]">Saved views</Label>
+            {#each savedViews as v (v.id)}
+              <div class="flex items-center gap-1">
+                <button
+                  type="button"
+                  class="flex-1 truncate rounded border border-border px-2 py-1 text-left text-[11px] text-foreground hover:bg-accent"
+                  onclick={() => filterModel.applyView?.(v.id)}
+                >
+                  {v.name}
+                </button>
+                {#if canSaveView}
+                  <button type="button" aria-label="Rename view" class="grid size-6 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-foreground" onclick={() => doRenameView(v.id, v.name)}>
+                    <Pencil class="size-3.5" />
+                  </button>
+                  <button type="button" aria-label="Delete view" class="grid size-6 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-destructive" onclick={() => filterModel.deleteView?.(v.id)}>
+                    <X class="size-3.5" />
+                  </button>
+                {/if}
+              </div>
+            {/each}
+            {#if canSaveView}
+              <div class="flex items-center gap-1">
+                <Input bind:value={newViewName} placeholder="Name this view…" class="h-8 flex-1" disabled={!filtersActive} onkeydown={e => e.key === 'Enter' && doSaveView()} />
+                <Button variant="secondary" size="sm" class="h-8" disabled={!filtersActive || !newViewName.trim()} onclick={doSaveView}>Save</Button>
+              </div>
+            {/if}
+          </div>
+        {/if}
+
         <div class="flex justify-end pt-1">
           <Button variant="ghost" size="sm" class="h-7" disabled={!filtersActive} onclick={() => filterModel.clear()}>Clear all</Button>
         </div>
       </Popover.Content>
     </Popover.Root>
+    {#if layouts}
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger>
+          {#snippet child({ props })}
+            <Button {...props} variant="outline" size="sm"><LayoutGrid class="size-4" /> Layouts</Button>
+          {/snippet}
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content align="start" class="min-w-[200px]">
+          {#if layouts.names.length}
+            {#each layouts.names as name (name)}
+              <div class="flex items-center">
+                <DropdownMenu.Item class="flex-1" onSelect={() => layouts.apply(name)}>{name}</DropdownMenu.Item>
+                {#if layouts.canSave}
+                  <button
+                    type="button"
+                    aria-label="Delete layout"
+                    class="mr-1 grid size-6 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-destructive"
+                    onclick={e => {
+                      e.stopPropagation();
+                      layouts.remove(name);
+                    }}
+                  >
+                    <X class="size-3.5" />
+                  </button>
+                {/if}
+              </div>
+            {/each}
+            <DropdownMenu.Separator />
+          {/if}
+          {#if layouts.canSave}
+            <DropdownMenu.Item onSelect={doSaveLayout}><Plus class="size-4" /> Save current layout…</DropdownMenu.Item>
+          {/if}
+          <DropdownMenu.Item onSelect={() => layouts.revert()}><RotateCcw class="size-4" /> Reset to default</DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
+    {/if}
     <span class="ml-auto text-xs text-muted-foreground">{dateRange}</span>
   </div>
 
@@ -662,6 +773,9 @@
   {/snippet}
 
   {#snippet costBody()}
+    <div class="mb-4">
+      <CostSetup {setup} onsave={s => onsetupsave?.(s)} disabled={costDisabled} />
+    </div>
     <div class="overflow-hidden rounded-md border border-border">
       {#each costRows as r, i (r.label)}
         <div class={['flex items-center justify-between px-3 py-2 text-sm', i > 0 && 'border-t border-border', r.total && 'bg-secondary font-semibold']}>
@@ -715,6 +829,18 @@
       </DropdownMenu.Content>
     </DropdownMenu.Root>
   {/if}
+
+  <!-- Chrome parity (R12/F27): the boot/activity log + the metric & cost definitions/caveats. -->
+  <div class="grid gap-4 lg:grid-cols-2">
+    <Card.Root>
+      <Card.Header class="pb-2"><Card.Title class="text-xs uppercase tracking-wider text-muted-foreground">Activity</Card.Title></Card.Header>
+      <Card.Content><ActivityTerminal /></Card.Content>
+    </Card.Root>
+    <Card.Root>
+      <Card.Header class="pb-2"><Card.Title class="text-xs uppercase tracking-wider text-muted-foreground">Definitions</Card.Title></Card.Header>
+      <Card.Content><Definitions /></Card.Content>
+    </Card.Root>
+  </div>
 </div>
 
 <!-- KPI card drill-in dialog -->

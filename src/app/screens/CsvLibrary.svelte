@@ -80,8 +80,30 @@
     onimport?: (preview: ImportPreview) => void | Promise<void>;
     /** Remove a dataset/file (staging: clears the dataset). */
     ondelete?: (id: string) => void | Promise<void>;
+    /** Download a full backup of the local data (parent owns file naming). */
+    onbackup?: () => void;
+    /** Restore from a picked backup file (parent parses/imports + owns any toast). */
+    onrestore?: (file: File) => void;
+    /** Erase all local data (parent owns the confirm() dialog). */
+    onerase?: () => void;
+    /** Disable every data-management control (the demo guard). */
+    dataDisabled?: boolean;
+    /** Result message from a restore, rendered if non-empty (parent-owned). */
+    restoreMsg?: string;
   }
-  let { files = MOCK_FILES, perFileActions = true, blotterHref = '/dev/app.html#blotter', parse, onimport, ondelete }: Props = $props();
+  let {
+    files = MOCK_FILES,
+    perFileActions = true,
+    blotterHref = '/dev/app.html#blotter',
+    parse,
+    onimport,
+    ondelete,
+    onbackup,
+    onrestore,
+    onerase,
+    dataDisabled = false,
+    restoreMsg = '',
+  }: Props = $props();
 
   // Internal working copy of the listed files; reseed when the incoming set changes (external import/delete).
   // svelte-ignore state_referenced_locally
@@ -119,6 +141,7 @@
   let preview = $state<ImportPreview | null>(null);
   let importing = $state(false);
   let fileInput = $state<HTMLInputElement | null>(null);
+  let restoreInput = $state<HTMLInputElement | null>(null);
 
   const openFile = $derived(openId ? list.find(f => f.id === openId) : undefined);
   const delFile = $derived(deleteId ? list.find(f => f.id === deleteId) : undefined);
@@ -154,6 +177,14 @@
     }
     uploadOpen = false;
     preview = null;
+  }
+
+  function onRestorePicked(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file || dataDisabled) return;
+    onrestore?.(file);
   }
 
   function toggleInclude(id: string, v: boolean) {
@@ -291,6 +322,31 @@
             {/each}
           </Table.Body>
         </Table.Root>
+      {/if}
+    </Card.Content>
+  </Card.Root>
+
+  <!-- Data management: backup / restore / erase-all (parity with legacy ManageData) -->
+  <input bind:this={restoreInput} type="file" accept="application/json,.json" class="hidden" onchange={onRestorePicked} />
+  <Card.Root>
+    <Card.Header>
+      <Card.Title>Data management</Card.Title>
+      <span class="text-xs text-muted-foreground">Back up, restore, or erase all your local data.</span>
+    </Card.Header>
+    <Card.Content class="flex flex-col gap-4">
+      <div class="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" disabled={dataDisabled} onclick={() => onbackup?.()}>
+          <Download class="size-4" /> Download backup
+        </Button>
+        <Button variant="outline" size="sm" disabled={dataDisabled} onclick={() => restoreInput?.click()}>
+          <Upload class="size-4" /> Restore backup
+        </Button>
+        <Button variant="outline" size="sm" class="text-destructive hover:text-destructive" disabled={dataDisabled} onclick={() => onerase?.()}>
+          <Trash2 class="size-4" /> Erase all data
+        </Button>
+      </div>
+      {#if restoreMsg}
+        <p class="text-xs text-muted-foreground">{restoreMsg}</p>
       {/if}
     </Card.Content>
   </Card.Root>

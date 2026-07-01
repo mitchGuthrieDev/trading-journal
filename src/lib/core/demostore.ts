@@ -63,7 +63,7 @@ export function createDemoStore(): StoreLike {
       if (!trades.has(id)) trades.set(id, { id, ...next });
       const tags = (m?.tags ?? old?.tags ?? []).filter(Boolean);
       const note = (m?.note ?? old?.note ?? '').trim();
-      const shots = old?.shots ?? [];
+      const shots = m?.shots ?? old?.shots ?? [];
       if (tags.length || note || shots.length) trademeta.set(id, { id, tags, note, shots, updated: Date.now() });
       return { id };
     },

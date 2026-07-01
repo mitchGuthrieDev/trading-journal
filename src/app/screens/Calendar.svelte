@@ -13,8 +13,11 @@
   import { ChevronLeft, ChevronRight, X, Minus, Plus, Paperclip, ImagePlus, Check } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
+  import { Input } from '$lib/components/ui/input';
   import * as Card from '$lib/components/ui/card';
+  import * as Dialog from '$lib/components/ui/dialog';
   import { cn } from '$lib/utils';
+  import { readImage } from '../lib/files.ts';
 
   // ── Mock defaults (the /dev preview) — June 2026 (1st is a Monday). ────────────────────────────
   const MOCK_DAYS: Record<number, CalDay> = {
@@ -33,6 +36,7 @@
     { time: '13:20', sym: 'CL', side: 'Short', qty: 1, pnl: 78 },
   ];
   const MOCK_NOTE = 'Held the morning ES long through the 09:45 push — sized right, trailed the stop under the 5m. Cut the NQ short fast when it failed. Discipline good.';
+  const MOCK_JOURNAL = { text: MOCK_NOTE, tags: ['disciplined', 'trend'], shots: [] as string[] };
   // Deterministic year heatmap for the /dev preview (a representative spread).
   const MOCK_YEAR: Record<string, number> = (() => {
     const o: Record<string, number> = {};
@@ -53,8 +57,8 @@
     onnext?: () => void;
     onlatest?: () => void;
     tradesForDay?: (day: number) => DayTrade[];
-    getNote?: (day: number) => string;
-    onsavenote?: (day: number, text: string) => void;
+    getJournal?: (day: number) => { text: string; tags: string[]; shots: string[] };
+    onsavenote?: (day: number, text: string, tags: string[], shots: string[]) => void;
   }
   let {
     monthDays = MOCK_DAYS,
@@ -66,7 +70,7 @@
     onnext,
     onlatest,
     tradesForDay = () => MOCK_TRADES,
-    getNote = () => MOCK_NOTE,
+    getJournal = () => MOCK_JOURNAL,
     onsavenote,
   }: Props = $props();
 
@@ -74,10 +78,47 @@
   let selectedDay = $state<number | null>(null);
   let target = $state(200);
   let note = $state('');
-  // Load the selected day's note when the selection (or the underlying journal) changes.
+  let tags = $state<string[]>([]);
+  let shots = $state<string[]>([]);
+  let tagDraft = $state('');
+  // Load the selected day's journal (note + tags + shots) when the selection (or the underlying
+  // journal) changes.
   $effect(() => {
-    note = selectedDay ? getNote(selectedDay) : '';
+    if (selectedDay) {
+      const j = getJournal(selectedDay);
+      note = j.text;
+      tags = j.tags;
+      shots = j.shots;
+    } else {
+      note = '';
+      tags = [];
+      shots = [];
+    }
+    tagDraft = '';
   });
+
+  function addTag() {
+    const t = tagDraft.trim();
+    if (t && !tags.includes(t)) tags = [...tags, t];
+    tagDraft = '';
+  }
+  function removeTag(t: string) {
+    tags = tags.filter(x => x !== t);
+  }
+  async function addShot(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const f = input.files?.[0];
+    input.value = '';
+    if (!f) return;
+    const url = await readImage(f);
+    if (url) shots = [...shots, url];
+  }
+  function removeShot(idx: number) {
+    shots = shots.filter((_, j) => j !== idx);
+  }
+  // Enlarged-screenshot lightbox.
+  let zoomShot = $state<string | null>(null);
+  const zoomOpen = $derived(zoomShot !== null);
 
   // ── Heatmap shades — literal classes (Tailwind-scannable), bucketed by |P&L|. ─────────────────
   const POS = ['bg-chart-2/10', 'bg-chart-2/20', 'bg-chart-2/35', 'bg-chart-2/55', 'bg-chart-2/75'];
@@ -352,23 +393,50 @@
                 class="h-24 w-full resize-none rounded-md border border-border bg-background p-2 text-xs leading-relaxed text-foreground outline-none focus-visible:border-ring"
                 bind:value={note}
               ></textarea>
-              <div class="mt-1.5 flex justify-end">
-                <Button size="sm" onclick={() => selectedDay && onsavenote?.(selectedDay, note)}>Save note</Button>
+            </div>
+
+            <!-- Tags -->
+            <div>
+              <div class="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Tags</div>
+              <div class="mb-1.5 flex flex-wrap gap-1">
+                {#each tags as t (t)}
+                  <Badge variant="secondary" class="gap-1">
+                    {t}<button type="button" class="text-muted-foreground hover:text-foreground" aria-label="Remove tag {t}" onclick={() => removeTag(t)}><X class="size-3" /></button>
+                  </Badge>
+                {/each}
+                {#if !tags.length}<span class="text-xs text-muted-foreground">No tags</span>{/if}
+              </div>
+              <Input
+                bind:value={tagDraft}
+                placeholder="Add tag, Enter…"
+                class="h-8"
+                onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+              />
+            </div>
+
+            <!-- Screenshots -->
+            <div>
+              <div class="mb-1 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                <Paperclip class="size-3" /> Screenshots
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                {#each shots as shot, i (i)}
+                  <span class="relative inline-block">
+                    <button type="button" class="block" onclick={() => (zoomShot = shot)} aria-label="Enlarge screenshot {i + 1}">
+                      <img src={shot} alt="screenshot {i + 1}" class="block h-12 rounded-md border border-border" />
+                    </button>
+                    <button type="button" class="absolute -right-1.5 -top-1.5 grid size-[18px] place-items-center rounded-full bg-destructive text-white" aria-label="Remove screenshot" onclick={() => removeShot(i)}><X class="size-3" /></button>
+                  </span>
+                {/each}
+                <label class="grid aspect-video w-16 cursor-pointer place-items-center rounded border border-dashed border-border text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Add screenshot">
+                  <ImagePlus class="size-4" />
+                  <input type="file" accept="image/*" class="hidden" onchange={addShot} />
+                </label>
               </div>
             </div>
 
-            <!-- Attachments (storage deferred — Phase 3 wires notes; screenshots land next) -->
-            <div>
-              <div class="mb-1 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                <Paperclip class="size-3" /> Attachments
-              </div>
-              <div class="grid grid-cols-3 gap-2">
-                <div class="grid aspect-video place-items-center rounded border border-border bg-secondary text-muted-foreground"><ImagePlus class="size-4" /></div>
-                <div class="aspect-video rounded border border-border bg-secondary"></div>
-                <button type="button" class="grid aspect-video place-items-center rounded border border-dashed border-border text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Add attachment">
-                  <Plus class="size-4" />
-                </button>
-              </div>
+            <div class="flex justify-end">
+              <Button size="sm" onclick={() => selectedDay && onsavenote?.(selectedDay, note, tags, shots)}>Save note</Button>
             </div>
           </div>
         </Card.Root>

@@ -4,6 +4,20 @@
   "note": "Curated, user-facing release notes for the prod (main + demo) track. Keyed by the CH12 prod version. Add a new entry at the top of `releases` each time the prod version bumps (see chore(release) boundaries on main). Keep it readable — this is for users, not a git log.",
   "releases": [
     {
+      "version": "0.42.0",
+      "date": "2026-07-01",
+      "title": "A redesigned Blotterbook — new sidebar app on every screen",
+      "summary": "The whole app moves to a new sidebar layout with dedicated screens for your Dashboard, Calendar, Analytics, Blotter, CSV Library, Trade Editor, and Reports. Everything you could do before is still here — and a few things got better. As always, your trade data stays entirely in your browser.",
+      "highlights": [
+        "New app shell: a persistent left sidebar (collapsible on desktop, a slide-over on mobile) replaces the stacked-panel layout, with each area now its own focused screen.",
+        "Dashboard modules: the Performance curve, Trading Calendar, Break-even & Cost, and Advanced Statistics are reorderable, hideable cards you can arrange — and save as named layouts to switch between.",
+        "Editable cost setup right on the dashboard: pick your broker, data feed, state, and platform fee in the Break-even & Cost card and watch commissions, tax, and take-home update live.",
+        "First-run onboarding: a new, empty app now walks you through setting up your cost model and importing your first CSV.",
+        "Saved filter views: name and reuse your favorite filter combinations. Plus per-trade screenshots, day-note tags, and one-click data backup / restore / erase.",
+        "Same private, local-only engine underneath — the redesign is a new coat of paint on the exact calculation core, now shipped to the main app and the demo together."
+      ]
+    },
+    {
       "version": "0.34.0",
       "date": "2026-06-29",
       "title": "Trade Blotter, in-context help, and more accurate cost estimates",

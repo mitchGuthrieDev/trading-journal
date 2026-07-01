@@ -24,7 +24,11 @@ const ENTRY = resolve(DIST, 'app/app.html');
 // Raised 400 → 480 KiB for the canonical shadcn-svelte components (the full bits-ui primitive
 // source — Dialog/Select/DropdownMenu/Popover with portals, scroll buttons, etc. — is heavier than
 // the trimmed in-house wrappers it replaced). Headroom restored to catch accidental regressions.
-const BUDGET_BYTES = 480 * 1024;
+// CH16 cutover: raised 480 → 600 KiB. The redesigned sidebar-shell app (7 screens + parts) now IS the
+// /app bundle on every surface — before the cutover it was a staging-only dynamic chunk EXCLUDED from
+// this measurement, so the ~529 KiB it lands is the intentional cost of shipping the redesign to prod,
+// not a regression. Headroom (~71 KiB) still catches an accidental heavy import on top of it.
+const BUDGET_BYTES = 600 * 1024;
 
 let html;
 try {
