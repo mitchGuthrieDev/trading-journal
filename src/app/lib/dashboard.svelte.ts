@@ -226,7 +226,15 @@ export function createDashboard(store: StoreLike, opts: { seed: boolean; isDemo?
   // demo-guarded; applyView is a pure state change (safe on demo).
   async function saveView(name: string) {
     if (isDemo) return;
-    const f: SavedFilterDef = { from: filters.from, to: filters.to, symbol: filters.root, side: filters.side, session: filters.session, tag: filters.tag, dows: [...filters.dows] };
+    const f: SavedFilterDef = {
+      from: filters.from,
+      to: filters.to,
+      symbol: filters.root,
+      side: filters.side,
+      session: filters.session,
+      tag: filters.tag,
+      dows: [...filters.dows],
+    };
     const id = Date.now().toString(36) + savedFilters.length;
     savedFilters = [...savedFilters, { id, name: (name || '').trim() || `View ${savedFilters.length + 1}`, f }];
     await store.setMeta('savedFilters', $state.snapshot(savedFilters));

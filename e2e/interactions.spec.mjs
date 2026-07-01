@@ -48,9 +48,7 @@ test('demo: HARD invariant — nothing is persisted (no "blotterbook" IndexedDB 
   await gotoScreen(page, 'CSV Library');
   await gotoScreen(page, 'Dashboard');
 
-  const dbs = await page.evaluate(async () =>
-    indexedDB.databases ? (await indexedDB.databases()).map(d => d.name || '') : []
-  );
+  const dbs = await page.evaluate(async () => (indexedDB.databases ? (await indexedDB.databases()).map(d => d.name || '') : []));
   expect(dbs.filter(n => n.toLowerCase().includes('blotter'))).toHaveLength(0);
 });
 
@@ -86,9 +84,7 @@ test('demo: Trade Editor stages edits in-memory but persists nothing across relo
   await page.waitForTimeout(400);
 
   // Nothing was persisted (demo never touches IndexedDB), so a reload re-seeds the pristine dataset.
-  const dbs = await page.evaluate(async () =>
-    indexedDB.databases ? (await indexedDB.databases()).map(d => d.name || '') : []
-  );
+  const dbs = await page.evaluate(async () => (indexedDB.databases ? (await indexedDB.databases()).map(d => d.name || '') : []));
   expect(dbs.filter(n => n.toLowerCase().includes('blotter'))).toHaveLength(0);
 
   await page.reload({ waitUntil: 'networkidle' });
