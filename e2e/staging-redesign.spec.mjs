@@ -335,3 +335,91 @@ test('staging redesign: clicking the Performance chart jumps the Dashboard calen
   // The calendar module opens the day-detail rail for the picked day (journal-note editor appears).
   await expect(page.getByText('Journal note')).toBeVisible({ timeout: 4000 });
 });
+
+// ── R1 pass-5 follow-through: interaction coverage for the controls A149/A152/A159 wired up ──────
+
+test('staging redesign: Blotter drawer saves a journal note (A149) and the note dot appears', async ({ page }) => {
+  await bootDashboard(page);
+  await gotoScreen(page, 'Blotter');
+  const firstRow = page.locator('table tbody tr').first();
+  await expect(firstRow).toBeVisible();
+
+  // Open the detail sheet via the keyboard-accessible symbol button, write a note, Save.
+  await firstRow.locator('td').nth(2).getByRole('button').click();
+  const sheet = page.locator('[data-slot="sheet-content"]');
+  await expect(sheet).toBeVisible();
+  await sheet.getByPlaceholder('Notes for this trade…').fill('drawer note e2e');
+  await sheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(sheet).not.toBeVisible();
+
+  // The row now carries the note dot, and reopening the drawer shows the persisted note.
+  await expect(firstRow.locator('[title="Has a note"]')).toBeVisible({ timeout: 4000 });
+  await firstRow.locator('td').nth(2).getByRole('button').click();
+  await expect(page.locator('[data-slot="sheet-content"]').getByPlaceholder('Notes for this trade…')).toHaveValue('drawer note e2e');
+});
+
+test('staging redesign: Blotter bulk delete removes the selected trade (A149)', async ({ page }) => {
+  await bootDashboard(page);
+  await gotoScreen(page, 'Blotter');
+  await expect(page.locator('table tbody tr').first()).toBeVisible();
+  const countText = await page.getByText(/\d+ of \d+ trades/).innerText();
+  const total = Number(countText.match(/of (\d+) trades/)[1]);
+
+  await page.locator('table tbody tr').first().getByRole('checkbox', { name: 'Select trade' }).check();
+  await expect(page.getByText('1 selected')).toBeVisible();
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByText('Delete 1 trade?')).toBeVisible();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete', exact: true }).click();
+
+  await expect(page.getByText(`${total - 1} of ${total - 1} trades`)).toBeVisible({ timeout: 4000 });
+});
+
+test('staging redesign: Calendar day screenshot enlarges in the shared lightbox (A152)', async ({ page }) => {
+  await bootDashboard(page);
+  await gotoScreen(page, 'Calendar');
+  // Open a traded day's detail rail (a grid cell button showing a $ figure).
+  await page.locator('main').getByRole('button').filter({ hasText: /\$\d/ }).first().click();
+  await expect(page.getByText('Journal note')).toBeVisible();
+
+  // Attach a (1×1 PNG) screenshot via the day-detail file input, then click the thumbnail.
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  await page.locator('main input[type="file"][accept="image/*"]').setInputFiles({ name: 'shot.png', mimeType: 'image/png', buffer: png });
+  const thumb = page.getByRole('button', { name: 'Enlarge screenshot 1' });
+  await expect(thumb).toBeVisible({ timeout: 4000 });
+  await thumb.click();
+
+  // The shared ScreenshotLightbox dialog opens with the enlarged image; Escape closes it.
+  await expect(page.getByRole('dialog').locator('img[alt="Enlarged screenshot"]')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('staging redesign: the Dashboard Tag filter narrows to tagged trades (A159)', async ({ page }) => {
+  test.setTimeout(60_000);
+  await bootDashboard(page);
+
+  // Tag the first trade via the Trade Editor (metadata layer), then save.
+  await gotoScreen(page, 'Trade Editor');
+  await expect(page.locator('table tbody tr').first()).toBeVisible();
+  await page.getByRole('button', { name: '+ tag' }).first().click();
+  const tagInput = page.getByPlaceholder('Add tag, Enter…');
+  await tagInput.fill('filter-me');
+  await tagInput.press('Enter');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Save all' }).click();
+  await page.waitForTimeout(500);
+
+  // Back on the Dashboard, the Filters popover now offers the Tag select; applying it narrows the set.
+  await gotoScreen(page, 'Dashboard');
+  await page.getByRole('button', { name: 'Filters' }).click();
+  const popover = page.locator('[data-slot="popover-content"]');
+  const before = Number((await popover.getByText(/[\d,]+ trades/).innerText()).replace(/[^\d]/g, ''));
+  await popover.getByText('All tags').click();
+  await page.getByRole('option', { name: 'filter-me' }).click();
+  await expect(popover.getByText('1 trades')).toBeVisible({ timeout: 4000 });
+  expect(before).toBeGreaterThan(1);
+  // Clear all restores the full set.
+  await popover.getByRole('button', { name: 'Clear all' }).click();
+  await expect(popover.getByText(`${before.toLocaleString()} trades`)).toBeVisible();
+});
