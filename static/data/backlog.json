@@ -141,18 +141,6 @@
       "doneNote": null
     },
     {
-      "id": "R17",
-      "title": "(staging) Review: purpose of the 'Tagged trades' Overview stat + what tagging means",
-      "category": "REVIEW / AUDIT",
-      "priority": "P3",
-      "effort": "small",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "Staging-scoped discussion. Review the 'Tagged trades' stat in the Manage data → Overview section: where its value comes from today (the count of trades in the trademeta store carrying tags), what tagging a trade currently MEANS in the app (per-trade tags set in the trade editor, surfaced in the dashboard Tag filter), and what it SHOULD mean as a workflow (setups? mistakes? strategies? review state?). Decide whether the Overview stat earns its place, how it should be defined/labeled, and whether tagging needs a clearer purpose or UX. Any resulting UI change is staging-only (proving-ground) until promoted via CH16. Done when: a written decision on the stat's meaning + tagging's intended purpose exists, with concrete next-step items if changes are warranted. — UPDATE 2026-07-01 (R1 pass 5): note the premise drifted — the dashboard Tag filter is no longer surfaced in the UI since the CH16 cutover (the plumbing survives with no control; see A159). Fold that into this review's decision.",
-      "doneNote": null
-    },
-    {
       "id": "A15",
       "title": "(infra guardrail) Rate-data scraper must stay within the 50-subrequest free-tier cap",
       "category": "ARCHITECTURE / DUPLICATION",
@@ -582,6 +570,42 @@
       "completedDate": null,
       "partial": false,
       "prompt": "Add tasteful animations/motion polish across the app now that layouts have settled. Start with Svelte built-in transitions (fade/fly/slide from svelte/transition) and tw-animate-css (already a dep) for enter/exit on dialogs/menus/panels, route/screen changes, module add/remove, and list updates; respect prefers-reduced-motion. Keep it CSP-safe (no inline styles — use utilities/classes or the styleProps CSSOM action) and avoid heavier motion libraries unless a specific need justifies it (flag first). Scope a first pass rather than animating everything. Done when: a coherent first pass of motion is applied to the key interactions, reduced-motion is honored, and no CSP/style regressions.",
+      "doneNote": null
+    },
+    {
+      "id": "A165",
+      "title": "Analytics 'By tag' breakdown (P&L / win rate / count per tag + untagged bucket)",
+      "category": "FEATURES",
+      "priority": "P2",
+      "effort": "medium",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the R17 tagging review (docs/tagging-review-2026-07-01.md, decision 2). Add a 'By tag' breakdown to the Analytics screen matching the existing By-symbol/By-weekday modules: one row per trade tag with net P&L, win rate, and trade count, plus an 'untagged' bucket (which doubles as the tag-coverage nudge — the actionable successor to the retired 'Tagged trades' Overview stat; do NOT resurrect a bare count elsewhere). Implementation: extend buildAnalytics (src/app/lib/analytics.ts) — it currently receives (metrics, trades); it also needs the per-trade tag lookup (dash.tradeMeta keyed by tradeId), so thread a tags-for-trade accessor from App.svelte like the screens do. A trade with N tags counts in each of its N tag rows (document that in the module's footnote); the untagged bucket is disjoint. Respect the active filter set (build from the filtered trades like the other modules). Keep demo read-only (pure render). Done when: the module renders real per-tag rows + untagged on all surfaces, sorted by |P&L|, with a unit fixture in a node suite for the bucketing math and an e2e assertion that a tagged trade produces its tag row (extend the A159 staging spec).",
+      "doneNote": null
+    },
+    {
+      "id": "A166",
+      "title": "Surface day (journal) tags beyond the Calendar day rail",
+      "category": "FEATURES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the R17 tagging review (decision 3). Per-day journal tags are write-mostly today: entered and re-read only in the Calendar day-detail rail. Surface them where days are scanned so the context-labeling scope earns its keep: (a) the Calendar month grid — include the day's tags in the day cell's tooltip/title (cheap; no layout change) alongside the note dot; (b) the Dashboard calendar-module day drill-in — show the day's tag chips next to the note editor. Keep them visually distinct from per-trade tags (they are context labels, not analysis labels — see the review doc). No new persistence; reads come from the existing journal map. Done when: a tagged day's tags are visible from the month grid affordance and the Dashboard day drill-in, demo included (read-only).",
+      "doneNote": null
+    },
+    {
+      "id": "A167",
+      "title": "Tag-input autocomplete from the existing vocabulary",
+      "category": "FEATURES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the R17 tagging review (decision 4). Every tag input (Trade Editor + tag popover, its bulk-tag input, the Blotter drawer input + bulk-tag popover, the Calendar day rail) should suggest existing tags as the user types, so the personal vocabulary converges instead of fragmenting into near-duplicates. Trade-tag inputs suggest from dash.tags (the canonical trademeta vocabulary); the Calendar day-rail input suggests from the union of journal tags. Prefix-match on the canonical form (cleanTag of the draft), keyboard-navigable, and picking a suggestion behaves exactly like typing it + Enter (same cleanTag path). Prefer a lightweight shared part (or the datalist element if it styles acceptably against the CSP/no-inline-style constraint) over a new dependency. Done when: typing in any tag input offers matching existing tags on all surfaces and selection round-trips through the canonical form.",
       "doneNote": null
     }
   ],
