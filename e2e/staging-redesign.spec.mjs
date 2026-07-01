@@ -36,8 +36,8 @@ test('staging redesign: boots into the sidebar shell + real Dashboard, no errors
   // Real KPIs (compute()): a money value renders, and the equity curve is a real SVG path.
   await expect(page.getByText('Net P&L', { exact: true })).toBeVisible();
   await expect(page.getByText(/\$[\d,]+/).first()).toBeVisible();
-  const line = page.locator('svg[aria-label="Cumulative P&L curve"] path.stroke-chart-2');
-  await expect(line).toHaveAttribute('d', /^M[\d.]+ [\d.]+ L/);
+  const line = page.locator('svg[aria-label*="P&L curve"] path.stroke-chart-2');
+  await expect(line).toHaveAttribute('d', /^M[\d.]+,[\d.]+ L/);
 
   // Trading Calendar module renders real traded days (green/red P&L tiles).
   await expect(page.getByText('TRADING CALENDAR')).toBeVisible();

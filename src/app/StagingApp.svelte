@@ -10,6 +10,7 @@
   import { usd, money, num, ratio, rateFor } from '../lib/core/core.ts';
   import AppShell from '$lib/components/shell/AppShell.svelte';
   import { createDashboard } from './lib/dashboard.svelte.ts';
+  import { dailySeries } from '../lib/core/curveseries.ts';
   import { navSections, navLabel, navItems } from './lib/nav';
   import Dashboard, { type DashStat, type DayCell } from './screens/Dashboard.svelte';
   import Calendar, { type CalDay, type DayTrade } from './screens/Calendar.svelte';
@@ -57,6 +58,11 @@
       { label: 'Sharpe (daily)', value: num(m.sharpe), note: `${m.active} trading days` },
     ];
   });
+  // Daily cumulative gross/net/take series for the Performance chart — same cost/tax-adjusted math as
+  // the cost panel (tEff/fixedMo from costModel), so the Net/Take-home overlays reconcile.
+  const dashSeries = $derived(
+    dailySeries(dash.metricsActive, { broker: String(dash.costInputs.broker ?? ''), tEff: dash.cost.tEff, fixedMo: dash.cost.fixedMo }).pts
+  );
   // The Trading Calendar module shows the cursor month from the all-time (filtered) days, independent
   // of the scope toggle (mirrors the current app).
   const calData = $derived.by(() => {
@@ -250,7 +256,7 @@
   {:else if active === 'dashboard'}
     <Dashboard
       stats={dStats}
-      curve={dash.metricsActive.curve}
+      series={dashSeries}
       dateRange={dash.dateRange}
       monthLabel={calData.label}
       monthNet={calData.net}

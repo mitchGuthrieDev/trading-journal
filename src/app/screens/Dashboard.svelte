@@ -11,6 +11,8 @@
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import * as Card from '$lib/components/ui/card';
+  import { usd, usdWhole, axMoney, niceTicks, linePath } from '../../lib/core/core.ts';
+  import type { DailyPoint } from '../../lib/core/curveseries.ts';
 
   const MOCK_STATS: DashStat[] = [
     { label: 'Net P&L', value: '+$79,467.75', badge: '+12.5%', up: true, note: '892W · 647L' },
@@ -27,11 +29,17 @@
     18: { pnl: 438, tr: 5 }, 22: { pnl: 93, tr: 5 }, 23: { pnl: 319, tr: 4 }, 24: { pnl: 380, tr: 5 },
     25: { pnl: 448, tr: 4 }, 26: { pnl: -270, tr: 5 }, 30: { pnl: 430, tr: 5 },
   };
-  const MOCK_CURVE = [0, 800, 1600, 2100, 3000, 3500, 4300, 5200, 6000, 7200, 8100, 9400];
+  // A representative daily gross/net/take series for the /dev preview.
+  const MOCK_SERIES: DailyPoint[] = [0, 800, 1600, 2100, 3000, 3500, 4300, 5200, 6000, 7200, 8100, 9400].map((g, i) => ({
+    date: `2026-06-${String(i + 2).padStart(2, '0')}`,
+    gross: g,
+    net: Math.round(g * 0.94),
+    take: Math.round(g * 0.78),
+  }));
 
   interface Props {
     stats?: DashStat[];
-    curve?: number[];
+    series?: DailyPoint[];
     dateRange?: string;
     monthLabel?: string;
     monthNet?: number;
@@ -41,12 +49,11 @@
     onscope?: (s: 'all' | 'month') => void;
   }
   let {
-    stats = MOCK_STATS, curve = MOCK_CURVE, dateRange = '2024-07-01 → 2026-06-30',
+    stats = MOCK_STATS, series = MOCK_SERIES, dateRange = '2024-07-01 → 2026-06-30',
     monthLabel = 'June 2026', monthNet = 4016.5, dayPnl = MOCK_PNL, firstDow = 1, daysInMonth = 30, onscope,
   }: Props = $props();
 
   let scope = $state<'all' | 'month'>('all');
-  let overlay = $state<'gross' | 'net' | 'take'>('gross');
   const setScope = (s: 'all' | 'month') => { scope = s; onscope?.(s); };
 
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -56,16 +63,73 @@
     while (c.length % 7 !== 0) c.push(null);
     return c;
   });
-  // Equity curve points → SVG line + area paths, normalized into the viewBox.
-  function curvePaths(pts: number[], w = 1000, h = 280, pad = 12) {
-    if (pts.length < 2) return { line: '', area: '' };
-    const min = Math.min(...pts), max = Math.max(...pts), span = max - min || 1;
-    const X = (i: number) => (i / (pts.length - 1)) * w;
-    const Y = (v: number) => h - pad - ((v - min) / span) * (h - 2 * pad);
-    const line = pts.map((v, i) => `${i === 0 ? 'M' : 'L'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
-    return { line, area: `${line} L${w} ${h} L0 ${h} Z` };
+
+  // ── Performance curve ──────────────────────────────────────────────────────────────────────────
+  // The Gross/Net/Take-home toggle switches the primary cumulative series (parity with app/demo — the
+  // series is cost/tax-adjusted upstream via dailySeries). The chart draws framed $ y-ticks, x-date
+  // labels, an end-of-line value, and a hover/keyboard cursor with a live daily-value readout.
+  type SKey = 'gross' | 'net' | 'take';
+  const SERIES: { key: SKey; label: string; stroke: string; fill: string; grad: string }[] = [
+    { key: 'gross', label: 'Gross', stroke: 'stroke-chart-2', fill: 'fill-chart-2', grad: 'perfGross' },
+    { key: 'net', label: 'Net', stroke: 'stroke-primary', fill: 'fill-primary', grad: 'perfNet' },
+    { key: 'take', label: 'Take-home', stroke: 'stroke-chart-3', fill: 'fill-chart-3', grad: 'perfTake' },
+  ];
+  let overlay = $state<SKey>('gross');
+  let cursor = $state<number | null>(null);
+  let cw = $state(0); // measured plot width (px) → viewBox width, so labels/dots aren't stretched
+  const VH = 256;
+  const PAD = { l: 48, r: 72, t: 12, b: 22 };
+  const W = $derived(Math.max(560, cw || 900));
+  const ser = $derived(SERIES.find(s => s.key === overlay) ?? SERIES[0]);
+
+  const view = $derived.by(() => {
+    if (!series.length) return null;
+    const key = overlay;
+    const pts: DailyPoint[] = [{ date: '', gross: 0, net: 0, take: 0 }, ...series];
+    let lo = Infinity, hi = -Infinity;
+    for (const p of pts) {
+      if (p[key] < lo) lo = p[key];
+      if (p[key] > hi) hi = p[key];
+    }
+    const ticks = niceTicks(lo, hi, 4);
+    lo = Math.min(lo, ticks[0]);
+    hi = Math.max(hi, ticks[ticks.length - 1]);
+    const span = hi - lo || 1;
+    const x = (i: number) => PAD.l + (i / (pts.length - 1)) * (W - PAD.l - PAD.r);
+    const y = (v: number) => PAD.t + (1 - (v - lo) / span) * (VH - PAD.t - PAD.b);
+    const d = linePath(pts.map(p => p[key]), x, y);
+    const baseY = (VH - PAD.b).toFixed(1);
+    const area = `${d} L${x(pts.length - 1).toFixed(1)},${baseY} L${x(0).toFixed(1)},${baseY} Z`;
+    const yticks = ticks.map(v => ({ y: y(v), label: axMoney(v) }));
+    const xticks: { x: number; label: string }[] = [];
+    const seen = new Set<string>();
+    for (let k = 0; k <= 4; k++) {
+      const i = Math.min(pts.length - 1, 1 + Math.round(((pts.length - 2) * k) / 4));
+      const dt = pts[i]?.date;
+      if (dt && !seen.has(dt)) {
+        seen.add(dt);
+        xticks.push({ x: x(i), label: dt.slice(5).replace('-', '/') });
+      }
+    }
+    const last = pts[pts.length - 1];
+    return { pts, x, y, len: pts.length, d, area, yticks, xticks, zeroY: lo <= 0 && hi >= 0 ? y(0) : null, endY: y(last[key]), endLabel: usdWhole(last[key]) };
+  });
+  const tip = $derived(view && cursor != null && view.pts[cursor]?.date ? `${view.pts[cursor].date} · ${ser.label} ${usd(view.pts[cursor][overlay])}` : '');
+
+  function idxFromX(e: PointerEvent) {
+    const v = view;
+    if (!v) return null;
+    const rect = (e.currentTarget as Element).getBoundingClientRect();
+    const vbx = ((e.clientX - rect.left) / rect.width) * W;
+    return Math.max(1, Math.min(v.len - 1, Math.round(((vbx - PAD.l) / (W - PAD.l - PAD.r)) * (v.len - 1))));
   }
-  const cp = $derived(curvePaths(curve));
+  const moveCursor = (e: PointerEvent) => (cursor = idxFromX(e));
+  function onCurveKey(e: KeyboardEvent) {
+    if (!view || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+    e.preventDefault();
+    const base = cursor == null ? view.len - 1 : cursor;
+    cursor = Math.max(1, Math.min(view.len - 1, base + (e.key === 'ArrowRight' ? 1 : -1)));
+  }
 </script>
 
 {#snippet moduleHeader(title: string)}
@@ -132,23 +196,51 @@
     {@render moduleHeader('Performance')}
     <Card.Content>
       <div class="mb-3 flex w-fit items-center gap-0.5 rounded-md border border-border p-0.5">
-        {@render seg(overlay === 'gross', 'Gross', () => (overlay = 'gross'))}
-        {@render seg(overlay === 'net', 'Net', () => (overlay = 'net'))}
-        {@render seg(overlay === 'take', 'Take-home', () => (overlay = 'take'))}
-      </div>
-      <svg viewBox="0 0 1000 280" class="h-64 w-full" preserveAspectRatio="none" role="img" aria-label="Cumulative P&L curve">
-        <defs>
-          <linearGradient id="perfFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" class="[stop-color:var(--chart-2)] [stop-opacity:0.25]" />
-            <stop offset="100%" class="[stop-color:var(--chart-2)] [stop-opacity:0]" />
-          </linearGradient>
-        </defs>
-        {#each [56, 112, 168, 224] as y (y)}
-          <line x1="0" y1={y} x2="1000" y2={y} class="stroke-border" stroke-width="1" />
+        {#each SERIES as s (s.key)}
+          {@render seg(overlay === s.key, s.label, () => (overlay = s.key))}
         {/each}
-        <path d={cp.area} fill="url(#perfFill)" />
-        <path d={cp.line} fill="none" class="stroke-chart-2" stroke-width="2" />
-      </svg>
+      </div>
+      <div bind:clientWidth={cw}>
+        {#if view}
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+          <svg
+            viewBox="0 0 {W} {VH}"
+            class="h-64 w-full touch-none outline-none"
+            role="img"
+            aria-label="Cumulative {ser.label} P&L curve"
+            tabindex="0"
+            onpointermove={moveCursor}
+            onpointerleave={() => (cursor = null)}
+            onkeydown={onCurveKey}
+          >
+            <defs>
+              <linearGradient id="perfGross" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" class="[stop-color:var(--chart-2)] [stop-opacity:0.24]" /><stop offset="100%" class="[stop-color:var(--chart-2)] [stop-opacity:0]" /></linearGradient>
+              <linearGradient id="perfNet" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" class="[stop-color:var(--primary)] [stop-opacity:0.2]" /><stop offset="100%" class="[stop-color:var(--primary)] [stop-opacity:0]" /></linearGradient>
+              <linearGradient id="perfTake" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" class="[stop-color:var(--chart-3)] [stop-opacity:0.24]" /><stop offset="100%" class="[stop-color:var(--chart-3)] [stop-opacity:0]" /></linearGradient>
+            </defs>
+            {#each view.yticks as t, i (i)}
+              <line x1={PAD.l} y1={t.y} x2={W - PAD.r} y2={t.y} class="stroke-border" stroke-width="1" vector-effect="non-scaling-stroke" />
+              <text x={PAD.l - 6} y={t.y + 3.5} text-anchor="end" class="fill-muted-foreground text-[11px] tabular-nums">{t.label}</text>
+            {/each}
+            {#if view.zeroY != null}
+              <line x1={PAD.l} y1={view.zeroY} x2={W - PAD.r} y2={view.zeroY} class="stroke-muted-foreground/50" stroke-width="1" vector-effect="non-scaling-stroke" />
+            {/if}
+            {#each view.xticks as t, i (i)}
+              <text x={t.x} y={VH - 6} text-anchor="middle" class="fill-muted-foreground text-[10px] tabular-nums">{t.label}</text>
+            {/each}
+            <path d={view.area} fill="url(#{ser.grad})" />
+            <path d={view.d} fill="none" class={ser.stroke} stroke-width="2" vector-effect="non-scaling-stroke" />
+            <text x={W - PAD.r + 5} y={view.endY + 3.5} text-anchor="start" class={['text-[11px] font-medium tabular-nums', ser.fill]}>{view.endLabel}</text>
+            {#if cursor != null}
+              <line x1={view.x(cursor)} y1={PAD.t} x2={view.x(cursor)} y2={VH - PAD.b} class="stroke-muted-foreground" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" />
+              <circle cx={view.x(cursor)} cy={view.y(view.pts[cursor][overlay])} r="3.5" class={[ser.stroke, ser.fill]} vector-effect="non-scaling-stroke" />
+            {/if}
+          </svg>
+          <div class="mt-1 text-center text-xs tabular-nums text-muted-foreground" aria-live="polite">{tip || 'Hover or arrow-key the curve for daily cumulative P&L'}</div>
+        {:else}
+          <p class="grid h-64 place-items-center text-sm text-muted-foreground">No trades in the selected range.</p>
+        {/if}
+      </div>
     </Card.Content>
   </Card.Root>
 
