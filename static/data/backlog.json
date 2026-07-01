@@ -573,18 +573,6 @@
       "doneNote": null
     },
     {
-      "id": "A165",
-      "title": "Analytics 'By tag' breakdown (P&L / win rate / count per tag + untagged bucket)",
-      "category": "FEATURES",
-      "priority": "P2",
-      "effort": "medium",
-      "status": "open",
-      "completedDate": null,
-      "partial": false,
-      "prompt": "From the R17 tagging review (docs/tagging-review-2026-07-01.md, decision 2). Add a 'By tag' breakdown to the Analytics screen matching the existing By-symbol/By-weekday modules: one row per trade tag with net P&L, win rate, and trade count, plus an 'untagged' bucket (which doubles as the tag-coverage nudge — the actionable successor to the retired 'Tagged trades' Overview stat; do NOT resurrect a bare count elsewhere). Implementation: extend buildAnalytics (src/app/lib/analytics.ts) — it currently receives (metrics, trades); it also needs the per-trade tag lookup (dash.tradeMeta keyed by tradeId), so thread a tags-for-trade accessor from App.svelte like the screens do. A trade with N tags counts in each of its N tag rows (document that in the module's footnote); the untagged bucket is disjoint. Respect the active filter set (build from the filtered trades like the other modules). Keep demo read-only (pure render). Done when: the module renders real per-tag rows + untagged on all surfaces, sorted by |P&L|, with a unit fixture in a node suite for the bucketing math and an e2e assertion that a tagged trade produces its tag row (extend the A159 staging spec).",
-      "doneNote": null
-    },
-    {
       "id": "A166",
       "title": "Surface day (journal) tags beyond the Calendar day rail",
       "category": "FEATURES",

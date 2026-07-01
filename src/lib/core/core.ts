@@ -311,6 +311,33 @@ export function compute(tr: Trade[]) {
 export type Metrics = ReturnType<typeof compute>;
 
 export const DOW_LABEL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// Per-tag P&L/win/count buckets over an externally-supplied tag lookup — tags live in trademeta,
+// not on the Trade itself, so the caller passes the accessor. A trade with N tags counts in each
+// of its N tag buckets; `untagged` is the DISJOINT remainder, whose size doubles as tag coverage
+// (R17/A165 — the actionable successor to the retired "Tagged trades" stat). Node-tested.
+export function tagBuckets(trades: Trade[], tagsFor: (t: Trade) => string[]) {
+  const tags = new Map<string, { pnl: number; n: number; wins: number }>();
+  const untagged = { pnl: 0, n: 0, wins: 0 };
+  for (const t of trades) {
+    const list = tagsFor(t);
+    const into = (b: { pnl: number; n: number; wins: number }) => {
+      b.pnl += t.pnl;
+      b.n++;
+      if (t.pnl > 0) b.wins++;
+    };
+    if (!list || !list.length) {
+      into(untagged);
+      continue;
+    }
+    for (const tag of list) {
+      let b = tags.get(tag);
+      if (!b) tags.set(tag, (b = { pnl: 0, n: 0, wins: 0 }));
+      into(b);
+    }
+  }
+  return { tags, untagged };
+}
 // Day-of-week buckets (0=Sun..6=Sat), summing PnL + count per weekday. Shared by compute()
 // (Best/Worst Weekday) and the win-rate card modal (cmDow) so the two can't drift (CH23).
 export function dowBuckets(trades: Trade[]) {

@@ -2,13 +2,14 @@
 // compute() Metrics + the working trade list into the discrete arrays/values the Analytics component
 // renders (KPI strip, P&L histogram, hour/weekday signed bars, per-symbol + long/short breakdowns,
 // and the advanced-stats grid). Pure: no runes, no DOM — the staging shell calls it from a $derived.
-import { usd, money, num, ratio, fmtDur, tone, type Metrics } from '../../lib/core/core.ts';
+import { usd, money, num, ratio, fmtDur, tone, dowBuckets, tagBuckets, DOW_LABEL, type Metrics } from '../../lib/core/core.ts';
 import type { Trade } from '../../lib/core/types.ts';
 
 export type Kpi = { label: string; value: string; tone?: 'pos' | 'neg' };
 export type DistBar = { label: string; value: number; neg: boolean };
 export type SignedBar = { label: string; value: number };
 export type SymbolRow = { sym: string; trades: number; win: number; pnl: number };
+export type TagRow = { tag: string; trades: number; win: number; pnl: number };
 export type StatRow = { k: string; v: string; tone?: 'pos' | 'neg' };
 
 export interface AnalyticsVM {
@@ -21,10 +22,10 @@ export interface AnalyticsVM {
   hours: SignedBar[];
   wdays: SignedBar[];
   symbols: SymbolRow[];
+  byTag: TagRow[];
+  untagged: TagRow | null;
   statRows: StatRow[];
 }
-
-const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // Symmetric per-trade P&L histogram. Edges in dollars; the outer buckets catch the tails.
 const EDGES = [-200, -100, -50, 0, 50, 100, 200];
@@ -39,7 +40,7 @@ function histogram(pnls: number[]): DistBar[] {
   return labels.map((label, i) => ({ label, value: counts[i], neg: i < 4 }));
 }
 
-export function buildAnalytics(m: Metrics, trades: Trade[]): AnalyticsVM {
+export function buildAnalytics(m: Metrics, trades: Trade[], tagsFor: (t: Trade) => string[]): AnalyticsVM {
   // ── KPI strip ──
   const kpis: Kpi[] = [
     { label: 'Net P&L', value: usd(m.net), tone: tone(m.net) },
@@ -64,17 +65,11 @@ export function buildAnalytics(m: Metrics, trades: Trade[]): AnalyticsVM {
     .sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([hh, a]) => ({ label: hh, value: Math.round(a.pnl / a.n) }));
 
-  // ── Avg P&L by weekday ──
-  const dow = Array.from({ length: 7 }, () => ({ pnl: 0, n: 0 }));
-  for (const t of trades) {
-    const wd = new Date(t.date + 'T00:00:00').getDay();
-    dow[wd].pnl += t.pnl;
-    dow[wd].n++;
-  }
-  const wdays: SignedBar[] = dow
+  // ── Avg P&L by weekday (core dowBuckets — ONE definition with compute()'s weekday stats) ──
+  const wdays: SignedBar[] = dowBuckets(trades)
     .map((d, i) => ({ i, ...d }))
     .filter(d => d.n)
-    .map(d => ({ label: WD[d.i], value: Math.round(d.pnl / d.n) }));
+    .map(d => ({ label: DOW_LABEL[d.i], value: Math.round(d.pnl / d.n) }));
 
   // ── Per-symbol breakdown (top 8 by |P&L|) ──
   const symMap = new Map<string, { trades: number; wins: number; pnl: number }>();
@@ -90,6 +85,21 @@ export function buildAnalytics(m: Metrics, trades: Trade[]): AnalyticsVM {
     .map(([sym, a]) => ({ sym, trades: a.trades, win: a.trades ? Math.round((100 * a.wins) / a.trades) : 0, pnl: a.pnl }))
     .sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl))
     .slice(0, 8);
+
+  // ── Per-tag breakdown (R17/A165) — core tagBuckets over the caller's trademeta lookup. Top 10
+  // by |P&L|; the untagged bucket is the disjoint remainder and doubles as tag coverage. ──
+  const tb = tagBuckets(trades, tagsFor);
+  const tagRow = (tag: string, a: { pnl: number; n: number; wins: number }): TagRow => ({
+    tag,
+    trades: a.n,
+    win: a.n ? Math.round((100 * a.wins) / a.n) : 0,
+    pnl: a.pnl,
+  });
+  const byTag: TagRow[] = [...tb.tags.entries()]
+    .map(([tag, a]) => tagRow(tag, a))
+    .sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl))
+    .slice(0, 10);
+  const untagged: TagRow | null = tb.untagged.n ? tagRow('untagged', tb.untagged) : null;
 
   // ── Avg hold time (only trades that carry a duration — fills exports) ──
   const holds = trades.map(t => t.holdMs).filter((h): h is number => typeof h === 'number' && h > 0);
@@ -112,12 +122,12 @@ export function buildAnalytics(m: Metrics, trades: Trade[]): AnalyticsVM {
     { k: 'Largest losing streak', v: usd(m.maxLossStk), tone: 'neg' },
     {
       k: 'Best weekday',
-      v: m.bestDow ? `${WD[m.bestDow.i]} · ${usd(m.bestDow.avg)}/trade` : '—',
+      v: m.bestDow ? `${DOW_LABEL[m.bestDow.i]} · ${usd(m.bestDow.avg)}/trade` : '—',
       tone: m.bestDow ? tone(m.bestDow.avg) : undefined,
     },
     {
       k: 'Worst weekday',
-      v: m.worstDow ? `${WD[m.worstDow.i]} · ${usd(m.worstDow.avg)}/trade` : '—',
+      v: m.worstDow ? `${DOW_LABEL[m.worstDow.i]} · ${usd(m.worstDow.avg)}/trade` : '—',
       tone: m.worstDow ? tone(m.worstDow.avg) : undefined,
     },
     { k: 'Gross profit', v: usd(m.gp), tone: 'pos' },
@@ -135,6 +145,8 @@ export function buildAnalytics(m: Metrics, trades: Trade[]): AnalyticsVM {
     hours,
     wdays,
     symbols,
+    byTag,
+    untagged,
     statRows,
   };
 }

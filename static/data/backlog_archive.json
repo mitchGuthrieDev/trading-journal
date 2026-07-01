@@ -3252,6 +3252,17 @@
       "completedDate": "2026-07-01",
       "partial": false,
       "doneNote": "DONE (2026-07-01) — Written decision delivered: docs/tagging-review-2026-07-01.md. Both premises had drifted: the 'Tagged trades' Overview stat died with the CH16 cutover (nothing to re-label) and the dashboard Tag filter was restored by A159. Decisions: tagging = the user's own two-scope review vocabulary (per-trade tags label the analysis unit — setups/mistakes/strategies — and exist to be filtered/aggregated; per-day journal tags label context and exist to be seen while reviewing), free-form with the A153 canonical form, no enforced taxonomy; the Overview stat stays retired — its actionable successor is an Analytics 'By tag' breakdown whose untagged bucket IS the coverage stat (A165); day tags stop being write-only (A166); tag inputs autocomplete from the existing vocabulary (A167)."
+    },
+    {
+      "id": "A165",
+      "title": "Analytics 'By tag' breakdown (P&L / win rate / count per tag + untagged bucket)",
+      "category": "FEATURES",
+      "priority": "P2",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-07-01",
+      "partial": false,
+      "doneNote": "DONE (2026-07-01) — Analytics gained a 'Performance by tag' module (full-width card between By-symbol and Advanced statistics): one row per trade tag with count, win rate, |P&L|-scaled bar and net P&L, top 10 by |P&L|, plus the DISJOINT 'untagged' bucket rendered as a separated muted row (neutral chart-1 bar) — the coverage stat in actionable form, per the R17 decision. A footnote documents multi-tag counting. Empty state is a hint pointing at the Blotter/Trade Editor. The bucketing math is core tagBuckets(trades, tagsFor) (pure, node-tested in test-curveandreport.mjs: multi-tag counting, disjoint untagged, win tallies); buildAnalytics takes the trademeta lookup as an accessor from App.svelte so it stays pure, and respects the active filter set (built from metricsActive.trades). Also completed the A157 straggler in analytics.ts (core dowBuckets + DOW_LABEL adopted; local WD/loop deleted). e2e: the A159 staging spec now walks tag → filter → Analytics row + untagged bucket."
     }
   ]
 }

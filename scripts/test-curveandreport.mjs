@@ -16,7 +16,7 @@ globalThis.fetch = async url => {
   return { ok: true, json: async () => JSON.parse(txt) };
 };
 
-const { compute, costModel, isoWeek, rateFor, blendedRateFor, loadRefData, money } = await import('../src/lib/core/core.ts');
+const { compute, costModel, isoWeek, rateFor, blendedRateFor, loadRefData, money, tagBuckets } = await import('../src/lib/core/core.ts');
 const { dailySeries } = await import('../src/lib/core/curveseries.ts');
 const { buildReport } = await import('../src/lib/core/report.ts');
 
@@ -204,6 +204,32 @@ ok('isoWeek: 2019-12-30 (Mon) is week 1 of 2020', isoWeek(new Date(2019, 11, 30)
       rep2.reportMd.includes('## Summary')
   );
   ok('report: toggled-off cost block omitted from text', !rep2.reportText.includes('Commissions:'));
+}
+
+// ── tagBuckets(): per-tag buckets over an external lookup + the DISJOINT untagged remainder (A165) ──
+{
+  const trades = [
+    t('2026-01-05 10:00:00', 100), // scalp + fomo → counts in BOTH buckets
+    t('2026-01-06 10:00:00', -40), // scalp
+    t('2026-01-07 10:00:00', 60), // untagged
+    t('2026-01-08 10:00:00', -10), // untagged (empty list)
+  ];
+  const TAGS = new Map([
+    [trades[0], ['scalp', 'fomo']],
+    [trades[1], ['scalp']],
+    [trades[3], []],
+  ]);
+  const { tags, untagged } = tagBuckets(trades, tr => TAGS.get(tr) ?? []);
+  const scalp = tags.get('scalp'),
+    fomo = tags.get('fomo');
+  ok('tagBuckets: scalp aggregates both its trades', scalp && scalp.n === 2 && scalp.pnl === 60 && scalp.wins === 1, JSON.stringify(scalp));
+  ok('tagBuckets: a multi-tag trade counts once per tag', fomo && fomo.n === 1 && fomo.pnl === 100 && fomo.wins === 1);
+  ok('tagBuckets: only real tags become buckets', tags.size === 2, String(tags.size));
+  ok(
+    'tagBuckets: untagged is the disjoint remainder (missing + empty lists)',
+    untagged.n === 2 && untagged.pnl === 50 && untagged.wins === 1,
+    JSON.stringify(untagged)
+  );
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -333,7 +333,10 @@
     }));
 
   // ── Analytics ────────────────────────────────────────────────────────────────────────────────
-  const analytics = $derived(buildAnalytics(dash.metricsActive, dash.metricsActive.trades));
+  // Per-trade tags live in trademeta (keyed by trade id), so the By-tag breakdown (R17/A165) gets
+  // the lookup as an accessor — buildAnalytics stays pure.
+  const tagsForTrade = (t: Trade) => dash.tradeMeta.get(dash.tradeId(t))?.tags ?? [];
+  const analytics = $derived(buildAnalytics(dash.metricsActive, dash.metricsActive.trades, tagsForTrade));
 
   // Dashboard modules (Break-even & Cost + Advanced Statistics) — reuse the cost waterfall + the
   // Analytics advanced-stats grid so the dashboard cards match their full-screen counterparts.
@@ -670,6 +673,8 @@
         hours={analytics.hours}
         wdays={analytics.wdays}
         symbols={analytics.symbols}
+        byTag={analytics.byTag}
+        untagged={analytics.untagged}
         statRows={analytics.statRows}
       />
     {/await}

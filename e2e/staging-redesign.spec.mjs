@@ -422,4 +422,12 @@ test('staging redesign: the Dashboard Tag filter narrows to tagged trades (A159)
   // Clear all restores the full set.
   await popover.getByRole('button', { name: 'Clear all' }).click();
   await expect(popover.getByText(`${before.toLocaleString()} trades`)).toBeVisible();
+  await page.keyboard.press('Escape'); // close the popover
+
+  // A165: the tag also shows up as a row in the Analytics "Performance by tag" module, with the
+  // untagged bucket carrying the remainder (the coverage stat).
+  await gotoScreen(page, 'Analytics');
+  await expect(page.getByText('Performance by tag')).toBeVisible();
+  await expect(page.getByText('filter-me')).toBeVisible();
+  await expect(page.getByText('untagged', { exact: true })).toBeVisible();
 });

@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  export type { Kpi, DistBar, SignedBar, SymbolRow, StatRow } from '../lib/analytics.ts';
+  export type { Kpi, DistBar, SignedBar, SymbolRow, TagRow, StatRow } from '../lib/analytics.ts';
 </script>
 
 <script lang="ts">
@@ -12,7 +12,7 @@
   import { cn } from '$lib/utils';
   import { usdWhole } from '../../lib/core/core.ts';
   import * as Card from '$lib/components/ui/card';
-  import type { Kpi, DistBar, SignedBar, SymbolRow, StatRow } from '../lib/analytics.ts';
+  import type { Kpi, DistBar, SignedBar, SymbolRow, TagRow, StatRow } from '../lib/analytics.ts';
 
   interface Props {
     kpis: Kpi[];
@@ -27,13 +27,17 @@
     hours: SignedBar[];
     wdays: SignedBar[];
     symbols: SymbolRow[];
+    /** Per-tag breakdown + the disjoint untagged bucket (R17/A165). */
+    byTag: TagRow[];
+    untagged: TagRow | null;
     statRows: StatRow[];
   }
-  let { kpis, dist, wins, losses, curve, maxDD, maxDDpct, long, short, hours, wdays, symbols, statRows }: Props = $props();
+  let { kpis, dist, wins, losses, curve, maxDD, maxDDpct, long, short, hours, wdays, symbols, byTag, untagged, statRows }: Props = $props();
 
   const winShare = $derived(wins + losses ? Math.round((wins / (wins + losses)) * 100) : 0);
   const longShare = $derived(long.n + short.n ? Math.round((long.n / (long.n + short.n)) * 100) : 0);
   const maxSym = $derived(Math.max(1, ...symbols.map(s => Math.abs(s.pnl))));
+  const maxTag = $derived(Math.max(1, ...byTag.map(r => Math.abs(r.pnl)), Math.abs(untagged?.pnl ?? 0)));
 
   // Underwater (drawdown) series from the equity curve: depth = running peak − equity, normalized.
   // Uses a loop (not Math.max(...curve)) so a large fills export can't overflow the call stack.
@@ -215,6 +219,54 @@
             >
           </div>
         {/each}
+      </Card.Content>
+    </Card.Root>
+
+    <!-- Per-tag (R17/A165) — the untagged bucket doubles as tag coverage -->
+    <Card.Root class="lg:col-span-2">
+      {@render head('Performance by tag')}
+      <Card.Content class="space-y-2">
+        {#if byTag.length}
+          {#each byTag as r (r.tag)}
+            <div class="flex items-center gap-3 text-xs">
+              <span class="w-24 truncate font-medium" title={r.tag}>{r.tag}</span>
+              <span class="w-28 text-muted-foreground">{r.trades} tr · {r.win}%</span>
+              <svg viewBox="0 0 100 8" class="h-2 flex-1" preserveAspectRatio="none" aria-hidden="true">
+                <rect x="0" y="0" width="100" height="8" class="fill-secondary" />
+                <rect
+                  x="0"
+                  y="0"
+                  width={Math.round((Math.abs(r.pnl) / maxTag) * 100)}
+                  height="8"
+                  class={r.pnl >= 0 ? 'fill-chart-2' : 'fill-destructive'}
+                />
+              </svg>
+              <span class={cn('w-20 text-right font-semibold tabular-nums', r.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}
+                >{usdWhole(r.pnl)}</span
+              >
+            </div>
+          {/each}
+          {#if untagged}
+            <div class="flex items-center gap-3 border-t border-border pt-2 text-xs">
+              <span class="w-24 truncate text-muted-foreground">untagged</span>
+              <span class="w-28 text-muted-foreground">{untagged.trades} tr · {untagged.win}%</span>
+              <svg viewBox="0 0 100 8" class="h-2 flex-1" preserveAspectRatio="none" aria-hidden="true">
+                <rect x="0" y="0" width="100" height="8" class="fill-secondary" />
+                <rect x="0" y="0" width={Math.round((Math.abs(untagged.pnl) / maxTag) * 100)} height="8" class="fill-chart-1" />
+              </svg>
+              <span class="w-20 text-right font-semibold tabular-nums text-muted-foreground">{usdWhole(untagged.pnl)}</span>
+            </div>
+          {/if}
+          <p class="text-[11px] text-muted-foreground">
+            A trade with several tags counts once per tag; “untagged” is the disjoint remainder — your tag coverage.
+          </p>
+        {:else}
+          <p class="text-xs text-muted-foreground">
+            No tags yet — tag trades in the Blotter or Trade Editor to see per-tag performance{untagged
+              ? ` (${untagged.trades} trades untagged)`
+              : ''}.
+          </p>
+        {/if}
       </Card.Content>
     </Card.Root>
 
