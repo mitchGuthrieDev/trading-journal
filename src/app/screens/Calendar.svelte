@@ -9,7 +9,7 @@
   // right rail with the selected day's detail and the month/year summary. Cell treatments: heatmap
   // intensity (P&L magnitude → opacity bucket, via literal utility classes so they stay CSP-safe), a
   // per-day target marker, the ISO-week totals column, and note dots. Data comes from props (real
-  // metrics + journal on the staging app); the defaults below are the /dev mock. Color only in the P&L.
+  // metrics + journal, wired by App.svelte on all surfaces). Color only in the P&L.
   import { ChevronLeft, ChevronRight, X, Minus, Plus, Paperclip, ImagePlus, Check } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
@@ -17,60 +17,33 @@
   import * as Card from '$lib/components/ui/card';
   import * as Dialog from '$lib/components/ui/dialog';
   import { cn } from '$lib/utils';
+  import { usdWhole } from '../../lib/core/core.ts';
   import { readImage } from '../lib/files.ts';
 
-  // ── Mock defaults (the /dev preview) — June 2026 (1st is a Monday). ────────────────────────────
-  const MOCK_DAYS: Record<number, CalDay> = {
-    2: { pnl: 454, trades: 4, wins: 3 }, 3: { pnl: 383, trades: 4, wins: 3, note: true }, 4: { pnl: 216, trades: 3, wins: 2 },
-    5: { pnl: 90, trades: 4, wins: 2 }, 8: { pnl: 355, trades: 5, wins: 3 }, 9: { pnl: 426, trades: 3, wins: 3 },
-    10: { pnl: -106, trades: 2, wins: 0 }, 11: { pnl: -91, trades: 4, wins: 1, note: true }, 12: { pnl: -28, trades: 2, wins: 1 },
-    15: { pnl: 338, trades: 2, wins: 2 }, 16: { pnl: 48, trades: 4, wins: 2 }, 17: { pnl: 96, trades: 3, wins: 1 },
-    18: { pnl: 438, trades: 5, wins: 5, note: true }, 22: { pnl: 93, trades: 5, wins: 3 }, 23: { pnl: 319, trades: 4, wins: 2 },
-    24: { pnl: 380, trades: 5, wins: 4 }, 25: { pnl: 448, trades: 4, wins: 4 }, 26: { pnl: -270, trades: 5, wins: 1 },
-    30: { pnl: 430, trades: 5, wins: 3 },
-  };
-  const MOCK_TRADES: DayTrade[] = [
-    { time: '09:34', sym: 'ES', side: 'Long', qty: 2, pnl: 180 },
-    { time: '10:12', sym: 'NQ', side: 'Short', qty: 1, pnl: -60 },
-    { time: '11:48', sym: 'ES', side: 'Long', qty: 3, pnl: 240 },
-    { time: '13:20', sym: 'CL', side: 'Short', qty: 1, pnl: 78 },
-  ];
-  const MOCK_NOTE = 'Held the morning ES long through the 09:45 push — sized right, trailed the stop under the 5m. Cut the NQ short fast when it failed. Discipline good.';
-  const MOCK_JOURNAL = { text: MOCK_NOTE, tags: ['disciplined', 'trend'], shots: [] as string[] };
-  // Deterministic year heatmap for the /dev preview (a representative spread).
-  const MOCK_YEAR: Record<string, number> = (() => {
-    const o: Record<string, number> = {};
-    for (let i = 0; i < 365; i++) {
-      const d = new Date(2026, 0, 1 + i);
-      if (d.getDay() >= 1 && d.getDay() <= 5) o[`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`] = Math.round(Math.sin(i * 0.9) * 260 + Math.cos(i * 0.37) * 180 + 40);
-    }
-    return o;
-  })();
-
   interface Props {
-    monthDays?: Record<number, CalDay>;
-    year?: number;
-    month?: number; // 0-based
-    monthLabel?: string;
-    yearPnl?: Record<string, number>; // 'YYYY-MM-DD' → net P&L (for the heatmap)
+    monthDays: Record<number, CalDay>;
+    year: number;
+    month: number; // 0-based
+    monthLabel: string;
+    yearPnl: Record<string, number>; // 'YYYY-MM-DD' → net P&L (for the heatmap)
     onprev?: () => void;
     onnext?: () => void;
     onlatest?: () => void;
-    tradesForDay?: (day: number) => DayTrade[];
-    getJournal?: (day: number) => { text: string; tags: string[]; shots: string[] };
+    tradesForDay: (day: number) => DayTrade[];
+    getJournal: (day: number) => { text: string; tags: string[]; shots: string[] };
     onsavenote?: (day: number, text: string, tags: string[], shots: string[]) => void;
   }
   let {
-    monthDays = MOCK_DAYS,
-    year = 2026,
-    month = 5,
-    monthLabel = 'June 2026',
-    yearPnl = MOCK_YEAR,
+    monthDays,
+    year,
+    month,
+    monthLabel,
+    yearPnl,
     onprev,
     onnext,
     onlatest,
-    tradesForDay = () => MOCK_TRADES,
-    getJournal = () => MOCK_JOURNAL,
+    tradesForDay,
+    getJournal,
     onsavenote,
   }: Props = $props();
 
@@ -128,7 +101,6 @@
     return a > 400 ? 4 : a > 250 ? 3 : a > 120 ? 2 : a > 40 ? 1 : 0;
   };
   const shade = (pnl: number) => (pnl >= 0 ? POS : NEG)[lvl(pnl)];
-  const money = (n: number) => `${n >= 0 ? '+' : '-'}$${Math.abs(n).toLocaleString()}`;
   const pct = (w: number, t: number) => (t ? Math.round((100 * w) / t) : 0);
   // ISO-8601 week number (matches the core helper; inlined so the screen stays self-contained).
   const isoWeek = (d: Date) => {
@@ -266,7 +238,7 @@
       <span class="text-sm font-semibold">{year}</span>
     {/if}
     <span class={cn('ml-auto text-sm font-semibold tabular-nums', (view === 'month' ? monthNet : yearNet) < 0 ? 'text-destructive' : 'text-chart-2')}>
-      {money(view === 'month' ? monthNet : yearNet)}
+      {usdWhole(view === 'month' ? monthNet : yearNet)}
     </span>
   </div>
 
@@ -282,7 +254,7 @@
               <div class="flex flex-col justify-center gap-0.5 rounded border border-border bg-secondary px-1 py-1.5 text-center">
                 <div class="text-[9px] uppercase tracking-wide text-muted-foreground">Wk {w.wk}</div>
                 <div class={cn('text-[10px] font-bold tabular-nums', w.days ? (w.pnl >= 0 ? 'text-chart-2' : 'text-destructive') : 'text-muted-foreground')}>
-                  {w.days ? money(w.pnl) : '$0'}
+                  {w.days ? usdWhole(w.pnl) : '$0'}
                 </div>
                 <div class="text-[9px] text-muted-foreground">{w.days}d</div>
               </div>
@@ -304,7 +276,7 @@
                       {c.day}{#if c.rec?.note}<span class="size-1.5 rounded-full bg-primary" title="Has a note"></span>{/if}
                     </span>
                     {#if c.rec}
-                      <span class={cn('mt-auto text-right text-xs font-bold tabular-nums', c.rec.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{money(c.rec.pnl)}</span>
+                      <span class={cn('mt-auto text-right text-xs font-bold tabular-nums', c.rec.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{usdWhole(c.rec.pnl)}</span>
                       <span class="text-right text-[9px] text-muted-foreground">{c.rec.trades} tr · {pct(c.rec.wins, c.rec.trades)}%</span>
                     {/if}
                   </button>
@@ -331,7 +303,7 @@
                   {#each col as cell, ri (ri)}
                     <div
                       class={cn('size-[10px] rounded-[2px]', cell ? (cell.trading ? shade(cell.pnl) : 'bg-secondary/50') : 'bg-transparent')}
-                      title={cell?.trading ? `${cell.date} · ${money(cell.pnl)}` : ''}
+                      title={cell?.trading ? `${cell.date} · ${usdWhole(cell.pnl)}` : ''}
                     ></div>
                   {/each}
                 </div>
@@ -364,10 +336,10 @@
           <div class="space-y-3 p-4">
             <!-- Day stats -->
             <div class="grid grid-cols-2 gap-2">
-              {@render stat('Day P&L', money(sel.pnl), sel.pnl >= 0 ? 'pos' : 'neg')}
+              {@render stat('Day P&L', usdWhole(sel.pnl), sel.pnl >= 0 ? 'pos' : 'neg')}
               {@render stat('Win rate', `${pct(sel.wins, sel.trades)}%`)}
-              {@render stat('Best trade', bestTrade ? money(bestTrade.pnl) : '—', 'pos')}
-              {@render stat('Worst trade', worstTrade ? money(worstTrade.pnl) : '—', 'neg')}
+              {@render stat('Best trade', bestTrade ? usdWhole(bestTrade.pnl) : '—', 'pos')}
+              {@render stat('Worst trade', worstTrade ? usdWhole(worstTrade.pnl) : '—', 'neg')}
             </div>
 
             <!-- Trades list -->
@@ -380,7 +352,7 @@
                     <span class="font-medium">{t.sym}</span>
                     <Badge variant="outline" class={t.side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}>{t.side}</Badge>
                     <span class="text-muted-foreground">×{t.qty}</span>
-                    <span class={cn('ml-auto font-semibold tabular-nums', t.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{money(t.pnl)}</span>
+                    <span class={cn('ml-auto font-semibold tabular-nums', t.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{usdWhole(t.pnl)}</span>
                   </div>
                 {/each}
               </div>
@@ -450,12 +422,12 @@
         <div class="space-y-3 p-4">
           {#if view === 'month'}
             <div class="grid grid-cols-2 gap-2">
-              {@render stat('Net P&L', money(monthNet), monthNet >= 0 ? 'pos' : 'neg')}
-              {@render stat('Avg / day', money(Math.round(avgDay)), avgDay >= 0 ? 'pos' : 'neg')}
+              {@render stat('Net P&L', usdWhole(monthNet), monthNet >= 0 ? 'pos' : 'neg')}
+              {@render stat('Avg / day', usdWhole(Math.round(avgDay)), avgDay >= 0 ? 'pos' : 'neg')}
               {@render stat('Win days', `${winDays}`, 'pos')}
               {@render stat('Loss days', `${lossDays}`, 'neg')}
-              {@render stat('Best day', bestDay ? money(bestDay.pnl) : '—', 'pos')}
-              {@render stat('Worst day', worstDay ? money(worstDay.pnl) : '—', 'neg')}
+              {@render stat('Best day', bestDay ? usdWhole(bestDay.pnl) : '—', 'pos')}
+              {@render stat('Worst day', worstDay ? usdWhole(worstDay.pnl) : '—', 'neg')}
             </div>
             <div class="rounded-md border border-border bg-background px-3 py-2 text-xs">
               <span class="text-muted-foreground">Current streak</span>
@@ -467,14 +439,14 @@
                 {#each dowPnl as d (d.lbl)}
                   <div class="flex items-center justify-between text-xs">
                     <span class="text-muted-foreground">{d.lbl}</span>
-                    <span class={cn('font-medium tabular-nums', d.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{money(d.pnl)}</span>
+                    <span class={cn('font-medium tabular-nums', d.pnl >= 0 ? 'text-chart-2' : 'text-destructive')}>{usdWhole(d.pnl)}</span>
                   </div>
                 {/each}
               </div>
             </div>
           {:else}
             <div class="grid grid-cols-2 gap-2">
-              {@render stat('Net P&L', money(yearNet), yearNet >= 0 ? 'pos' : 'neg')}
+              {@render stat('Net P&L', usdWhole(yearNet), yearNet >= 0 ? 'pos' : 'neg')}
               {@render stat('Trading days', `${yearCells.length}`)}
               {@render stat('Win days', `${yearWin}`, 'pos')}
               {@render stat('Loss days', `${yearLoss}`, 'neg')}

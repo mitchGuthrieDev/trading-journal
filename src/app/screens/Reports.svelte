@@ -7,8 +7,8 @@
   // Reports surface (UI redesign; Data Management). A two-pane report generator: a left config panel
   // (template, title/account, date-range + scope, period comparison, section toggles) drives a live
   // document preview on the right; export actions (PDF / Markdown / CSV / Email / Copy) in the toolbar.
-  // The preview + exports are built from real metrics on the staging app via the `build` callback (which
-  // reuses the pure report.ts builder, A34); the /dev preview falls back to a static mock. Color in P&L.
+  // The preview + exports are built from real metrics via the `build` callback (which reuses the pure
+  // report.ts builder, A34), wired by App.svelte on all surfaces. Color in P&L.
   import { FileDown, Code, Table2, Mail, Copy, Receipt, Percent, ChartLine, FileText } from '@lucide/svelte';
   import { cn } from '$lib/utils';
   import { Button } from '$lib/components/ui/button';
@@ -23,52 +23,19 @@
   type Sections = { kpis: boolean; curve: boolean; calendar: boolean; cost: boolean; tax: boolean; advanced: boolean };
   type ExportKind = 'pdf' | 'md' | 'csv' | 'email' | 'copy';
 
-  // A static view-model for the /dev preview (no engine).
-  const MOCK_VM: ReportVM = {
-    kpis: [
-      { label: 'Net P&L', value: '+$79,467', prior: '+$71,240', tone: 'pos' },
-      { label: 'Win rate', value: '58.0%', prior: '56.4%' },
-      { label: 'Profit factor', value: '3.01', prior: '2.78' },
-      { label: 'Expectancy', value: '+$51.64', prior: '+$48.10', tone: 'pos' },
-      { label: 'Trades', value: '1,539', prior: '1,402' },
-      { label: 'Max drawdown', value: '-$502.75', prior: '-$610.20', tone: 'neg' },
-    ],
-    curve: [0, 1200, 2100, 2600, 3800, 4700, 6000, 7400, 8600, 9400],
-    calPnl: { 2: 454, 3: 383, 4: 216, 5: 90, 8: 355, 9: 426, 10: -106, 11: -91, 12: -28, 15: 338, 16: 48, 17: 96, 18: 438, 22: 93, 23: 319, 24: 380, 25: 448, 26: -270, 30: 430 },
-    calFirstDow: 1,
-    calDaysInMonth: 30,
-    calMonthLabel: 'June 2026',
-    costRows: [
-      ['Gross P&L', '+$86,107', false], ['Commissions (all-in)', '-$4,210', false],
-      ['Subscriptions ($180/mo × 3)', '-$540', false], ['Total costs', '-$6,640', true],
-    ],
-    taxRows: [
-      ['Net §1256 gain (pre-tax)', '+$79,467', false], ['Blended 1256 rate', '18.6%', false],
-      ['Est. 1256 tax (profit only)', '-$14,781', false], ['Est. take-home', '+$62,046', true],
-    ],
-    advRows: [
-      ['Payoff ratio', '2.18'], ['Sortino', '1.24'], ['Recovery factor', '12.4'],
-      ['Profit concentration', '18%'], ['Max consec. wins', '9'], ['Max consec. losses', '4'],
-    ],
-    rangeLabel: 'June 2026',
-    md: '',
-    text: '',
-    mailto: '',
-  };
-
   interface Props {
     defaultTitle?: string;
     defaultAccount?: string;
-    calYear?: number;
-    calMonth?: number;
-    build?: (range: ReportRange, compare: boolean) => ReportVM;
+    calYear: number;
+    calMonth: number;
+    build: (range: ReportRange, compare: boolean) => ReportVM;
     onexport?: (kind: ExportKind, vm: ReportVM, meta: { title: string; account: string }) => void;
   }
   let {
-    defaultTitle = 'Q2 2026 Performance',
-    defaultAccount = 'Main · Tradovate',
-    calYear = 2026,
-    calMonth = 5,
+    defaultTitle = '',
+    defaultAccount = '',
+    calYear,
+    calMonth,
     build,
     onexport,
   }: Props = $props();
@@ -79,8 +46,8 @@
   // svelte-ignore state_referenced_locally
   let account = $state(defaultAccount);
   let scope = $state<'all' | 'month' | 'custom'>('all');
-  let from = $state('2026-04-01');
-  let to = $state('2026-06-30');
+  let from = $state('');
+  let to = $state('');
   let compare = $state(true);
   let sections = $state<Sections>({ kpis: true, curve: true, calendar: true, cost: true, tax: true, advanced: true });
 
@@ -94,9 +61,21 @@
     template = t;
     sections = { ...PRESETS[t] };
   }
+  function pickScope(k: 'all' | 'month' | 'custom') {
+    scope = k;
+    // Seed the custom pickers from the real calendar-cursor month (props) the first time Custom is
+    // chosen, so a custom report opens on a bounded range with a prior-period comparison — rather than
+    // empty/open-ended. The user can then adjust either bound.
+    if (k === 'custom' && !from && !to) {
+      const mm = String(calMonth + 1).padStart(2, '0');
+      const last = new Date(calYear, calMonth + 1, 0).getDate();
+      from = `${calYear}-${mm}-01`;
+      to = `${calYear}-${mm}-${String(last).padStart(2, '0')}`;
+    }
+  }
 
   const range = $derived<ReportRange>({ scope, from, to, calYear, calMonth });
-  const vm = $derived(build ? build(range, compare) : MOCK_VM);
+  const vm = $derived(build(range, compare));
 
   const TEMPLATES: { key: Tmpl; label: string; icon: typeof FileText }[] = [
     { key: 'performance', label: 'Performance', icon: ChartLine },
@@ -185,7 +164,7 @@
           <Label class="mb-1.5">Date range</Label>
           <div class="mb-2 flex items-center gap-0.5 rounded-md border border-border p-0.5">
             {#each [['all', 'All time'], ['month', 'Month'], ['custom', 'Custom']] as const as [k, lbl] (k)}
-              <button type="button" onclick={() => (scope = k)} class={cn('flex-1 rounded px-2 py-1 text-xs transition-colors', scope === k ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}>{lbl}</button>
+              <button type="button" onclick={() => pickScope(k)} class={cn('flex-1 rounded px-2 py-1 text-xs transition-colors', scope === k ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}>{lbl}</button>
             {/each}
           </div>
           {#if scope === 'custom'}

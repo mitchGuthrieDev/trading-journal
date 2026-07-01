@@ -2,7 +2,7 @@
   export type DashStat = { label: string; value: string; badge?: string; up?: boolean; note: string; key?: string };
   export type DayCell = { pnl: number; tr: number };
   // Live filter model for the dashboard Filters popover — current values + option lists + mutators
-  // (bound to the app's filter state on staging; a no-op mock in the /dev preview).
+  // (bound to the app's filter state).
   export type FilterPatch = Partial<{ root: string; side: string; session: string; from: string; to: string; dows: number[] }>;
   export type FilterModel = {
     root: string;
@@ -15,7 +15,7 @@
     count: number;
     set: (patch: FilterPatch) => void;
     clear: () => void;
-    /** Saved filter views (A49 parity) — CRUD is optional so the /dev mock can omit it. */
+    /** Saved filter views (A49 parity) — CRUD is optional (demo omits the write paths). */
     views?: { id: string; name: string }[];
     canSaveView?: boolean;
     saveView?: (name: string) => void;
@@ -38,8 +38,8 @@
 
 <script lang="ts">
   // Dashboard — the redesigned overview: a scope toolbar, a KPI stat-card row, and the Performance
-  // (equity curve) + Trading Calendar modules. Data comes from props (real metrics on the staging app);
-  // the defaults below are the /dev mock for the preview harness. Color lives only in the P&L.
+  // (equity curve) + Trading Calendar modules. Data comes from props (real metrics, wired by App.svelte
+  // on all surfaces). Color lives only in the P&L.
   import { SlidersHorizontal, Plus, GripVertical, MoreHorizontal, Pencil, LayoutGrid, RotateCcw } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
@@ -61,111 +61,35 @@
   import Definitions from '../parts/Definitions.svelte';
   import { type DayTrade } from './Calendar.svelte';
 
-  const MOCK_STATS: DashStat[] = [
-    { key: 'net', label: 'Net P&L', value: '+$79,467.75', badge: '+12.5%', up: true, note: '892W · 647L' },
-    { key: 'win', label: 'Win rate', value: '58.0%', note: '1,539 trades' },
-    { key: 'pf', label: 'Profit factor', value: '3.01', note: 'gross win ÷ loss' },
-    { key: 'exp', label: 'Expectancy', value: '+$51.64', badge: 'per trade', up: true, note: 'avg edge' },
-    { key: 'dd', label: 'Max drawdown', value: '-$502.75', badge: '0.8%', up: false, note: 'of peak' },
-    { key: 'sharpe', label: 'Sharpe (daily)', value: '0.80', note: '443 trading days' },
-  ];
-  const MOCK_PNL: Record<number, DayCell> = {
-    2: { pnl: 454, tr: 4 }, 3: { pnl: 383, tr: 4 }, 4: { pnl: 216, tr: 3 }, 5: { pnl: 90, tr: 4 },
-    8: { pnl: 355, tr: 5 }, 9: { pnl: 426, tr: 3 }, 10: { pnl: -106, tr: 2 }, 11: { pnl: -91, tr: 4 },
-    12: { pnl: -28, tr: 2 }, 15: { pnl: 338, tr: 2 }, 16: { pnl: 48, tr: 4 }, 17: { pnl: 96, tr: 3 },
-    18: { pnl: 438, tr: 5 }, 22: { pnl: 93, tr: 5 }, 23: { pnl: 319, tr: 4 }, 24: { pnl: 380, tr: 5 },
-    25: { pnl: 448, tr: 4 }, 26: { pnl: -270, tr: 5 }, 30: { pnl: 430, tr: 5 },
-  };
-  const MOCK_DAY_TRADES: DayTrade[] = [
-    { time: '09:34', sym: 'ES', side: 'Long', qty: 2, pnl: 180 },
-    { time: '10:12', sym: 'NQ', side: 'Short', qty: 1, pnl: -60 },
-    { time: '11:48', sym: 'ES', side: 'Long', qty: 3, pnl: 240 },
-  ];
-  const MOCK_COST_ROWS = [
-    { label: 'Gross P&L', value: '+$86,107.00', tone: 'pos' as const },
-    { label: 'Commissions (all-in)', value: '-$4,210.00', tone: 'neg' as const },
-    { label: 'Subscriptions ($180/mo × 24)', value: '-$1,200.00', tone: 'neg' as const },
-    { label: 'Est. 1256 tax', value: '-$17,178.24', tone: 'neg' as const },
-    { label: 'Take-home', value: '+$62,046.00', tone: 'pos' as const, total: true },
-    { label: 'Break-even / trade', value: '$3.52' },
-  ];
-  const MOCK_ADV_STATS = [
-    { k: 'Payoff ratio', v: '2.18' }, { k: 'Sortino (daily)', v: '1.24' }, { k: 'Recovery factor', v: '12.4' },
-    { k: 'Profit concentration', v: '18%' }, { k: 'Max consec. wins', v: '9' }, { k: 'Max consec. losses', v: '4' },
-    { k: 'Avg win', v: '+$133.39', tone: 'pos' as const }, { k: 'Avg loss', v: '-$61.08', tone: 'neg' as const },
-    { k: 'Avg trades / day', v: '3.5' },
-  ];
-  // A no-op filter model for the /dev preview.
-  const MOCK_FILTERS: FilterModel = {
-    root: '',
-    side: '',
-    session: '',
-    from: '',
-    to: '',
-    dows: [],
-    roots: ['ES', 'NQ', 'CL', 'GC', 'MES'],
-    count: 1539,
-    set: () => {},
-    clear: () => {},
-  };
-  // A representative KPI drill-in for the /dev preview.
-  const MOCK_DETAIL = (key: string): StatDetail =>
-    ({
-      net: {
-        title: 'Net P&L',
-        value: '+$79,467.75',
-        tone: 'pos' as const,
-        desc: 'Realized P&L after commissions, subscriptions and estimated Section 1256 tax.',
-        rows: [
-          { label: 'Gross P&L', value: '+$86,107.00', tone: 'pos' as const },
-          { label: 'Commissions', value: '-$4,210.00', tone: 'neg' as const },
-          { label: 'Take-home', value: '+$62,046.00', tone: 'pos' as const },
-        ],
-        bars: [
-          { label: 'Gross', value: '+$86,107', pct: 100, tone: 'pos' as const },
-          { label: 'Net', value: '+$79,468', pct: 92, tone: 'pos' as const },
-          { label: 'Take-home', value: '+$62,046', pct: 72, tone: 'muted' as const },
-        ],
-      },
-    })[key] ?? { title: key, value: '—', desc: '', rows: [] };
-
-  // A representative daily gross/net/take series for the /dev preview.
-  const MOCK_SERIES: DailyPoint[] = [0, 800, 1600, 2100, 3000, 3500, 4300, 5200, 6000, 7200, 8100, 9400].map((g, i) => ({
-    date: `2026-06-${String(i + 2).padStart(2, '0')}`,
-    gross: g,
-    net: Math.round(g * 0.94),
-    take: Math.round(g * 0.78),
-  }));
-
   interface Props {
-    stats?: DashStat[];
-    series?: DailyPoint[];
-    dateRange?: string;
-    monthLabel?: string;
-    monthNet?: number;
-    dayPnl?: Record<number, DayCell>;
-    firstDow?: number;
-    daysInMonth?: number;
+    stats: DashStat[];
+    series: DailyPoint[];
+    dateRange: string;
+    monthLabel: string;
+    monthNet: number;
+    dayPnl: Record<number, DayCell>;
+    firstDow: number;
+    daysInMonth: number;
     onscope?: (s: 'all' | 'month') => void;
     /** Click-a-day drill-in (parity with app/demo): the day's trades + its persistent journal note. */
-    dayTrades?: (day: number) => DayTrade[];
-    getNote?: (day: number) => string;
+    dayTrades: (day: number) => DayTrade[];
+    getNote: (day: number) => string;
     onsavenote?: (day: number, text: string) => void;
     /** Click-a-KPI-card drill-in: the metric's breakdown (parity with the app/demo stat-card modal). */
-    statDetail?: (key: string) => StatDetail;
-    /** Live filter model for the Filters popover (bound to the app's filter state on staging). */
-    filterModel?: FilterModel;
+    statDetail: (key: string) => StatDetail;
+    /** Live filter model for the Filters popover (bound to the app's filter state). */
+    filterModel: FilterModel;
     /** Clicking a curve point jumps the calendar cursor to that date's month (parity with app/demo). */
     onpickdate?: (year: number, month: number) => void;
     /** Break-even & Cost module rows (from costModel) and Advanced Statistics rows (from metrics). */
-    costRows?: { label: string; value: string; tone?: 'pos' | 'neg'; total?: boolean }[];
-    advStats?: { k: string; v: string; tone?: 'pos' | 'neg' }[];
+    costRows: { label: string; value: string; tone?: 'pos' | 'neg'; total?: boolean }[];
+    advStats: { k: string; v: string; tone?: 'pos' | 'neg' }[];
     /** Cost setup (broker/feed/state/platform) that drives costModel; edited in the Break-even module. */
-    setup?: AppSetup;
+    setup: AppSetup;
     onsetupsave?: (s: AppSetup) => void;
     /** Disable the cost-setup inputs on demo (never mutates). */
     costDisabled?: boolean;
-    /** Visible dashboard modules in order (persisted on staging); defaults to all shown. */
+    /** Visible dashboard modules in order (persisted to Store.local); defaults to all shown. */
     modules?: string[];
     onmoduleschange?: (order: string[]) => void;
     /** Named workspace layout templates (R12 parity) — save/apply/delete/revert the module layout. */
@@ -179,14 +103,14 @@
     };
   }
   let {
-    stats = MOCK_STATS, series = MOCK_SERIES, dateRange = '2024-07-01 → 2026-06-30',
-    monthLabel = 'June 2026', monthNet = 4016.5, dayPnl = MOCK_PNL, firstDow = 1, daysInMonth = 30, onscope,
-    dayTrades = () => MOCK_DAY_TRADES, getNote = () => '', onsavenote,
-    statDetail = key => MOCK_DETAIL(key),
-    filterModel = MOCK_FILTERS,
+    stats, series, dateRange,
+    monthLabel, monthNet, dayPnl, firstDow, daysInMonth, onscope,
+    dayTrades, getNote, onsavenote,
+    statDetail,
+    filterModel,
     onpickdate,
-    costRows = MOCK_COST_ROWS, advStats = MOCK_ADV_STATS,
-    setup = { broker: 'amp', feed: '', stateAbbr: '', platform: 35 }, onsetupsave, costDisabled = false,
+    costRows, advStats,
+    setup, onsetupsave, costDisabled = false,
     modules, onmoduleschange, layouts,
   }: Props = $props();
 
@@ -195,7 +119,7 @@
     if (name && name.trim()) layouts?.save(name.trim());
   }
 
-  // ── Module layout (hide / reorder / re-add — parity with app/demo, persisted on staging) ────────
+  // ── Module layout (hide / reorder / re-add — parity with app/demo, persisted to Store.local) ────
   const MODULES: { key: string; label: string }[] = [
     { key: 'perf', label: 'Performance' },
     { key: 'cal', label: 'Trading Calendar' },
@@ -279,7 +203,6 @@
   const setScope = (s: 'all' | 'month') => { scope = s; onscope?.(s); };
 
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const money = (n: number) => `${n >= 0 ? '+' : '-'}$${Math.abs(n).toLocaleString()}`;
   const cells = $derived.by<(number | null)[]>(() => {
     const c: (number | null)[] = [...Array.from({ length: firstDow }, () => null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
     while (c.length % 7 !== 0) c.push(null);
@@ -689,7 +612,7 @@
   {#snippet calBody()}
       <div class="mb-3 flex items-center justify-between">
         <span class="text-sm font-medium text-foreground">{monthLabel}</span>
-        <span class={['text-sm tabular-nums', monthNet >= 0 ? 'text-chart-2' : 'text-destructive']}>{money(monthNet)}</span>
+        <span class={['text-sm tabular-nums', monthNet >= 0 ? 'text-chart-2' : 'text-destructive']}>{usdWhole(monthNet)}</span>
       </div>
       <div class="grid grid-cols-7 gap-1.5">
         {#each weekdays as d (d)}
@@ -720,7 +643,7 @@
               </span>
               {#if t}
                 <div class={['mt-1 text-right text-xs font-medium tabular-nums', up ? 'text-chart-2' : 'text-destructive']}>
-                  {money(t.pnl)}
+                  {usdWhole(t.pnl)}
                 </div>
                 <div class="text-right text-[10px] text-muted-foreground">{t.tr} tr</div>
               {/if}
@@ -736,7 +659,7 @@
           <div class="mb-3 flex items-center justify-between">
             <span class="text-sm font-semibold text-foreground">
               {monthWord} {selectedDay}
-              <span class={['ml-2 tabular-nums', t.pnl >= 0 ? 'text-chart-2' : 'text-destructive']}>{money(t.pnl)}</span>
+              <span class={['ml-2 tabular-nums', t.pnl >= 0 ? 'text-chart-2' : 'text-destructive']}>{usdWhole(t.pnl)}</span>
               <span class="ml-2 text-xs font-normal text-muted-foreground">{t.tr} {t.tr === 1 ? 'trade' : 'trades'}</span>
             </span>
             <button type="button" class="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Close day detail" onclick={() => (selectedDay = null)}>
@@ -751,7 +674,7 @@
                   <span class="font-medium">{tr.sym}</span>
                   <Badge variant="outline" class={tr.side === 'Long' ? 'border-chart-2/40 text-chart-2' : 'border-destructive/40 text-destructive'}>{tr.side}</Badge>
                   <span class="text-muted-foreground">×{tr.qty}</span>
-                  <span class={['ml-auto font-semibold tabular-nums', tr.pnl >= 0 ? 'text-chart-2' : 'text-destructive']}>{money(tr.pnl)}</span>
+                  <span class={['ml-auto font-semibold tabular-nums', tr.pnl >= 0 ? 'text-chart-2' : 'text-destructive']}>{usdWhole(tr.pnl)}</span>
                 </div>
               {:else}
                 <div class="px-2.5 py-3 text-center text-xs text-muted-foreground">No intraday trades recorded.</div>
@@ -798,7 +721,7 @@
     </div>
   {/snippet}
 
-  <!-- Modules — reorderable / hideable / re-addable (persisted on staging). -->
+  <!-- Modules — reorderable / hideable / re-addable (persisted to Store.local). -->
   {#each modOrder as key (key)}
     <Card.Root id="dashmod-{key}">
       {@render moduleHeader(key)}

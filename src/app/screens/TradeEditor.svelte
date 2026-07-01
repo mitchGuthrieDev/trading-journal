@@ -19,14 +19,15 @@
 
 <script lang="ts">
   // Trade Editor surface (UI redesign; Data Management). The edit-focused sibling of the Blotter: a
-  // spreadsheet-style table. On the /dev mock (coreEditable) every cell edits inline and edits stage as
-  // a draft. On the staging app, imported trades are IMMUTABLE — the trade id is a content hash and
-  // there's no updateTrade — so the editable layer is per-trade METADATA: tags + notes persist (via
+  // spreadsheet-style table. When coreEditable, every cell edits inline and edits stage as a draft. In
+  // the app (all surfaces), imported trades are IMMUTABLE — the trade id is a content hash and there's
+  // no updateTrade — so the editable layer is per-trade METADATA: tags + notes persist (via
   // saveTradeMeta) and rows can be deleted; the core price/qty/P&L cells render read-only (the figures
   // came from your CSV) and entry/exit aren't in the trade model. Save all / Revert commit the staged
-  // tag/note edits. shadcn-svelte primitives; color only in P&L.
+  // tag/note edits. On demo, writes are disabled (dataDisabled). shadcn-svelte primitives; color in P&L.
   import { Plus, Trash2, Tag, StickyNote, Pencil, ImagePlus, Image, X } from '@lucide/svelte';
   import { cn } from '$lib/utils';
+  import { usdWhole } from '../../lib/core/core.ts';
   import { readImage } from '../lib/files.ts';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
@@ -39,28 +40,21 @@
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import * as Dialog from '$lib/components/ui/dialog';
 
-  const MOCK: EditorRow[] = [
-    { id: 't1', date: '2026-06-24', time: '09:34', symbol: 'ES', side: 'Long', qty: 2, entry: 5482.25, exit: 5486.0, pnl: 375, fees: 4.7, tags: ['breakout'], note: 'Clean retest.', shots: [] },
-    { id: 't2', date: '2026-06-24', time: '10:18', symbol: 'NQ', side: 'Short', qty: 1, entry: 19840.5, exit: 19852.0, pnl: -230, fees: 2.4, tags: ['fade'], note: '', shots: [] },
-    { id: 't3', date: '2026-06-24', time: '11:46', symbol: 'ES', side: 'Long', qty: 3, entry: 5489.0, exit: 5492.75, pnl: 562, fees: 7.05, tags: ['trend', 'A+'], note: '', shots: [] },
-    { id: 't4', date: '2026-06-25', time: '09:31', symbol: 'ES', side: 'Long', qty: 2, entry: 5494.5, exit: 5491.0, pnl: -350, fees: 4.7, tags: [], note: '', shots: [] },
-    { id: 't5', date: '2026-06-25', time: '10:05', symbol: 'NQ', side: 'Long', qty: 1, entry: 19860.0, exit: 19878.5, pnl: 370, fees: 2.4, tags: ['trend'], note: 'Sized up.', shots: [] },
-    { id: 't6', date: '2026-06-26', time: '13:15', symbol: 'MES', side: 'Long', qty: 5, entry: 5502.5, exit: 5504.0, pnl: 188, fees: 3.5, tags: ['scalp'], note: '', shots: [] },
-  ];
-
   interface Props {
-    rows?: EditorRow[];
-    /** /dev mock edits every field inline; staging edits only tags/notes (imported trades are fixed). */
+    rows: EditorRow[];
+    /** When true, every field edits inline; otherwise only tags/notes edit (imported trades are fixed). */
     coreEditable?: boolean;
-    /** When set, only these core fields are editable (staging: date/time/symbol/side/qty/pnl — entry/
-     *  exit/fees aren't in the trade model). Overrides `coreEditable` per-field when provided. */
+    /** When set, only these core fields are editable (date/time/symbol/side/qty/pnl — entry/exit/fees
+     *  aren't in the trade model). Overrides `coreEditable` per-field when provided. */
     editableFields?: string[];
-    /** Persist the staged tag/note edits (staging passes the Store write-through). */
+    /** Persist the staged tag/note edits (the app passes the Store write-through). */
     onsave?: (rows: EditorRow[]) => void | Promise<void>;
     /** Persist a delete of the given trade ids. */
     ondelete?: (ids: string[]) => void | Promise<void>;
+    /** Disable every write control (Save all + per-row/bulk delete) on demo (never mutates). */
+    dataDisabled?: boolean;
   }
-  let { rows: rowsProp = MOCK, coreEditable = true, editableFields, onsave, ondelete }: Props = $props();
+  let { rows: rowsProp, coreEditable = true, editableFields, onsave, ondelete, dataDisabled = false }: Props = $props();
   // A field is editable if it's in editableFields (when provided) or coreEditable covers everything.
   const canEdit = (field: string) => (editableFields ? editableFields.includes(field) : coreEditable);
   const anyCoreEditable = $derived(coreEditable || !!editableFields?.length);
@@ -159,6 +153,7 @@
   const pageEnd = $derived(pageSize === Infinity ? draft.length : Math.min(draft.length, (page + 1) * pageSize));
 
   async function saveAll() {
+    if (dataDisabled) return;
     if (onsave) {
       saving = true;
       try {
@@ -191,6 +186,7 @@
     selected = v ? new Set(draft.map(r => r.id)) : new Set();
   }
   function askDelete(ids: string[]) {
+    if (dataDisabled) return;
     pendingDelete = ids;
     deleteOpen = true;
   }
@@ -208,7 +204,6 @@
     draft = draft.map(r => (selected.has(r.id) && !r.tags.includes(t) ? { ...r, tags: [...r.tags, t] } : r));
     bulkTag = '';
   }
-  const money = (n: number) => `${n >= 0 ? '+' : '-'}$${Math.abs(n).toLocaleString()}`;
   const numText = (v: number) => (Number.isFinite(v) ? `${v}` : '—');
 </script>
 
@@ -262,7 +257,7 @@
     {:else}
       <span class="text-xs text-muted-foreground">Imported trades are fixed — edit <span class="text-foreground">tags</span> and <span class="text-foreground">notes</span>, or delete rows. Changes are staged until you save.</span>
     {/if}
-    <span class={cn('ml-auto text-sm font-semibold tabular-nums', netPnl >= 0 ? 'text-chart-2' : 'text-destructive')}>Net {money(netPnl)}</span>
+    <span class={cn('ml-auto text-sm font-semibold tabular-nums', netPnl >= 0 ? 'text-chart-2' : 'text-destructive')}>Net {usdWhole(netPnl)}</span>
   </div>
 
   <!-- Bulk bar -->
@@ -283,7 +278,7 @@
           </div>
         </Popover.Content>
       </Popover.Root>
-      <Button variant="outline" size="sm" class="h-7 text-destructive" onclick={() => askDelete([...selected])}><Trash2 class="size-3.5" /> Delete</Button>
+      <Button variant="outline" size="sm" class="h-7 text-destructive" disabled={dataDisabled} onclick={() => askDelete([...selected])}><Trash2 class="size-3.5" /> Delete</Button>
       <Button variant="ghost" size="sm" class="ml-auto h-7" onclick={() => (selected = new Set())}>Clear</Button>
     </div>
   {/if}
@@ -402,7 +397,7 @@
                 </Popover.Root>
               </Table.Cell>
               <Table.Cell class="p-1">
-                <button type="button" class="grid size-7 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-destructive" aria-label="Delete trade" onclick={() => askDelete([row.id])}>
+                <button type="button" class="grid size-7 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-destructive disabled:pointer-events-none disabled:opacity-40" aria-label="Delete trade" disabled={dataDisabled} onclick={() => askDelete([row.id])}>
                   <Trash2 class="size-4" />
                 </button>
               </Table.Cell>
@@ -435,7 +430,7 @@
       <span class="flex items-center gap-2 text-sm"><Pencil class="size-4 text-primary" /> {dirtyCount} unsaved {dirtyCount === 1 ? 'change' : 'changes'}</span>
       <div class="flex gap-2">
         <Button variant="ghost" size="sm" onclick={revert} disabled={saving}>Revert</Button>
-        <Button size="sm" onclick={saveAll} disabled={saving}>{saving ? 'Saving…' : 'Save all'}</Button>
+        <Button size="sm" onclick={saveAll} disabled={saving || dataDisabled}>{saving ? 'Saving…' : 'Save all'}</Button>
       </div>
     </div>
   {/if}

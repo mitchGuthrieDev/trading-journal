@@ -590,7 +590,7 @@
   {:else if active === 'blotter'}
     <Blotter rows={blotterRows} />
   {:else if active === 'trades'}
-    <TradeEditor rows={editorRows} coreEditable={false} editableFields={EDITABLE_FIELDS} onsave={persistEditorRows} ondelete={ids => dash.deleteTrades(ids)} />
+    <TradeEditor rows={editorRows} coreEditable={false} editableFields={EDITABLE_FIELDS} onsave={persistEditorRows} ondelete={ids => dash.deleteTrades(ids)} dataDisabled={dash.isDemo} />
   {:else if active === 'reports'}
     <Reports
       defaultTitle="Performance report"
@@ -617,8 +617,8 @@
   {:else}
     <div class="grid min-h-[60vh] place-items-center">
       <div class="flex max-w-md flex-col items-center gap-2 text-center">
-        <h2 class="text-lg font-semibold text-foreground">{navLabel(active)}</h2>
-        <p class="text-sm text-muted-foreground">Being wired to your real data — coming online shortly. The boot + engine are real; this screen's layout is mocked in the <code>/dev</code> preview.</p>
+        <h2 class="text-lg font-semibold text-foreground">Screen not found</h2>
+        <p class="text-sm text-muted-foreground">There's no <code>{active}</code> screen. Pick a section from the sidebar to continue.</p>
       </div>
     </div>
   {/if}
