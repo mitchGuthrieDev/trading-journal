@@ -23,15 +23,17 @@
     type FilterModel,
     type FilterPatch,
   } from './screens/Dashboard.svelte';
-  import Calendar, { type CalDay, type DayTrade } from './screens/Calendar.svelte';
-  import Analytics from './screens/Analytics.svelte';
+  // The non-default screens are CODE-SPLIT: type-only static imports (erased at build) + lazy
+  // `import()` loaders in the router below, so their chunks stay out of the /app first paint
+  // (A96 budget). Dashboard stays static — it's the boot screen (and exports DEFAULT_MODULE_KEYS).
+  import type { CalDay, DayTrade } from './screens/Calendar.svelte';
   import { buildAnalytics } from './lib/analytics.ts';
-  import Blotter, { type BlotterRow } from './screens/Blotter.svelte';
-  import TradeEditor, { type EditorRow } from './screens/TradeEditor.svelte';
-  import Reports, { type ReportVM, type ReportRange, type ReportMeta, type ExportKind } from './screens/Reports.svelte';
+  import type { BlotterRow } from './screens/Blotter.svelte';
+  import type { EditorRow } from './screens/TradeEditor.svelte';
+  import type { ReportVM, ReportRange, ReportMeta, ExportKind } from './screens/Reports.svelte';
   import { buildReportVM } from './lib/reports.ts';
   import { downloadBlob } from './lib/files.ts';
-  import CsvLibrary, { type Csv, type ImportPreview } from './screens/CsvLibrary.svelte';
+  import type { Csv, ImportPreview } from './screens/CsvLibrary.svelte';
   import Onboarding from './parts/Onboarding.svelte';
   import StatusBanner from './parts/StatusBanner.svelte';
   import { loadFlags, APP_FLAGS, type AppFlags } from './lib/flags.ts';
@@ -48,6 +50,18 @@
   const SEEDED = isStaging || isDemo;
   setContext('bb:store', store);
   const dash = createDashboard(store, { seed: SEEDED, isDemo });
+
+  // Lazy screen loaders (one Vite chunk each). `import()` caches per specifier, and the shell
+  // prefetches them once idle (see onMount), so the first navigation to a screen is instant in
+  // practice while the boot payload carries only the shell + Dashboard.
+  const SCREEN_LOADERS = {
+    calendar: () => import('./screens/Calendar.svelte'),
+    analytics: () => import('./screens/Analytics.svelte'),
+    blotter: () => import('./screens/Blotter.svelte'),
+    trades: () => import('./screens/TradeEditor.svelte'),
+    reports: () => import('./screens/Reports.svelte'),
+    csv: () => import('./screens/CsvLibrary.svelte'),
+  };
 
   const fromHash = (): string => {
     const h = typeof location !== 'undefined' ? location.hash.replace(/^#/, '') : '';
@@ -575,6 +589,9 @@
     loadFlags()
       .then(f => (flags = f))
       .catch(() => {});
+    // Warm the lazy screen chunks once the shell has settled — off the critical boot path.
+    const idle: (fn: () => void) => void = typeof requestIdleCallback === 'function' ? requestIdleCallback : fn => setTimeout(fn, 1500);
+    idle(() => Object.values(SCREEN_LOADERS).forEach(load => void load().catch(() => {})));
   });
 </script>
 
@@ -623,74 +640,86 @@
       layouts={dashLayouts}
     />
   {:else if active === 'calendar'}
-    <Calendar
-      monthDays={calMonthDays}
-      year={dash.calYear}
-      month={dash.calMonth}
-      monthLabel={calData.label}
-      yearPnl={calYearPnl}
-      onprev={() => dash.navMonth(-1)}
-      onnext={() => dash.navMonth(1)}
-      onlatest={() => dash.jumpToLatest()}
-      tradesForDay={calTradesForDay}
-      getJournal={day => dash.journalFor(dateOf(day))}
-      onsavenote={(day, text, tags, shots) => dash.saveNote(dateOf(day), text, tags, shots)}
-    />
+    {#await SCREEN_LOADERS.calendar() then Calendar}
+      <Calendar.default
+        monthDays={calMonthDays}
+        year={dash.calYear}
+        month={dash.calMonth}
+        monthLabel={calData.label}
+        yearPnl={calYearPnl}
+        onprev={() => dash.navMonth(-1)}
+        onnext={() => dash.navMonth(1)}
+        onlatest={() => dash.jumpToLatest()}
+        tradesForDay={calTradesForDay}
+        getJournal={day => dash.journalFor(dateOf(day))}
+        onsavenote={(day, text, tags, shots) => dash.saveNote(dateOf(day), text, tags, shots)}
+      />
+    {/await}
   {:else if active === 'analytics'}
-    <Analytics
-      kpis={analytics.kpis}
-      dist={analytics.dist}
-      wins={analytics.wins}
-      losses={analytics.losses}
-      curve={dash.metricsActive.curve}
-      maxDD={dash.metricsActive.maxDD}
-      maxDDpct={dash.metricsActive.maxDDpct}
-      long={analytics.long}
-      short={analytics.short}
-      hours={analytics.hours}
-      wdays={analytics.wdays}
-      symbols={analytics.symbols}
-      statRows={analytics.statRows}
-    />
+    {#await SCREEN_LOADERS.analytics() then Analytics}
+      <Analytics.default
+        kpis={analytics.kpis}
+        dist={analytics.dist}
+        wins={analytics.wins}
+        losses={analytics.losses}
+        curve={dash.metricsActive.curve}
+        maxDD={dash.metricsActive.maxDD}
+        maxDDpct={dash.metricsActive.maxDDpct}
+        long={analytics.long}
+        short={analytics.short}
+        hours={analytics.hours}
+        wdays={analytics.wdays}
+        symbols={analytics.symbols}
+        statRows={analytics.statRows}
+      />
+    {/await}
   {:else if active === 'blotter'}
-    <Blotter
-      rows={blotterRows}
-      onsavemeta={(id, tags, note) => dash.saveTradeMeta(id, tags, note)}
-      ondelete={ids => dash.deleteTrades(ids)}
-      dataDisabled={dash.isDemo}
-    />
+    {#await SCREEN_LOADERS.blotter() then Blotter}
+      <Blotter.default
+        rows={blotterRows}
+        onsavemeta={(id, tags, note) => dash.saveTradeMeta(id, tags, note)}
+        ondelete={ids => dash.deleteTrades(ids)}
+        dataDisabled={dash.isDemo}
+      />
+    {/await}
   {:else if active === 'trades'}
-    <TradeEditor
-      rows={editorRows}
-      coreEditable={false}
-      editableFields={EDITABLE_FIELDS}
-      onsave={persistEditorRows}
-      ondelete={ids => dash.deleteTrades(ids)}
-      dataDisabled={dash.isDemo}
-    />
+    {#await SCREEN_LOADERS.trades() then TradeEditor}
+      <TradeEditor.default
+        rows={editorRows}
+        coreEditable={false}
+        editableFields={EDITABLE_FIELDS}
+        onsave={persistEditorRows}
+        ondelete={ids => dash.deleteTrades(ids)}
+        dataDisabled={dash.isDemo}
+      />
+    {/await}
   {:else if active === 'reports'}
-    <Reports
-      defaultTitle="Performance report"
-      defaultAccount={dash.brokerName(dash.setup.broker)}
-      calYear={dash.calYear}
-      calMonth={dash.calMonth}
-      build={buildReport}
-      onexport={onReportExport}
-    />
+    {#await SCREEN_LOADERS.reports() then Reports}
+      <Reports.default
+        defaultTitle="Performance report"
+        defaultAccount={dash.brokerName(dash.setup.broker)}
+        calYear={dash.calYear}
+        calMonth={dash.calMonth}
+        build={buildReport}
+        onexport={onReportExport}
+      />
+    {/await}
   {:else if active === 'csv'}
-    <CsvLibrary
-      files={csvFiles}
-      perFileActions={false}
-      blotterHref="#blotter"
-      parse={parseCsv}
-      onimport={importPreview}
-      ondelete={() => dash.purgeAll()}
-      onbackup={doBackup}
-      onrestore={doRestore}
-      onerase={doErase}
-      dataDisabled={dash.isDemo}
-      {restoreMsg}
-    />
+    {#await SCREEN_LOADERS.csv() then CsvLibrary}
+      <CsvLibrary.default
+        files={csvFiles}
+        perFileActions={false}
+        blotterHref="#blotter"
+        parse={parseCsv}
+        onimport={importPreview}
+        ondelete={() => dash.purgeAll()}
+        onbackup={doBackup}
+        onrestore={doRestore}
+        onerase={doErase}
+        dataDisabled={dash.isDemo}
+        {restoreMsg}
+      />
+    {/await}
   {:else}
     <div class="grid min-h-[60vh] place-items-center">
       <div class="flex max-w-md flex-col items-center gap-2 text-center">
