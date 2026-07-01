@@ -60,3 +60,18 @@ build/UI platform decisions. These diagrams are the pictures that go with that t
 - **GitHub / most Markdown viewers:** renders automatically.
 - **VS Code:** the *Markdown Preview Mermaid Support* extension (or any Mermaid preview) renders it.
 - **Live editing:** paste a diagram block into <https://mermaid.live> to iterate on layout.
+
+## CI drift gate
+
+Every ```` ```mermaid ```` block under `docs/` is parsed by Mermaid's own parser in CI
+([`scripts/check-mermaid.mjs`](../../scripts/check-mermaid.mjs), wired into
+[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)), so a diagram that no longer parses
+**fails the build** instead of silently rendering as an error box on GitHub. Run it locally before
+pushing:
+
+```bash
+npm run check-mermaid
+```
+
+It reuses the Playwright chromium the e2e job already installs (Mermaid needs a DOM), so the only
+added dependency is the lightweight `mermaid` library itself.
