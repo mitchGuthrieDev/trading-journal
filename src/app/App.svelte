@@ -39,6 +39,7 @@
   import Onboarding from './parts/Onboarding.svelte';
   import StatusBanner from './parts/StatusBanner.svelte';
   import DashTabs from './parts/DashTabs.svelte';
+  import FeedbackDialog from './parts/FeedbackDialog.svelte';
   import { loadFlags, APP_FLAGS, type AppFlags } from './lib/flags.ts';
   import { Adapters } from '../lib/core/adapters.ts';
   import type { Trade } from '../lib/core/types.ts';
@@ -670,6 +671,7 @@
       {#if envLabel}<Badge variant="secondary">{envLabel}</Badge>{/if}
       {#if appVersion}<span class="font-mono text-[11px] text-muted-foreground">v{appVersion}</span>{/if}
       <span class="hidden font-mono text-xs text-muted-foreground md:inline">{dash.dateRange}</span>
+      <FeedbackDialog version={appVersion} surface={PAGE_MODE || 'app'} />
     </div>
   {/snippet}
 

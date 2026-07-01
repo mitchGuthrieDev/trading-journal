@@ -126,3 +126,25 @@ test('demo: Trade Editor stages edits in-memory but persists nothing across relo
   await expect(page.locator('table tbody tr').first()).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('ZZDEMO')).toHaveCount(0); // the edit did not survive
 });
+
+test('demo: feedback dialog builds a mailto draft from ONLY the typed text (A105)', async ({ page }) => {
+  const errors = watchErrors(page);
+  await bootDashboard(page);
+
+  // The topbar affordance opens the dialog; nothing is sent automatically.
+  await page.getByRole('button', { name: 'Send feedback' }).click();
+  await expect(page.getByText(/nothing is sent automatically/i)).toBeVisible();
+  await page.getByPlaceholder(/What's working/).fill('love the calendar!');
+
+  // The action is a plain mailto anchor whose body is exactly the typed text — no trade data.
+  const mailto = page.getByTestId('feedback-mailto');
+  const href = await mailto.getAttribute('href');
+  expect(href).toContain('mailto:contact@blotterbook.com');
+  expect(href).toContain(encodeURIComponent('love the calendar!'));
+  expect(href).toContain(encodeURIComponent('Blotterbook feedback'));
+  expect(href.length).toBeLessThan(400); // sanity: nothing bulk-attached
+
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('feedback-mailto')).toHaveCount(0);
+  expect(errors, errors.join('\n')).toHaveLength(0);
+});

@@ -3362,6 +3362,28 @@
       "completedDate": "2026-07-01",
       "partial": false,
       "doneNote": "DONE (2026-07-01, backlog-review archival) — Satisfied by PR #91: docs/architecture-diagrams/ ships 10+ Mermaid diagrams (build-and-deploy, repo-layout-url-contract, app-shell-and-routing, boot-and-lifecycle, csv-import-adapters, compute-costmodel-render, storage/mode separation, core-reuse-map, cloudflare-functions, ci-pipeline) with a CI drift gate (check-mermaid.mjs, 12 diagrams validated). The pass-4 R1 audit already recommended archiving this; done in the 2026-07-01 backlog review."
+    },
+    {
+      "id": "A111",
+      "title": "Discussion: re-evaluate staging gating now that all surfaces share one SPA bundle",
+      "category": "ARCHITECTURE / DUPLICATION",
+      "priority": "P2",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-07-01",
+      "partial": false,
+      "doneNote": "DONE (2026-07-01) — Written recommendation delivered: docs/staging-gating-recommendation.md. Decision: KEEP runtime PAGE_MODE/isStaging gating as the staging model (the A33 one-bundle simplicity is load-bearing; promotion stays CH16 = deleting the gate). Build-time defines/tree-shaking rejected (a per-surface build matrix reintroduces artifact divergence to save a few KiB); a separate root rejected (the known pre-cutover drift cost); admin feature flags kept but for prod kill-switches, not proving grounds. Refinement adopted: staging-only features over ~10 KiB (or pulling a new dep) load behind {#if isStaging}{#await import(...)} — the screen code-split made this cheap; today's inventory (A135 DashTabs, ~2 KiB) is under the threshold. Key clarification recorded: the gate is a UX switch, not a security boundary — the staging SURFACE is what the middleware protects. No items spun off (the threshold rule is codified here + in CH16's prompt)."
+    },
+    {
+      "id": "A105",
+      "title": "Create a feedback form",
+      "category": "FEATURES",
+      "priority": "P2",
+      "effort": "medium",
+      "status": "done",
+      "completedDate": "2026-07-01",
+      "partial": false,
+      "doneNote": "DONE (2026-07-01) — Shipped as a mailto affordance (decision: zero backend — A28-clean, no spam/rate-limit surface, no KV writes per A17; the local-compute constraint holds BY CONSTRUCTION since nothing sends automatically and nothing is auto-attached). A 'Send feedback' icon button in the topbar actions area opens a Dialog (new part src/app/parts/FeedbackDialog.svelte): a textarea + an 'Open email draft' anchor that builds mailto:contact@blotterbook.com with the app version + surface in the subject (triage; not PII) and ONLY the typed text as the body; copy states nothing is sent automatically and trades/journal are never included. Works on every surface incl. demo (no persistence, no store writes). e2e (demo) asserts the href targets contact@, contains exactly the typed text, and nothing bulk-attached (length bound)."
     }
   ]
 }
