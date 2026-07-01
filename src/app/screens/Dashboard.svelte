@@ -147,22 +147,29 @@
     { key: 'net', label: 'Net', stroke: 'stroke-primary', fill: 'fill-primary', grad: 'perfNet' },
     { key: 'take', label: 'Take-home', stroke: 'stroke-chart-3', fill: 'fill-chart-3', grad: 'perfTake' },
   ];
-  let overlay = $state<SKey>('gross');
+  // Overlays are MULTI-select (parity with app/demo): any combination of the series can be drawn at
+  // once, keeping at least one on. Gross is on by default.
+  let enabled = $state<Record<SKey, boolean>>({ gross: true, net: false, take: false });
+  const enabledList = $derived(SERIES.filter(s => enabled[s.key])); // SERIES order; ≥1 (see toggle)
+  function toggleSeries(key: SKey) {
+    const on = SERIES.filter(s => enabled[s.key]);
+    if (enabled[key] && on.length === 1) return; // keep at least one series visible
+    enabled = { ...enabled, [key]: !enabled[key] };
+  }
   let cursor = $state<number | null>(null);
   let cw = $state(0); // measured plot width (px) → viewBox width, so labels/dots aren't stretched
   const VH = 256;
   const PAD = { l: 48, r: 72, t: 12, b: 22 };
   const W = $derived(Math.max(560, cw || 900));
-  const ser = $derived(SERIES.find(s => s.key === overlay) ?? SERIES[0]);
 
   const view = $derived.by(() => {
     if (!series.length) return null;
-    const key = overlay;
+    const on = enabledList.length ? enabledList : [SERIES[0]];
     const pts: DailyPoint[] = [{ date: '', gross: 0, net: 0, take: 0 }, ...series];
     let lo = Infinity, hi = -Infinity;
-    for (const p of pts) {
-      if (p[key] < lo) lo = p[key];
-      if (p[key] > hi) hi = p[key];
+    for (const p of pts) for (const s of on) {
+      if (p[s.key] < lo) lo = p[s.key];
+      if (p[s.key] > hi) hi = p[s.key];
     }
     const ticks = niceTicks(lo, hi, 4);
     lo = Math.min(lo, ticks[0]);
@@ -170,9 +177,13 @@
     const span = hi - lo || 1;
     const x = (i: number) => PAD.l + (i / (pts.length - 1)) * (W - PAD.l - PAD.r);
     const y = (v: number) => PAD.t + (1 - (v - lo) / span) * (VH - PAD.t - PAD.b);
-    const d = linePath(pts.map(p => p[key]), x, y);
     const baseY = (VH - PAD.b).toFixed(1);
-    const area = `${d} L${x(pts.length - 1).toFixed(1)},${baseY} L${x(0).toFixed(1)},${baseY} Z`;
+    const xN = x(pts.length - 1).toFixed(1),
+      x0 = x(0).toFixed(1);
+    const lines = on.map(s => {
+      const d = linePath(pts.map(p => p[s.key]), x, y);
+      return { ...s, d, area: `${d} L${xN},${baseY} L${x0},${baseY} Z` };
+    });
     const yticks = ticks.map(v => ({ y: y(v), label: axMoney(v) }));
     const xticks: { x: number; label: string }[] = [];
     const seen = new Set<string>();
@@ -185,9 +196,18 @@
       }
     }
     const last = pts[pts.length - 1];
-    return { pts, x, y, len: pts.length, d, area, yticks, xticks, zeroY: lo <= 0 && hi >= 0 ? y(0) : null, endY: y(last[key]), endLabel: usdWhole(last[key]) };
+    // End-of-line value labels, nudged apart so overlapping series (gross/net/take end close) stay legible.
+    const ends = on
+      .map(s => ({ key: s.key, fill: s.fill, y: y(last[s.key]), label: usdWhole(last[s.key]) }))
+      .sort((a, b) => a.y - b.y);
+    for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 12) ends[i].y = ends[i - 1].y + 12;
+    return { pts, x, y, len: pts.length, lines, yticks, xticks, ends, zeroY: lo <= 0 && hi >= 0 ? y(0) : null };
   });
-  const tip = $derived(view && cursor != null && view.pts[cursor]?.date ? `${view.pts[cursor].date} · ${ser.label} ${usd(view.pts[cursor][overlay])}` : '');
+  const tip = $derived(
+    view && cursor != null && view.pts[cursor]?.date
+      ? `${view.pts[cursor].date} · ${enabledList.map(s => `${s.label} ${usd(view.pts[cursor as number][s.key])}`).join(' · ')}`
+      : ''
+  );
 
   function idxFromX(e: PointerEvent) {
     const v = view;
@@ -275,7 +295,7 @@
     <Card.Content>
       <div class="mb-3 flex w-fit items-center gap-0.5 rounded-md border border-border p-0.5">
         {#each SERIES as s (s.key)}
-          {@render seg(overlay === s.key, s.label, () => (overlay = s.key))}
+          {@render seg(enabled[s.key], s.label, () => toggleSeries(s.key))}
         {/each}
       </div>
       <div bind:clientWidth={cw}>
@@ -285,7 +305,7 @@
             viewBox="0 0 {W} {VH}"
             class="h-64 w-full touch-none outline-none"
             role="img"
-            aria-label="Cumulative {ser.label} P&L curve"
+            aria-label="Cumulative P&L curve"
             tabindex="0"
             onpointermove={moveCursor}
             onpointerleave={() => (cursor = null)}
@@ -306,12 +326,20 @@
             {#each view.xticks as t, i (i)}
               <text x={t.x} y={VH - 6} text-anchor="middle" class="fill-muted-foreground text-[10px] tabular-nums">{t.label}</text>
             {/each}
-            <path d={view.area} fill="url(#{ser.grad})" />
-            <path d={view.d} fill="none" class={ser.stroke} stroke-width="2" vector-effect="non-scaling-stroke" />
-            <text x={W - PAD.r + 5} y={view.endY + 3.5} text-anchor="start" class={['text-[11px] font-medium tabular-nums', ser.fill]}>{view.endLabel}</text>
+            {#each view.lines as ln (ln.key)}
+              <path d={ln.area} fill="url(#{ln.grad})" />
+            {/each}
+            {#each view.lines as ln (ln.key)}
+              <path d={ln.d} fill="none" class={ln.stroke} stroke-width="2" vector-effect="non-scaling-stroke" />
+            {/each}
+            {#each view.ends as e (e.key)}
+              <text x={W - PAD.r + 5} y={e.y + 3.5} text-anchor="start" class={['text-[11px] font-medium tabular-nums', e.fill]}>{e.label}</text>
+            {/each}
             {#if cursor != null}
               <line x1={view.x(cursor)} y1={PAD.t} x2={view.x(cursor)} y2={VH - PAD.b} class="stroke-muted-foreground" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" />
-              <circle cx={view.x(cursor)} cy={view.y(view.pts[cursor][overlay])} r="3.5" class={[ser.stroke, ser.fill]} vector-effect="non-scaling-stroke" />
+              {#each view.lines as ln (ln.key)}
+                <circle cx={view.x(cursor)} cy={view.y(view.pts[cursor][ln.key])} r="3.5" class={[ln.stroke, ln.fill]} vector-effect="non-scaling-stroke" />
+              {/each}
             {/if}
           </svg>
           <div class="mt-1 text-center text-xs tabular-nums text-muted-foreground" aria-live="polite">{tip || 'Hover or arrow-key the curve for daily cumulative P&L'}</div>
