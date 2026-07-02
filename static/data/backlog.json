@@ -619,6 +619,78 @@
       "partial": false,
       "prompt": "The user still can't find a '+' on the main dashboard to add modules (A139 shipped an 'Add module +' picker — locate where it renders (likely buried in a menu or only visible when modules are hidden) and make the affordance DISCOVERABLE): (1) a clearly visible '+' button on the dashboard (end of the module grid and/or the dashboard toolbar) present even when all modules are shown (disabled state with a 'nothing left to add' tooltip when the grid is full); (2) clicking it opens a picker (Dialog/Popover) listing ALL modules/components with a small stylized graphic per module (tiny inline-SVG thumbnails in the app's chart tokens — mini curve for Performance, mini month grid for Calendar, rows glyph for Break-even, stat grid for Advanced), multi-select via checkboxes, and an 'Add modules' button that appends the selection to the current tab's layout; (3) adding/removing modules marks the ACTIVE dashboard tab with an asterisk = unsaved layout changes, cleared when the layout is saved (A186's Save action — build the asterisk state here, shared with A186). Demo: picker works, nothing persists. Update/extend the A139 e2e coverage (visible '+' on a full default layout, picker adds a hidden module, asterisk appears then clears on save). Done when: a first-time user can find and use '+ add modules' unaided and the dirty-asterisk reflects unsaved layout state.",
       "doneNote": null
+    },
+    {
+      "id": "A190",
+      "title": "P2: bundle-size gate must include the lazy screen chunks (post-#94 blind spot)",
+      "category": "CHORE / REFACTOR",
+      "priority": "P2",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the R1 pass-6 audit (docs/repo-audit-2026-07-02.md P2#1). scripts/check-bundle-size.mjs sums only the <script src> chunks statically referenced by dist/app/app.html — after the #94 code-split the six non-default screens load via import() (App.svelte SCREEN_LOADERS), so their chunks (index-*.js, CsvLibrary-*.js, ...) escape the 600 KiB gate entirely; the 411 KiB reading vs pass-5's 517 KiB is the screens LEAVING the measurement. Fix: extend the script to also sum the app's lazy chunks — walk the Vite manifest or the import graph from the app entry (exclude the site/dev entries and CSS), OR statically total every dist/assets/*.js that isn't reachable from a site/dev entry; update the header comment to describe what is actually measured; consider a printed boot-vs-lazy split so the first-paint number stays visible. Re-baseline the ceiling deliberately if the true total needs it (comment why, per the file's convention). Done when: adding a heavy import to a lazy screen fails CI, and the script's comment matches its behavior.",
+      "doneNote": null
+    },
+    {
+      "id": "A191",
+      "title": "Phosphor spike: 8.5 MB devcomponents chunk (named imports don't tree-shake)",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the R1 pass-6 audit (P3#2). The A180 spike imports ~16 icons from 'phosphor-svelte' via named imports in src/dev/Styleguide.svelte, but the package's index re-exports every icon, and the built dist/assets/devcomponents-*.js lands at ~8.5 MB (the build's chunk-size warning) — the comment claiming 'named imports stay tree-shaken' is false. The chunk is unlinked/noindex so users never fetch it, but it bloats every deploy and slows builds. Fix: switch the comparison imports to deep paths (import PhChartLine from 'phosphor-svelte/lib/ChartLine.svelte' — verify the subpath export shape in the package), which drops the chunk to KBs; correct the comment; alternatively resolve the A180 decision and remove the dep entirely if the verdict is 'stay with Lucide'. Done when: the devcomponents chunk is back under ~200 KiB (or the dep is gone) and the build emits no chunk-size warning.",
+      "doneNote": null
+    },
+    {
+      "id": "A192",
+      "title": "Dashboard tabs: drag-reorder v2 — local-order drag, midpoint threshold, persist once, atomic cancel",
+      "category": "FIXES",
+      "priority": "P3",
+      "effort": "medium",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the R1 pass-6 audit (P3#3). The A186 drag implementation reorders + persists on every dragover crossing: DashTabs.svelte dragOver() calls onreorder on each event where dragId !== overId, and App.svelte reorderDashTab() runs persistTabs() (a store.local JSON write) per swap. Consequences: N localStorage writes per drag; reorder triggers on edge-entry (not the tab's midpoint) while animate:flip animates, which can thrash at boundaries with unequal-width tabs; Esc/cancelled drops don't revert already-applied moves (no atomic cancel). Fix inside DashTabs: keep a local working order ($state copy) during the drag, reorder it on MIDPOINT crossing (compare event.clientX to the over-tab's bounding-box midpoint), and only on drop/dragend commit once upward (onreorder final order) → App persists once; on cancel (dragend without drop, or Escape) restore the entry order. Keep the menu Move left/right keyboard path and the flip animation. Extend the A135/A186 staging spec with a drag simulation (Playwright dragTo or dispatched drag events; if HTML5 DnD proves unautomatable headless, cover the commit-once contract with a unit-ish component assertion and note it). Done when: one persist per completed drag, no boundary thrash, Esc restores the pre-drag order.",
+      "doneNote": null
+    },
+    {
+      "id": "A193",
+      "title": "Workspace templates: align apply/revert with the staged-layout model",
+      "category": "FIXES",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the R1 pass-6 audit (P3#4). Under the A186 staged-layout model, dashLayouts.apply() and revert() route through saveModules() and therefore only STAGE (dirty asterisk + a second 'Save layout' click), while dashLayouts.save()/remove() persist the template list immediately (persistWs) — an inconsistent contract the template UI (Dashboard layout menu) doesn't signal. Decide ONE model and implement it: recommended — applying a template and 'Reset to default' persist immediately (they are explicit user intents naming a target state, unlike incremental module edits), i.e. App.svelte apply/revert call saveTabLayout() after staging (and clear the dirty flag); alternatively keep them staged but label the menu items ('Apply (stages — save to keep)'). Update the staging e2e that exercises templates if its expectations change, and note the decided semantics in the Dashboard layout-menu tooltip or the docs. Done when: template apply/revert behavior is consistent, signaled, and covered by a spec assertion.",
+      "doneNote": null
+    },
+    {
+      "id": "A194",
+      "title": "Coverage batch: drag-reorder spec, flavor assertion, pickFlavor/dowPnl fixtures, stable mobile selectors",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "medium",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the R1 pass-6 audit (P3#5) — test gaps left by the A179-A189 batch: (1) the tab drag-reorder path (DashTabs onreorder → App reorderDashTab) has NO spec — add one (pairs with A192's rework; Playwright dragTo, or assert the commit-once contract); (2) the header flavor text has data-testid='flavor-text' but no assertion — assert non-empty text from FLAVOR_PHRASES on demo boot; (3) pickFlavor (src/app/lib/flavor.ts) is pure and node-testable — fixture: returns a member of the list, handles empty list (''), covers the whole range under a seeded loop; (4) the A174 weekend dowPnl filter is inlined in Calendar.svelte as a component $derived — lift the bucket-then-filter logic into core.ts beside dowBuckets (e.g. dowPnlRows(days)) and pin it in test-compute.mjs (Sun/Sat rows only when nonzero; Mon-Fri always); (5) the mobile A182/A183 spec targets button.aspect-square (utility-class coupling) and uses waitForTimeout(250) — add a stable data-testid to calendar day cells, assert on it, and replace the fixed wait with a settled-layout assertion; (6) optionally assert the CostSetup feed-select truncation (A184) at 360px (bounding box <= container). Done when: each new surface has at least one guard and no spec couples to a Tailwind utility class.",
+      "doneNote": null
+    },
+    {
+      "id": "A195",
+      "title": "Drift batch: ci-pipeline budget label, stale comments, saved-view stragglers, boot-order + lastModKey micro-fixes",
+      "category": "CHORE / REFACTOR",
+      "priority": "P3",
+      "effort": "small",
+      "status": "open",
+      "completedDate": null,
+      "partial": false,
+      "prompt": "From the R1 pass-6 audit (P3#6) — small drift + cleanups, one pass: (1) docs/architecture-diagrams/ci-pipeline.md still labels the size budget 480 KiB — actual is 600 KiB (check-bundle-size.mjs; keep in sync with A190's outcome); (2) ActivityTerminal.svelte's header comment references the deleted legacy src/app/components/ActivityTerminal.svelte — drop the dead path; (3) pre-A187 naming stragglers: types.ts SavedFilterDef comment says 'a saved view', Roadmap.svelte's sync bullet says 'saved views' — align with 'saved filters'; (4) cosmetic: the activity log shows 'reference data loaded' ABOVE 'session initiated' because boot() awaits loadRefData() (which emits refdata:loaded) before emit('app:ready') — either emit app:ready first or accept and reorder the FMT labels' phrasing; (5) Dashboard.svelte commitModules() doesn't update lastModKey, so the prop re-seed $effect redundantly reassigns modOrder (fresh identical array) after every layout edit — set lastModKey inside commitModules (or derive it) to kill the wasted pass. Done when: all five are fixed and svelte-check/e2e stay green.",
+      "doneNote": null
     }
   ],
   "howToDrive": [
