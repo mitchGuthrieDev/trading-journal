@@ -148,3 +148,24 @@ test('demo: feedback dialog builds a mailto draft from ONLY the typed text (A105
   await expect(page.getByTestId('feedback-mailto')).toHaveCount(0);
   expect(errors, errors.join('\n')).toHaveLength(0);
 });
+
+test('demo: dashboard tabs render and work in-memory (A135, promoted) — but never persist', async ({ page }) => {
+  test.setTimeout(60_000);
+  page.on('dialog', d => d.accept(d.type() === 'prompt' ? 'Swing' : undefined));
+  await bootDashboard(page);
+
+  // The tab bar ships on every surface now — demo boots with the implicit Main tab.
+  await expect(page.getByRole('button', { name: 'Main', exact: true })).toBeVisible();
+
+  // Creating a tab works (in-memory DemoStore.local) and becomes active.
+  await page.getByRole('button', { name: 'New tab' }).click();
+  const swingTab = page.getByRole('button', { name: 'Swing', exact: true });
+  await expect(swingTab).toBeVisible();
+  await expect(swingTab).toHaveAttribute('aria-current', 'page');
+
+  // Demo invariant: nothing persists — a reload is back to the single Main tab.
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(page.getByText('Net P&L', { exact: true })).toBeVisible({ timeout: 6000 });
+  await expect(page.getByRole('button', { name: 'Main', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Swing', exact: true })).toHaveCount(0);
+});

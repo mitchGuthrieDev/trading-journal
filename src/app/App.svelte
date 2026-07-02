@@ -127,20 +127,21 @@
   // re-add survives a reload — parity with the app/demo workspace layout.
   const MOD_KEY = isStaging ? 'bb:staging:dashModules' : 'bb:dashModules';
 
-  // ── Dashboard tabs (A135 — STAGING ONLY) ─────────────────────────────────────────────────────
+  // ── Dashboard tabs (A135; promoted to all surfaces — CH16) ──────────────────────────────────
   // Multiple named dashboards, each with its own module layout. The 'main' tab maps to the legacy
-  // MOD_KEY so an existing staging layout carries over; other tabs persist under suffixed keys.
-  // Prod/demo keep the single implicit 'main' tab (the bar never renders, keys are unchanged).
+  // MOD_KEY so an existing layout carries over; other tabs persist under suffixed keys. The key is
+  // per-surface namespaced like MOD_KEY/WS_KEY; on demo the in-memory DemoStore.local means tab
+  // edits work but never persist (by construction).
   type DashTab = { id: string; name: string };
-  const TABS_KEY = 'bb:staging:dashTabs';
-  const persistedTabs = isStaging ? (store.local.get(TABS_KEY, null) as { tabs: DashTab[]; active: string } | null) : null;
+  const TABS_KEY = isStaging ? 'bb:staging:dashTabs' : 'bb:dashTabs';
+  const persistedTabs = store.local.get(TABS_KEY, null) as { tabs: DashTab[]; active: string } | null;
   let dashTabs = $state<DashTab[]>(persistedTabs?.tabs?.length ? persistedTabs.tabs : [{ id: 'main', name: 'Main' }]);
   let activeDashTab = $state<string>(
     persistedTabs?.active && (persistedTabs.tabs ?? []).some(t => t.id === persistedTabs.active) ? persistedTabs.active : 'main'
   );
   const modKeyFor = (tabId: string) => (tabId === 'main' ? MOD_KEY : `${MOD_KEY}:${tabId}`);
   function persistTabs() {
-    if (isStaging) store.local.set(TABS_KEY, { tabs: $state.snapshot(dashTabs), active: activeDashTab });
+    store.local.set(TABS_KEY, { tabs: $state.snapshot(dashTabs), active: activeDashTab });
   }
   function selectDashTab(id: string) {
     if (id === activeDashTab) return;
@@ -720,20 +721,18 @@
       {:else if needsOnboarding}
         <Onboarding setup={dash.setup} onsetupsave={s => dash.saveSetup(s)} onimport={onboardImport} />
       {:else if active === 'dashboard'}
-        {#if isStaging}
-          <!-- A135 (staging): named dashboard tabs, each with its own module layout. -->
-          <div class="mb-4">
-            <DashTabs
-              tabs={dashTabs}
-              active={activeDashTab}
-              onselect={selectDashTab}
-              oncreate={createDashTab}
-              onrename={renameDashTab}
-              onmove={moveDashTab}
-              ondelete={deleteDashTab}
-            />
-          </div>
-        {/if}
+        <!-- A135 (promoted CH16): named dashboard tabs, each with its own module layout. -->
+        <div class="mb-4">
+          <DashTabs
+            tabs={dashTabs}
+            active={activeDashTab}
+            onselect={selectDashTab}
+            oncreate={createDashTab}
+            onrename={renameDashTab}
+            onmove={moveDashTab}
+            ondelete={deleteDashTab}
+          />
+        </div>
         <Dashboard
           stats={dStats}
           series={dashSeries}
