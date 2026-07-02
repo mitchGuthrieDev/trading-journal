@@ -269,8 +269,10 @@ export function createDashboard(store: StoreLike, opts: { seed: boolean; isDemo?
       dows: [...filters.dows],
     };
     const id = Date.now().toString(36) + savedFilters.length;
-    savedFilters = [...savedFilters, { id, name: (name || '').trim() || `View ${savedFilters.length + 1}`, f }];
+    const label = (name || '').trim() || `Filter ${savedFilters.length + 1}`;
+    savedFilters = [...savedFilters, { id, name: label, f }];
     await store.setMeta('savedFilters', $state.snapshot(savedFilters));
+    emit('filter:saved', { name: label }); // A188 — activity-log line
   }
   function applyView(sf: SavedFilter) {
     const f = sf.f || {};
@@ -281,6 +283,7 @@ export function createDashboard(store: StoreLike, opts: { seed: boolean; isDemo?
     filters.session = f.session || '';
     filters.tag = f.tag || '';
     filters.dows = Array.isArray(f.dows) ? [...f.dows] : [];
+    emit('filter:applied', { name: sf.name }); // A188
   }
   async function deleteView(id: string) {
     if (isDemo) return;

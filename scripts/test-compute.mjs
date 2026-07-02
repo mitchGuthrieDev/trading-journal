@@ -215,6 +215,32 @@ const t = (time, pnl, side = 'long', root = 'MES', qty = 1) => ({ time, date: ti
   ok('series: endpoint net === costModel netPreTax basis', approx(p2.net, c.gross - c.totalComm - c.fixedPeriod, 1e-9));
 }
 
+// ── A188: the event bus replay buffer — late subscribers can backfill boot events ──
+{
+  const { emit, busLog, onEvent } = core;
+  const before = busLog().length;
+  emit('test:boot', { n: 1 });
+  emit('test:boot', { n: 2 });
+  ok(
+    'bus: emits are recorded in busLog with a timestamp',
+    busLog().length === before + 2 && busLog()[busLog().length - 1].at instanceof Date
+  );
+  ok(
+    'bus: entries carry name + detail for backfill formatting',
+    busLog()[busLog().length - 1].name === 'test:boot' && busLog()[busLog().length - 1].detail.n === 2
+  );
+  // Live subscription still works alongside the log.
+  let got = null;
+  const off = onEvent('test:live', d => (got = d));
+  emit('test:live', { hello: true });
+  off();
+  ok('bus: live onEvent still fires (and unsubscribes)', got && got.hello === true);
+  // The buffer is a ring: it never exceeds 50 entries.
+  for (let i = 0; i < 60; i++) emit('test:flood', { i });
+  ok('bus: replay buffer caps at 50 entries (ring)', busLog().length === 50, busLog().length);
+  ok('bus: ring keeps the NEWEST entries', busLog()[busLog().length - 1].detail.i === 59);
+}
+
 // ── A169: priorBounds is DST-safe — pinned under three timezones via child processes ──
 {
   for (const tz of ['UTC', 'America/New_York', 'Australia/Lord_Howe']) {

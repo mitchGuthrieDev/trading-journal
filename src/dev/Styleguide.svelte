@@ -9,6 +9,64 @@
   import { fade, fly, slide } from 'svelte/transition';
   import AppShell from '$lib/components/shell/AppShell.svelte';
   import { navSections } from './nav';
+  // A180 spike: Phosphor comparison set (pinned dep; named imports stay tree-shaken). The app's
+  // real set stays @lucide/svelte until the A180 decision lands.
+  import {
+    ChartLine as PhChartLine,
+    CalendarDots as PhCalendar,
+    Table as PhTable,
+    PencilSimple as PhPencil,
+    FileCsv as PhFileCsv,
+    Notebook as PhNotebook,
+    Funnel as PhFunnel,
+    Tag as PhTag,
+    Terminal as PhTerminal,
+    FloppyDisk as PhSave,
+    Trash as PhTrash,
+    Plus as PhPlus,
+    X as PhX,
+    List as PhList,
+    Gauge as PhGauge,
+    Receipt as PhReceipt,
+  } from 'phosphor-svelte';
+  import {
+    ChartLine as LuChartLine,
+    CalendarDays as LuCalendar,
+    Table2 as LuTable,
+    Pencil as LuPencil,
+    FileText as LuFile,
+    NotebookPen as LuNotebook,
+    Filter as LuFilter,
+    Tag as LuTag,
+    Terminal as LuTerminal,
+    Save as LuSave,
+    Trash2 as LuTrash,
+    Plus as LuPlus,
+    X as LuX,
+    Menu as LuMenu,
+    Gauge as LuGauge,
+    Receipt as LuReceipt,
+  } from '@lucide/svelte';
+
+  const ICON_PAIRS = [
+    { label: 'chart / performance', lu: LuChartLine, ph: PhChartLine },
+    { label: 'calendar', lu: LuCalendar, ph: PhCalendar },
+    { label: 'table / blotter', lu: LuTable, ph: PhTable },
+    { label: 'edit', lu: LuPencil, ph: PhPencil },
+    { label: 'csv / file', lu: LuFile, ph: PhFileCsv },
+    { label: 'journal / notes', lu: LuNotebook, ph: PhNotebook },
+    { label: 'filter', lu: LuFilter, ph: PhFunnel },
+    { label: 'tag', lu: LuTag, ph: PhTag },
+    { label: 'terminal / activity', lu: LuTerminal, ph: PhTerminal },
+    { label: 'save', lu: LuSave, ph: PhSave },
+    { label: 'delete', lu: LuTrash, ph: PhTrash },
+    { label: 'add', lu: LuPlus, ph: PhPlus },
+    { label: 'close', lu: LuX, ph: PhX },
+    { label: 'menu', lu: LuMenu, ph: PhList },
+    { label: 'gauge / stats', lu: LuGauge, ph: PhGauge },
+    { label: 'costs', lu: LuReceipt, ph: PhReceipt },
+  ] as const;
+  const PH_WEIGHTS = ['thin', 'light', 'regular', 'bold', 'fill', 'duotone'] as const;
   import { Button, type ButtonVariant, type ButtonSize } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Checkbox } from '$lib/components/ui/checkbox';
@@ -423,5 +481,39 @@
         <div transition:slide class="inline-block rounded-md border border-border bg-card px-4 py-3 text-sm">slide</div>
       {/if}
     {/if}
+  </div>
+
+  <!-- ── A180 spike: Phosphor vs Lucide ─────────────────────────────────────────────────────── -->
+  {@render section(
+    'Icons: Lucide vs Phosphor (A180 spike)',
+    'The app ships @lucide/svelte; this compares the ~16 core glyphs against phosphor-svelte at app sizes, plus Phosphor\u2019s weight axis (its differentiator). Decision notes live in the A180 backlog item.'
+  )}
+  <div class="overflow-x-auto">
+    <table class="text-sm">
+      <thead>
+        <tr class="text-left text-xs text-muted-foreground">
+          <th class="py-1 pr-6">use</th>
+          <th class="py-1 pr-6">Lucide 16/20</th>
+          <th class="py-1 pr-6">Phosphor 16/20</th>
+        </tr>
+      </thead>
+      <tbody>
+        {#each ICON_PAIRS as p (p.label)}
+          {@const Lu = p.lu}
+          {@const Ph = p.ph}
+          <tr class="border-t border-border">
+            <td class="py-2 pr-6 text-xs text-muted-foreground">{p.label}</td>
+            <td class="py-2 pr-6"><span class="inline-flex items-center gap-3"><Lu class="size-4" /><Lu class="size-5" /></span></td>
+            <td class="py-2 pr-6"><span class="inline-flex items-center gap-3"><Ph size={16} /><Ph size={20} /></span></td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
+  <p class="mt-4 mb-1 text-xs text-muted-foreground">Phosphor weight axis (ChartLine at 20px):</p>
+  <div class="flex flex-wrap items-center gap-4">
+    {#each PH_WEIGHTS as w (w)}
+      <span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><PhChartLine size={20} weight={w} /> {w}</span>
+    {/each}
   </div>
 </AppShell>

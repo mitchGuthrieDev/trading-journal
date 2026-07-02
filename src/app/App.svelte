@@ -54,6 +54,7 @@
   import DashTabs from './parts/DashTabs.svelte';
   import FeedbackDialog from './parts/FeedbackDialog.svelte';
   import { loadFlags, APP_FLAGS, type AppFlags } from './lib/flags.ts';
+  import { pickFlavor } from './lib/flavor.ts';
   import { Adapters } from '../lib/core/adapters.ts';
   import type { Trade } from '../lib/core/types.ts';
 
@@ -143,11 +144,42 @@
   function persistTabs() {
     store.local.set(TABS_KEY, { tabs: $state.snapshot(dashTabs), active: activeDashTab });
   }
+  // A186/A189: module-layout edits STAGE in memory and persist only on an explicit Save — the tab
+  // shows a dirty asterisk meanwhile. Unsaved edits survive tab SWITCHES (in-memory drafts) but are
+  // deliberately discarded on reload (the persisted layout is the saved one).
+  let dirtyTabs = $state<string[]>([]);
+  const draftLayouts: Record<string, string[] | undefined> = {};
+  const markDirty = (id: string) => {
+    if (!dirtyTabs.includes(id)) dirtyTabs = [...dirtyTabs, id];
+  };
+  const clearDirty = (id: string) => (dirtyTabs = dirtyTabs.filter(t => t !== id));
+
   function selectDashTab(id: string) {
     if (id === activeDashTab) return;
+    if (dirtyTabs.includes(activeDashTab)) draftLayouts[activeDashTab] = dashModules ? [...dashModules] : undefined;
     activeDashTab = id;
-    dashModules = (store.local.get(modKeyFor(id)) as string[] | null) ?? undefined;
+    dashModules = dirtyTabs.includes(id)
+      ? draftLayouts[id] && [...(draftLayouts[id] as string[])]
+      : ((store.local.get(modKeyFor(id)) as string[] | null) ?? undefined);
     persistTabs();
+  }
+  // Drag-reorder (A186): place tab `id` at `overId`'s position.
+  function reorderDashTab(id: string, overId: string) {
+    const from = dashTabs.findIndex(t => t.id === id),
+      to = dashTabs.findIndex(t => t.id === overId);
+    if (from < 0 || to < 0 || from === to) return;
+    const next = [...dashTabs];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    dashTabs = next;
+    persistTabs();
+  }
+  // Persist the ACTIVE tab's staged layout (the DashTabs Save button; clears the asterisk).
+  function saveTabLayout() {
+    if (dashModules) store.local.set(modKeyFor(activeDashTab), $state.snapshot(dashModules));
+    else store.local.remove(modKeyFor(activeDashTab));
+    delete draftLayouts[activeDashTab];
+    clearDirty(activeDashTab);
   }
   function createDashTab() {
     const name = typeof prompt === 'function' ? prompt('New dashboard tab name…') : null;
@@ -155,6 +187,7 @@
     const id = Date.now().toString(36) + dashTabs.length;
     dashTabs = [...dashTabs, { id, name: name.trim() }];
     selectDashTab(id); // persists tabs + active
+    emit('tab:created', { name: name.trim() }); // A188 — activity-log line
   }
   function renameDashTab(id: string) {
     const cur = dashTabs.find(t => t.id === id);
@@ -176,6 +209,8 @@
     if (dashTabs.length === 1) return;
     if (typeof confirm === 'function' && !confirm('Delete this dashboard tab? Its module layout is removed.')) return;
     store.local.remove(modKeyFor(id));
+    delete draftLayouts[id];
+    clearDirty(id);
     dashTabs = dashTabs.filter(t => t.id !== id);
     if (activeDashTab === id) selectDashTab(dashTabs[0].id);
     else persistTabs();
@@ -183,14 +218,15 @@
 
   // svelte-ignore state_referenced_locally — initial read only; selectDashTab reassigns on switch.
   let dashModules = $state<string[] | undefined>((store.local.get(modKeyFor(activeDashTab)) as string[] | null) ?? undefined);
+  // A186: layout changes STAGE (dirty asterisk) — saveTabLayout() persists them.
   function saveModules(order: string[]) {
     dashModules = order;
-    store.local.set(modKeyFor(activeDashTab), order);
+    markDirty(activeDashTab);
   }
-  // Reset the layout to the default (all modules shown, default order).
+  // Reset the layout to the default (all modules shown, default order) — staged like any edit.
   function revertModules() {
     dashModules = undefined;
-    store.local.remove(modKeyFor(activeDashTab));
+    markDirty(activeDashTab);
   }
 
   // Named workspace layout templates (R12 parity): save/apply/delete the module layout by name; revert
@@ -669,6 +705,9 @@
   // Environment pill: only the non-prod surfaces are badged (Staging | Demo); prod /app shows none.
   const envLabel = isStaging ? 'Staging' : isDemo ? 'Demo' : '';
 
+  // A179: one flavor phrase per page load (module-scope pick — stable for the session).
+  const flavor = pickFlavor();
+
   // Admin-managed flags (A89): the maintenance banner (betaRibbon is superseded by the version-based
   // Beta pill in the header). Applied once resolved; dashboard renders on defaults first.
   let flags = $state<AppFlags>({ ...APP_FLAGS });
@@ -700,7 +739,10 @@
 
 <AppShell sections={navSections} {active} onnavigate={navigate} title={navLabel(active)} hideNav={needsOnboarding}>
   {#snippet actions()}
-    <div class="flex items-center gap-2">
+    <div class="flex min-w-0 items-center gap-2">
+      <!-- A179: rotating flavor text — one phrase per page load; hidden on narrow viewports and
+           truncating so it can never shift the header layout. -->
+      <span class="hidden max-w-52 truncate text-xs text-muted-foreground italic lg:inline" data-testid="flavor-text">{flavor}</span>
       {#if isBeta}<Badge variant="outline" class="border-chart-4/40 text-chart-4">Beta</Badge>{/if}
       {#if envLabel}<Badge variant="secondary">{envLabel}</Badge>{/if}
       {#if appVersion}<span class="font-mono text-[11px] text-muted-foreground">v{appVersion}</span>{/if}
@@ -726,11 +768,14 @@
           <DashTabs
             tabs={dashTabs}
             active={activeDashTab}
+            dirty={dirtyTabs}
             onselect={selectDashTab}
             oncreate={createDashTab}
             onrename={renameDashTab}
             onmove={moveDashTab}
+            onreorder={reorderDashTab}
             ondelete={deleteDashTab}
+            onsave={saveTabLayout}
           />
         </div>
         <Dashboard

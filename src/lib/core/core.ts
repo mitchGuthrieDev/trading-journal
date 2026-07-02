@@ -100,7 +100,22 @@ export const PAGE_MODE = (typeof document !== 'undefined' && document.body && do
    trade:deleted, backup:created, data:erased.
    ------------------------------------------------------------------ */
 export const BUS = new EventTarget();
+// A188: a small replay buffer — the boot events (app:ready, refdata:loaded, data:loaded) fire
+// BEFORE the Dashboard's ActivityTerminal mounts, and an EventTarget keeps no history, so the
+// terminal always looked dead. emit() records the last 50 events with a wall-clock stamp; a late
+// subscriber backfills from busLog() and then listens live.
+export interface BusEntry {
+  name: string;
+  detail: unknown;
+  at: Date;
+}
+const BUS_LOG: BusEntry[] = [];
+export function busLog(): readonly BusEntry[] {
+  return BUS_LOG;
+}
 export function emit(name: string, detail?: unknown) {
+  BUS_LOG.push({ name, detail, at: new Date() });
+  if (BUS_LOG.length > 50) BUS_LOG.shift();
   BUS.dispatchEvent(new CustomEvent(name, { detail }));
 }
 // Subscribe to a bus event; returns an unsubscribe function (callers that don't need cleanup —

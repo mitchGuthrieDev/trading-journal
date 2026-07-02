@@ -169,3 +169,48 @@ test('demo: dashboard tabs render and work in-memory (A135, promoted) — but ne
   await expect(page.getByRole('button', { name: 'Main', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Swing', exact: true })).toHaveCount(0);
 });
+
+test('demo (mobile): no screen scrolls horizontally at 360px (A183) and both calendars fit (A182)', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto(DEMO, { waitUntil: 'networkidle' });
+  await expect(page.getByText('Net P&L', { exact: true })).toBeVisible({ timeout: 6000 });
+
+  const assertNoHScroll = async label => {
+    const { sw, cw } = await page.evaluate(() => ({
+      sw: document.documentElement.scrollWidth,
+      cw: document.documentElement.clientWidth,
+    }));
+    expect(sw, `${label}: page must not scroll horizontally (scrollWidth ${sw} > clientWidth ${cw})`).toBeLessThanOrEqual(cw);
+  };
+
+  await assertNoHScroll('Dashboard');
+  for (const name of ['Calendar', 'Analytics', 'Blotter', 'CSV Library', 'Trade Editor', 'Reports']) {
+    // Mobile nav is a drawer — open it, navigate, drawer closes on pick.
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('navigation', { name: 'Primary' }).getByRole('button', { name, exact: true }).click();
+    await expect(page.locator('header h1')).toHaveText(name);
+    await page.waitForTimeout(250);
+    await assertNoHScroll(name);
+  }
+
+  // A182: the Calendar month grid's last day cell ends inside the viewport (no right-edge clip).
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('button', { name: 'Calendar', exact: true }).click();
+  await expect(page.locator('header h1')).toHaveText('Calendar');
+  const cell = page.locator('button.aspect-square').last();
+  await expect(cell).toBeVisible();
+  const box = await cell.boundingBox();
+  expect(box.x + box.width).toBeLessThanOrEqual(360);
+});
+
+test('demo: the Activity terminal backfills boot events and appends live actions (A188)', async ({ page }) => {
+  await bootDashboard(page);
+
+  // The replay buffer backfills the boot events that fired before the terminal mounted.
+  const log = page.getByRole('log');
+  await expect(log).toBeVisible();
+  await expect(log).toContainText('session initiated');
+  await expect(log).toContainText(/\[data\] loaded \d+ trades/);
+  await expect(log).not.toContainText('Waiting for activity…');
+});

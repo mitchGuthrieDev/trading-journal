@@ -6,12 +6,14 @@
     {
       "version": "0.44.0",
       "date": "2026-07-02",
-      "title": "Dashboard tabs for everyone",
-      "summary": "Named dashboard tabs graduate from staging: create multiple dashboards, each with its own module layout, and switch between them from the tab bar above the dashboard. Your active tab and layouts are remembered between visits.",
+      "title": "Dashboard tabs, a friendlier dashboard, and mobile fixes",
+      "summary": "Named dashboard tabs graduate from staging — now with drag-to-reorder, a close button, and an explicit Save for layout changes. The dashboard gains a visible 'Add modules' picker and a live activity log, the calendar finally behaves on phones, and a rotating bit of desk wisdom lives in the header. Your trade data still never leaves the browser.",
       "highlights": [
-        "A tab bar now sits above the main dashboard on every surface — the implicit 'Main' tab carries your existing layout over unchanged.",
-        "Create, rename, reorder, and delete tabs from the tab menu; each tab keeps an independent module layout (hide, reorder, re-add modules per tab).",
-        "The active tab and every per-tab layout persist across reloads (on the demo, tabs work but nothing is ever stored — as always)."
+        "Dashboard tabs on every surface: create, rename, close (✕), and drag tabs to reorder; each tab keeps its own module layout. Layout edits now stage with an unsaved-changes asterisk until you hit Save.",
+        "'+ Add modules' is always visible on the dashboard and opens an illustrated picker — check the modules you want and add them in one go.",
+        "The Activity log now works: it backfills the session's boot events (session initiated, data loaded) and appends live actions like CSV imports, saved filters, and new tabs.",
+        "Mobile: calendars fit the screen with square, bounded day cells (no more clipped P&L), no screen scrolls sideways anymore, and long data-feed names truncate instead of breaking the layout.",
+        "Polish: saved filters are now called saved filters, the sidebar shows the real Blotterbook mark, the import preview warns about skipped fills and still-open positions, and the privacy page now describes exactly which requests the app makes."
       ]
     },
     {
